@@ -8,8 +8,13 @@ import {
 } from "../service/webSearchService.js";
 import { calculateFairMarketValue } from "../service/valuationService.js";
 import RealEstateReport from "../models/realEstate.model.js";
+import { generatePdfFromReport } from "../service/pdfService.js";
+import PdfReport from "../models/pdfReport.model.js";
+import fs from "fs/promises";
+import path from "path";
+import { AuthRequest } from "../middleware/auth.middleware.js";
 
-export const createRealEstate = async (req: Request, res: Response) => {
+export const createRealEstate = async (req: AuthRequest, res: Response) => {
   try {
     const details = JSON.parse(req.body.details);
     const images = req.files as Express.Multer.File[];
@@ -51,7 +56,7 @@ export const createRealEstate = async (req: Request, res: Response) => {
 
     console.log("Final Combined Data:", JSON.stringify(finalData, null, 2));
 
-    let comparableProperties: SearchResult[] = [];
+    let comparableProperties: any = {};
     if (finalData.property_details.address) {
       try {
         comparableProperties = await findComparableProperties(
@@ -68,7 +73,7 @@ export const createRealEstate = async (req: Request, res: Response) => {
     }
 
     let valuation = {};
-    if (comparableProperties.length > 0) {
+    if (comparableProperties) {
       try {
         valuation = await calculateFairMarketValue(
           finalData,
@@ -81,18 +86,54 @@ export const createRealEstate = async (req: Request, res: Response) => {
     }
 
     // Save the final report to the database
+    const comparablePropertiesMap = new Map();
+    if (Array.isArray(comparableProperties)) {
+      comparableProperties.forEach((comp: any) => {
+        const { name, ...details } = comp;
+        comparablePropertiesMap.set(name, details);
+      });
+    }
+
     const newReport = new RealEstateReport({
       user: (req as any).user._id, // Get user ID from the protect middleware
       ...finalData,
-      comparableProperties,
+      comparableProperties: comparablePropertiesMap,
       valuation,
     });
 
     await newReport.save();
 
+    // Generate the PDF
+    // Manually construct the object for the PDF to ensure Map is converted correctly
+    const reportObjectForPdf = newReport.toObject();
+    reportObjectForPdf.comparableProperties = Object.fromEntries(
+      comparablePropertiesMap
+    );
+
+    const pdfBuffer = await generatePdfFromReport(reportObjectForPdf);
+
+    // Ensure the reports directory exists
+    const reportsDir = path.resolve(process.cwd(), "reports");
+    await fs.mkdir(reportsDir, { recursive: true });
+
+    // Save the PDF to the reports folder
+    const filename = `real-estate-report-${newReport._id}-${Date.now()}.pdf`;
+    const filePath = path.join(reportsDir, filename);
+    await fs.writeFile(filePath, pdfBuffer);
+
+    // Create a record for the saved PDF
+    const newPdfReport = new PdfReport({
+      filename: filename,
+      user: req.userId,
+      report: newReport._id,
+      address: newReport.property_details?.address || "",
+      fairMarketValue: newReport.valuation?.fair_market_value || "",
+    });
+    await newPdfReport.save();
+
     res.status(201).json({
-      message: "Real estate data processed and report saved successfully!",
-      data: newReport,
+      message: "Report generated and saved successfully!",
+      filePath: `/reports/${filename}`,
     });
   } catch (error) {
     console.error("Error processing real estate data:", error);
@@ -100,9 +141,11 @@ export const createRealEstate = async (req: Request, res: Response) => {
   }
 };
 
-export const getRealEstateReports = async (req: Request, res: Response) => {
+export const getRealEstateReports = async (req: AuthRequest, res: Response) => {
   try {
-    const reports = await RealEstateReport.find({ user: (req as any).user._id }).sort({ createdAt: -1 });
+    const reports = await RealEstateReport.find({
+      user: req.userId,
+    }).sort({ createdAt: -1 });
     res.status(200).json({
       message: "Reports fetched successfully!",
       data: reports,

@@ -2,6 +2,7 @@ import express from "express";
 import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import realEstateRoutes from "./routes/realEstate.routes.js";
+import pdfReportRoutes from "./routes/pdfReport.routes.js";
 import connectDB from "./config/database.js";
 import dotenv from "dotenv";
 
@@ -25,9 +26,10 @@ const startServer = async () => {
     app.use("/api/auth", authRoutes);
     app.use("/api/user", userRoutes);
     app.use("/api/real-estate", realEstateRoutes);
+    app.use("/api/reports", pdfReportRoutes);
 
     app.listen(port, () => {
-      console.log(`Server running at https://sellsnap.co.uk`);
+      console.log(`Server running at https://clearvalue.co.uk`);
     });
   } catch (error) {
     console.error("Failed to start server:", error);
