@@ -87,7 +87,7 @@ export async function generatePdfFromReport(reportData: any): Promise<Buffer> {
       timeout: 120000, // 2 minutes
     });
     const page = await browser.newPage();
-    await page.setContent(finalHtml, { waitUntil: "networkidle0" });
+    await page.setContent(finalHtml, { waitUntil: "networkidle0", timeout: 120000 }); // 2 minutes
 
     const pdfBuffer = await page.pdf({
       format: "A4",
