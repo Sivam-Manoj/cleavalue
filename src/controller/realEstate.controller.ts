@@ -18,6 +18,7 @@ export const createRealEstate = async (req: AuthRequest, res: Response) => {
   try {
     const details = JSON.parse(req.body.details);
     const images = req.files as Express.Multer.File[];
+    console.log(req.body);
 
     const imageUrls: string[] = [];
     if (images?.length) {
@@ -47,6 +48,7 @@ export const createRealEstate = async (req: AuthRequest, res: Response) => {
 
     const finalData = {
       ...details,
+      owner_name: details.property_details?.owner_name || "",
       house_details: {
         ...details.house_details,
         ...aiExtractedData,
@@ -73,11 +75,14 @@ export const createRealEstate = async (req: AuthRequest, res: Response) => {
     }
 
     let valuation = {};
-    if (comparableProperties) {
+    const comparablePropertiesForValuation = Array.isArray(comparableProperties)
+      ? comparableProperties
+      : [];
+    if (comparablePropertiesForValuation.length > 0) {
       try {
         valuation = await calculateFairMarketValue(
           finalData,
-          comparableProperties
+          comparablePropertiesForValuation
         );
         console.log("Calculated Valuation:", valuation);
       } catch (valuationError) {
@@ -87,8 +92,8 @@ export const createRealEstate = async (req: AuthRequest, res: Response) => {
 
     // Save the final report to the database
     const comparablePropertiesMap = new Map();
-    if (Array.isArray(comparableProperties)) {
-      comparableProperties.forEach((comp: any) => {
+    if (Array.isArray(comparablePropertiesForValuation)) {
+      comparablePropertiesForValuation.forEach((comp: any) => {
         const { name, ...details } = comp;
         comparablePropertiesMap.set(name, details);
       });

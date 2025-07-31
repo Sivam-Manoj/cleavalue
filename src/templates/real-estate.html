@@ -304,35 +304,111 @@
       <div class="page-break"></div>
 
       <!-- Certificate of Value -->
-      <section
-        id="certificate-of-value"
-        class="mb-12 text-center border-4 border-gray-800 p-8"
-      >
-        <h2 class="text-2xl font-bold mb-4">CERTIFICATE OF VALUE</h2>
-        <p class="mb-4">
-          Proof of certification that on this given date, the specified property
-          belonging to:
-        </p>
-        <p class="font-bold text-lg mb-4">{{owner_name}}</p>
-        <p class="mb-6 whitespace-pre-line">{{property_details.address}}</p>
-        <p class="mb-4">
-          Were personally inspected in order to determine a Fair Market Value
-          of:
-        </p>
-        <p
-          class="text-3xl font-bold text-gray-900 bg-gray-200 py-4 px-6 my-4 inline-block"
+      <section id="certificate-of-value" class="mb-12">
+        <div
+          class="bg-slate-50 p-8 border-4 border-double border-slate-700 relative text-center"
         >
-          {{fair_market_value}}
-        </p>
-        <div class="mt-8">
-          <p class="font-semibold">{{inspector_info.inspector_name}}</p>
-          <p>Real Estate Division Corporate Manager</p>
-          <p>{{inspector_info.company_name}}</p>
+          <div
+            class="absolute top-4 left-4 w-16 h-16 bg-no-repeat bg-center bg-contain"
+            style="background-image: url('{{logo_url}}'); opacity: 0.1;"
+          ></div>
+
+          <h2 class="text-4xl font-serif text-slate-800 mb-4 tracking-wider">
+            Certificate of Value
+          </h2>
+
+          <div class="mb-6">
+            <p class="text-slate-600 max-w-2xl mx-auto">
+              Proof of certification that on this given date, the specified
+              property belonging to:
+            </p>
+            <p class="font-bold text-lg mt-2">{{owner_name}}</p>
+            <p class="whitespace-pre-line">{{property_details.address}}</p>
+          </div>
+
+          <p class="text-slate-600 max-w-2xl mx-auto mb-6">
+            The undersigned hereby certifies that, having considered all factors
+            affecting the value of the property, it is our professional opinion
+            that the Fair Market Value of the subject property, as of the
+            effective date of this report, is:
+          </p>
+
+          <div class="bg-white p-6 my-4 max-w-xl mx-auto shadow-lg">
+            <p class="text-lg text-slate-500">Fair Market Value</p>
+            <p class="text-5xl font-bold text-slate-900 my-2">
+              {{valuation.fair_market_value}}
+            </p>
+          </div>
+
+          <div class="flex justify-center items-center mt-8">
+            <div class="w-24 h-24">
+              <svg
+                class="text-slate-700"
+                fill="none"
+                viewBox="0 0 100 100"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="48"
+                  stroke="currentColor"
+                  stroke-width="2"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="42"
+                  stroke="currentColor"
+                  stroke-width="1"
+                />
+                <text
+                  x="50"
+                  y="35"
+                  font-family="serif"
+                  font-size="8"
+                  text-anchor="middle"
+                  fill="currentColor"
+                >
+                  CERTIFIED
+                </text>
+                <text
+                  x="50"
+                  y="55"
+                  font-family="serif"
+                  font-size="12"
+                  font-weight="bold"
+                  text-anchor="middle"
+                  fill="currentColor"
+                >
+                  VALUATION
+                </text>
+                <text
+                  x="50"
+                  y="70"
+                  font-family="serif"
+                  font-size="8"
+                  text-anchor="middle"
+                  fill="currentColor"
+                >
+                  {{inspector_info.company_name}}
+                </text>
+              </svg>
+            </div>
+            <div class="text-left ml-4 border-l-2 border-slate-300 pl-4">
+              <p class="font-bold text-lg">{{inspector_info.inspector_name}}</p>
+              <p class="text-sm text-slate-600">Certified Appraiser</p>
+              <p class="text-sm text-slate-600">
+                {{inspector_info.company_name}}
+              </p>
+            </div>
+          </div>
+
+          <p class="text-xs text-slate-500 mt-6">
+            This valuation is subject to the assumptions and limiting conditions
+            set forth in this report.
+          </p>
         </div>
-        <p class="text-xs mt-4 italic">
-          THIS PAGE IS NOT A COMPLETE REPORT. THE REPORT MUST BE READ IN ITS
-          ENTIRETY.
-        </p>
       </section>
 
       <div class="page-break"></div>
@@ -367,7 +443,7 @@
         <p>Real Estate Division Corporate Manager</p>
         <p>{{inspector_info.company_name}}</p>
       </section>
-
+      <div class="page-break"></div>
       <!-- Overview -->
       <section id="overview" class="mb-12">
         <h2 class="text-2xl font-semibold border-b-2 border-gray-300 pb-2 mb-4">
@@ -404,7 +480,7 @@
           </div>
         </div>
       </section>
-
+      <div class="page-break"></div>
       <!-- Conditions, Assumptions & Disclaimers -->
       <section id="conditions" class="mb-12 text-sm">
         <h2 class="text-2xl font-semibold border-b-2 border-gray-300 pb-2 mb-4">
@@ -820,7 +896,7 @@
           </p>
         </div>
       </section>
-
+      <div class="page-break"></div>
       <!-- Footer -->
       <footer class="text-center text-xs text-gray-500 pt-4 mt-8 border-t">
         <p>

@@ -12,6 +12,12 @@ export async function calculateFairMarketValue(
   propertyDetails: any,
   comparableProperties: any
 ): Promise<ValuationResult> {
+  console.log("Property Details:", propertyDetails);
+  console.log(
+    "Comparable Properties:",
+    JSON.stringify(comparableProperties, null, 2)
+  );
+
   const prompt = `
     Act as a certified real estate appraiser. Your task is to determine the Fair Market Value (FMV) for a subject property using the Direct Comparison Approach.
 
@@ -23,13 +29,23 @@ export async function calculateFairMarketValue(
     - Bathrooms: ${propertyDetails.house_details.bathrooms_full}
 
     **Comparable Properties Found Online:**
-    ${comparableProperties}
+    ${JSON.stringify(comparableProperties, null, 2)}
 
     **Instructions:**
-    1. Analyze the comparable properties and select the most relevant one for comparison.
-    2. Make adjustments to the comparable property's sale price to account for differences in size, location, and features compared to the subject property.
-    3. Calculate the final Fair Market Value (FMV) for the subject property.
-    4. Provide the result ONLY as a valid JSON object with the following sample structure below:
+    1.  From the 'Comparable Properties Found Online', identify the single property that is the **best match** for the 'Subject Property Details'. The primary selection criteria is the property with the **closest square footage**.
+    2.  **Do not perform any new calculations or create new values.** Your task is to select the best existing comparable.
+    3.  Use the \`listPrice\` of your chosen comparable property as the \`fair_market_value\`.
+    4.  Populate the rest of the JSON response using the data **directly from the chosen comparable property**.
+    5.  In the \`details\` and \`final_estimate_summary\` fields, you must explain which comparable was chosen and why it is the best match for the subject property.
+
+    important: 
+    - Do not perform any new calculations or create new values.
+    - Your task is to select the best existing comparable.
+    - Use the \`listPrice\` of your chosen comparable property as the \`fair_market_value\`.
+    - Populate the rest of the JSON response using the data **directly from the chosen comparable property**.
+    - In the \`details\` and \`final_estimate_summary\` fields, you must explain which comparable was chosen and why it is the best match for the subject property.
+
+    Provide the result ONLY as a valid JSON object with the following sample structure below:
     {
       "fair_market_value": "$846,000 CAD",
       "value_source": "Direct Comparison Approach",
@@ -45,7 +61,7 @@ export async function calculateFairMarketValue(
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-4.1",
-      messages: [{ role: "user", content: prompt }],
+      messages: [{ role: "system", content: prompt }],
       response_format: { type: "json_object" },
     });
 

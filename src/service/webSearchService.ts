@@ -27,12 +27,9 @@ export async function findComparableProperties(
   const { address, municipality } = propertyDetails;
   const { square_footage, bedrooms, bathrooms_full } = houseDetails;
 
-  const minSqFt = Math.round(parseInt(square_footage) * 0.85);
-  const maxSqFt = Math.round(parseInt(square_footage) * 1.15);
-
   const query = `Find 3 comparable real estate listings in ${municipality}, near ${address}. 
 **CRITICAL CRITERIA**: 
-- Square footage MUST be between ${minSqFt} and ${maxSqFt} sq ft.
+- Square footage MUST be close to ${square_footage} sq ft .
 - Must have at least ${bedrooms} bedrooms and ${bathrooms_full} bathrooms.
 Return the response as a **raw JSON array of objects only**, with no additional text or formatting outside the array.
 Each object in the array must follow this **exact flat structure**:

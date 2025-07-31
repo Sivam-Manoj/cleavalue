@@ -62,6 +62,17 @@ export async function generatePdfFromReport(reportData: any): Promise<Buffer> {
     // and ensure it's a plain object that Handlebars can safely process.
     const sanitizedData = JSON.parse(JSON.stringify(reportData));
 
+    // Ensure comparableProperties is an object for the template
+    if (Array.isArray(sanitizedData.comparableProperties)) {
+      sanitizedData.comparableProperties = sanitizedData.comparableProperties.reduce(
+        (obj: { [key: string]: any }, item: { name?: string }) => {
+          obj[item.name || `comp_${Math.random()}`] = item;
+          return obj;
+        },
+        {}
+      );
+    }
+
     const dataForPdf = {
       logo_url: logoUrl,
       ...sanitizedData,
@@ -73,6 +84,7 @@ export async function generatePdfFromReport(reportData: any): Promise<Buffer> {
     // 4. Launch Puppeteer and generate PDF
     const browser = await puppeteer.launch({
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      timeout: 120000, // 2 minutes
     });
     const page = await browser.newPage();
     await page.setContent(finalHtml, { waitUntil: "networkidle0" });
