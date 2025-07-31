@@ -29,7 +29,7 @@ const startServer = async () => {
     app.use("/api/reports", pdfReportRoutes);
 
     app.listen(port, () => {
-      console.log(`Server running at https://clearvalue.co.uk`);
+      console.log(`Server running at https://clearvalue.site`);
     });
   } catch (error) {
     console.error("Failed to start server:", error);

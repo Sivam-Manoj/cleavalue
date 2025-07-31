@@ -52,7 +52,7 @@ const RealEstateReportSchema = new Schema(
     property_details: {
       property_type: { type: String },
       address: { type: String },
-      municipality: { type: String },
+      renderItem: { type: String },
       description: { type: String },
     },
     report_dates: {
