@@ -7,7 +7,7 @@ import { AuthRequest } from "../types/authRequest.js";
 // @desc    Download a specific report
 // @route   GET /api/reports/:id/download
 // @access  Private
-export const downloadReport = async (req: Request, res: Response) => {
+export const downloadReport = async (req: AuthRequest, res: Response) => {
   try {
     const report = await PdfReport.findById(req.params.id);
     if (!report) {
@@ -61,9 +61,9 @@ export const getAllReports = async (req: Request, res: Response) => {
 // @desc    Get reports for the logged-in user
 // @route   GET /api/reports/myreports
 // @access  Private
-export const getReportsByUser = async (req: any, res: Response) => {
+export const getReportsByUser = async (req: AuthRequest, res: Response) => {
   try {
-    const reports = await PdfReport.find({ user: (req as any).user._id });
+    const reports = await PdfReport.find({ user: req.userId });
     res.json(reports);
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
@@ -73,9 +73,9 @@ export const getReportsByUser = async (req: any, res: Response) => {
 // @desc    Get report statistics for the logged-in user
 // @route   GET /api/reports/stats
 // @access  Private
-export const getReportStats = async (req: any, res: Response) => {
+export const getReportStats = async (req: AuthRequest, res: Response) => {
   try {
-    const reports = await PdfReport.find({ user: (req as any).user._id });
+    const reports = await PdfReport.find({ user: req.userId });
 
     let totalReports = 0;
     let totalFairMarketValue = 0;
@@ -89,7 +89,10 @@ export const getReportStats = async (req: any, res: Response) => {
           typeof report.fairMarketValue === "string"
         ) {
           try {
-            const numericString = report.fairMarketValue.replace(/[^\d.-]/g, '');
+            const numericString = report.fairMarketValue.replace(
+              /[^\d.-]/g,
+              ""
+            );
             const value = parseFloat(numericString);
             if (!isNaN(value)) {
               totalFairMarketValue += value;
