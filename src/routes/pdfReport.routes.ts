@@ -14,6 +14,6 @@ router.get("/", protect, getAllReports);
 router.get("/myreports", protect, getReportsByUser);
 router.get("/:id/download", protect, downloadReport);
 router.get("/stats", protect, getReportStats);
-router.get("/:id", protect, deleteReport);
+router.delete("/:id", protect, deleteReport);
 
 export default router;

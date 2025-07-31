@@ -18,7 +18,7 @@ export const createRealEstate = async (req: AuthRequest, res: Response) => {
   try {
     const details = JSON.parse(req.body.details);
     const images = req.files as Express.Multer.File[];
-    console.log(req.body);
+    console.log(JSON.stringify(req.body, null, 2));
 
     const imageUrls: string[] = [];
     if (images?.length) {

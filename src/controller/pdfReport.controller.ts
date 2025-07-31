@@ -26,7 +26,9 @@ export const downloadReport = async (req: AuthRequest, res: Response) => {
 // @access  Private
 export const deleteReport = async (req: Request, res: Response) => {
   try {
+    console.log(req.params.id);
     const report = await PdfReport.findById(req.params.id);
+    console.log(report);
     if (!report) {
       return res.status(404).json({ message: "Report not found" });
     }
