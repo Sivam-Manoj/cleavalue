@@ -13,6 +13,11 @@ import PdfReport from "../models/pdfReport.model.js";
 import fs from "fs/promises";
 import path from "path";
 import { AuthRequest } from "../middleware/auth.middleware.js";
+import {
+  MarketTrend,
+  marketTrendSearch,
+  PropertyDetails,
+} from "../service/marketTrendSebSearch.js";
 
 export const createRealEstate = async (req: AuthRequest, res: Response) => {
   try {
@@ -90,6 +95,24 @@ export const createRealEstate = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    // Fetch market trend data
+    let marketTrendData: MarketTrend[] = [];
+    if (
+      finalData.property_details.address &&
+      finalData.property_details.municipality
+    ) {
+      try {
+        const propertyDetails: PropertyDetails = {
+          address: finalData.property_details.address,
+          municipality: finalData.property_details.municipality,
+        };
+        marketTrendData = await marketTrendSearch(propertyDetails);
+        console.log("Market Trend Data:", marketTrendData);
+      } catch (marketTrendError) {
+        console.error("Error during market trend search:", marketTrendError);
+      }
+    }
+
     // Save the final report to the database
     const comparablePropertiesMap = new Map();
     if (Array.isArray(comparablePropertiesForValuation)) {
@@ -104,6 +127,7 @@ export const createRealEstate = async (req: AuthRequest, res: Response) => {
       ...finalData,
       comparableProperties: comparablePropertiesMap,
       valuation,
+      marketTrend: marketTrendData,
     });
 
     await newReport.save();

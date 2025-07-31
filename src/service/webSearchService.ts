@@ -64,19 +64,22 @@ If a value is not available, use "Not Found".`;
     });
 
     const content = response.output_text;
-    // Find the start and end of the JSON array
-    const startIndex = content.indexOf("[");
-    const endIndex = content.lastIndexOf("]");
+    // Use a regex to find the JSON array. This is more robust.
+    const jsonRegex = /\s*(\[[\s\S]*\])/;
+    const match = content.match(jsonRegex);
 
-    if (startIndex !== -1 && endIndex !== -1) {
-      const jsonString = content.substring(startIndex, endIndex + 1);
+    if (match && match[1]) {
+      const jsonString = match[1];
       try {
         const parsedJson = JSON.parse(jsonString);
         return parsedJson;
       } catch (error) {
-        console.error("Error parsing JSON from AI response:", error);
-        // Fallback or error handling
+        console.error("Error parsing extracted JSON from AI response:", error);
+        console.error("Problematic JSON string:", jsonString);
       }
+    } else {
+      console.error("Could not find a JSON array in the AI response.");
+      console.error("Full response content:", content);
     }
 
     return [];

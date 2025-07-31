@@ -725,6 +725,89 @@
         </p>
       </section>
 
+      <!-- Market Trends Section -->
+      <section id="market-trends" class="mb-12">
+        <h2 class="text-2xl font-semibold border-b-2 border-red-200 pb-2 mb-6 text-red-700">
+          Market Trends Analysis
+        </h2>
+        
+        {{#if marketTrend}}
+          {{#each marketTrend}}
+          <div class="mb-8">
+            <h3 class="text-xl font-bold mb-4 text-gray-800">2025 Market Outlook</h3>
+            
+            <!-- Market Trends Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <!-- Benchmark Prices -->
+              <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h4 class="font-bold text-blue-800 mb-2">Benchmark Prices</h4>
+                <div class="space-y-1">
+                  <p><span class="font-semibold">March:</span> ${{numberFormat this.marketTrends2025.reginaBenchmarkPrice.march}}</p>
+                  <p><span class="font-semibold">June:</span> ${{numberFormat this.marketTrends2025.reginaBenchmarkPrice.june}}</p>
+                  <p><span class="font-semibold">Year-over-Year Increase:</span> {{this.marketTrends2025.reginaBenchmarkPrice.yearOverYearIncreasePercent}}%</p>
+                </div>
+              </div>
+              
+              <!-- Inventory Analysis -->
+              <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                <h4 class="font-bold text-green-800 mb-2">Inventory Analysis</h4>
+                <div class="space-y-1">
+                  <p><span class="font-semibold">Months of Supply:</span> {{this.marketTrends2025.inventory.monthsOfSupply}}</p>
+                  <p><span class="font-semibold">Historical Average:</span> {{this.marketTrends2025.inventory.historicalAverageMonths}} months</p>
+                </div>
+              </div>
+              
+              <!-- Sales Activity -->
+              <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                <h4 class="font-bold text-purple-800 mb-2">Sales Activity</h4>
+                <p><span class="font-semibold">Comparison to 10-Year Average:</span> {{this.marketTrends2025.salesActivity.comparisonTo10YearAverage}}</p>
+              </div>
+              
+              <!-- Price Forecast -->
+              <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                <h4 class="font-bold text-yellow-800 mb-2">Price Forecast</h4>
+                <div class="space-y-1">
+                  <p><span class="font-semibold">Low Estimate Growth:</span> {{this.marketTrends2025.forecast.lowEstimatePriceGrowthPercent}}%</p>
+                  <p><span class="font-semibold">High Estimate Growth:</span> {{this.marketTrends2025.forecast.highEstimatePriceGrowthPercent}}%</p>
+                  <p><span class="font-semibold">Expected Late 2025 Average:</span> ${{numberFormat this.marketTrends2025.forecast.expectedLate2025AveragePriceCAD}}</p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Buyer/Seller Insights -->
+            <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-200 mb-6">
+              <h4 class="font-bold text-indigo-800 mb-2">Buyer & Seller Insights</h4>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p class="font-semibold mb-1">Market Type:</p>
+                  <p>{{this.buyerSellerInsights.marketType}}</p>
+                </div>
+                <div>
+                  <p class="font-semibold mb-1">Recommendations:</p>
+                  <p><span class="font-medium">For Sellers:</span> {{this.buyerSellerInsights.recommendation.seller}}</p>
+                  <p><span class="font-medium">For Buyers:</span> {{this.buyerSellerInsights.recommendation.buyer}}</p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Market Summary -->
+            <div class="bg-amber-50 p-4 rounded-lg border border-amber-200">
+              <h4 class="font-bold text-amber-800 mb-2">Market Summary</h4>
+              <div class="space-y-2">
+                <p><span class="font-semibold">Regina Market:</span> {{this.summary.reginaMarket}}</p>
+                <p><span class="font-semibold">Lakeridge Market:</span> {{this.summary.lakeridgeMarket}}</p>
+                <p><span class="font-semibold">Overall Outlook:</span> {{this.summary.overallOutlook}}</p>
+              </div>
+            </div>
+          </div>
+          {{/each}}
+        {{else}}
+          <div class="bg-gray-100 p-6 rounded-lg text-center">
+            <p class="text-gray-600">Market trend data is not available for this property.</p>
+          </div>
+        {{/if}}
+      </section>
+
       <div class="page-break"></div>
 
       <!-- Schedule A -->

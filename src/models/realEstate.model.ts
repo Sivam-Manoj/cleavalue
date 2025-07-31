@@ -96,6 +96,44 @@ const RealEstateReportSchema = new Schema(
       of: ComparablePropertyDetailSchema,
     },
     valuation: ValuationSchema,
+    marketTrend: {
+      type: [
+        {
+          marketTrends2025: {
+            reginaBenchmarkPrice: {
+              march: Number,
+              june: Number,
+              yearOverYearIncreasePercent: Number,
+            },
+            inventory: {
+              monthsOfSupply: Number,
+              historicalAverageMonths: Number,
+            },
+            salesActivity: {
+              comparisonTo10YearAverage: String,
+            },
+            forecast: {
+              lowEstimatePriceGrowthPercent: Number,
+              highEstimatePriceGrowthPercent: Number,
+              expectedLate2025AveragePriceCAD: Number,
+            },
+          },
+          buyerSellerInsights: {
+            marketType: String,
+            recommendation: {
+              seller: String,
+              buyer: String,
+            },
+          },
+          summary: {
+            reginaMarket: String,
+            lakeridgeMarket: String,
+            overallOutlook: String,
+          },
+        },
+      ],
+      default: [],
+    },
   },
   { timestamps: true }
 );

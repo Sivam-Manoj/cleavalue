@@ -25,6 +25,14 @@ handlebars.registerHelper("objectToArray", function (obj) {
   return Object.entries(obj).map(([key, value]) => ({ key, value }));
 });
 
+handlebars.registerHelper("numberFormat", function (number) {
+  if (number === undefined || number === null) return "N/A";
+  return new Intl.NumberFormat("en-CA", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(number);
+});
+
 export async function generatePdfFromReport(reportData: any): Promise<Buffer> {
   try {
     // 1. Read the HTML template
@@ -64,13 +72,19 @@ export async function generatePdfFromReport(reportData: any): Promise<Buffer> {
 
     // Ensure comparableProperties is an object for the template
     if (Array.isArray(sanitizedData.comparableProperties)) {
-      sanitizedData.comparableProperties = sanitizedData.comparableProperties.reduce(
-        (obj: { [key: string]: any }, item: { name?: string }) => {
-          obj[item.name || `comp_${Math.random()}`] = item;
-          return obj;
-        },
-        {}
-      );
+      sanitizedData.comparableProperties =
+        sanitizedData.comparableProperties.reduce(
+          (obj: { [key: string]: any }, item: { name?: string }) => {
+            obj[item.name || `comp_${Math.random()}`] = item;
+            return obj;
+          },
+          {}
+        );
+    }
+
+    // Ensure marketTrend is an array for the template
+    if (!Array.isArray(sanitizedData.marketTrend)) {
+      sanitizedData.marketTrend = [];
     }
 
     const dataForPdf = {
@@ -87,7 +101,10 @@ export async function generatePdfFromReport(reportData: any): Promise<Buffer> {
       timeout: 120000, // 2 minutes
     });
     const page = await browser.newPage();
-    await page.setContent(finalHtml, { waitUntil: "networkidle0", timeout: 120000 }); // 2 minutes
+    await page.setContent(finalHtml, {
+      waitUntil: "networkidle0",
+      timeout: 120000,
+    }); // 2 minutes
 
     const pdfBuffer = await page.pdf({
       format: "A4",
