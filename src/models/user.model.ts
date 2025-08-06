@@ -17,6 +17,18 @@ const userSchema = new mongoose.Schema({
     minlength: 6,
     select: false,
   },
+  companyName: {
+    type: String,
+  },
+  contactEmail: {
+    type: String,
+  },
+  contactPhone: {
+    type: String,
+  },
+  companyAddress: {
+    type: String,
+  },
   authProvider: {
     type: String,
     required: true,

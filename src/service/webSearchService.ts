@@ -9,6 +9,10 @@ interface HouseDetails {
   square_footage: string;
   bedrooms: number;
   bathrooms_full: number;
+  year_built: number;
+  lot_size_sqft: string;
+  other_features: string;
+  known_issues: string;
 }
 
 export interface SearchResult {
@@ -25,12 +29,25 @@ export async function findComparableProperties(
   houseDetails: HouseDetails
 ): Promise<SearchResult[]> {
   const { address, municipality } = propertyDetails;
-  const { square_footage, bedrooms, bathrooms_full } = houseDetails;
+  const {
+    square_footage,
+    bedrooms,
+    bathrooms_full,
+    year_built,
+    lot_size_sqft,
+    other_features,
+    known_issues,
+  } = houseDetails;
+  console.log(houseDetails);
 
-  const query = `Find 3 comparable real estate listings in ${municipality}, near ${address}. 
+  const query = `Find 4 comparable real estate listings in ${municipality}, near ${address}. 
 **CRITICAL CRITERIA**: 
 - Square footage MUST be close to ${square_footage} sq ft .
 - Must have at least ${bedrooms} bedrooms and ${bathrooms_full} bathrooms.
+- Year built MUST be close to ${year_built}.
+- Lot size MUST be close to ${lot_size_sqft} sq ft.
+- Other features MUST be close to ${other_features}.
+- Known issues MUST be close to ${known_issues}.
 Return the response as a **raw JSON array of objects only**, with no additional text or formatting outside the array.
 Each object in the array must follow this **exact flat structure**:
 {

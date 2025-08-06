@@ -2,6 +2,7 @@ import express from "express";
 import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import realEstateRoutes from "./routes/realEstate.routes.js";
+import salvageRoutes from "./routes/salvage.routes.js";
 import pdfReportRoutes from "./routes/pdfReport.routes.js";
 import connectDB from "./config/database.js";
 import dotenv from "dotenv";
@@ -11,9 +12,9 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
 
-// if (process.env.NODE_ENV === "production") {
-//   console.log = () => {};
-// }
+if (process.env.NODE_ENV === "production") {
+  console.log = () => {};
+}
 
 const startServer = async () => {
   try {
@@ -26,6 +27,7 @@ const startServer = async () => {
     app.use("/api/auth", authRoutes);
     app.use("/api/user", userRoutes);
     app.use("/api/real-estate", realEstateRoutes);
+    app.use("/api/salvage", salvageRoutes);
     app.use("/api/reports", pdfReportRoutes);
 
     app.listen(port, () => {

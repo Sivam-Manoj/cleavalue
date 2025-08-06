@@ -132,6 +132,8 @@ export const createRealEstate = async (req: AuthRequest, res: Response) => {
 
     await newReport.save();
 
+    console.log("New Report:", newReport);
+
     // Generate the PDF
     // Manually construct the object for the PDF to ensure Map is converted correctly
     const reportObjectForPdf = newReport.toObject();

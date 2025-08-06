@@ -1,0 +1,68 @@
+import openai from "../utils/openaiClient.js";
+
+export interface SalvageSearchResult {
+  title: string;
+  link: string;
+  price: string;
+  snippet: string;
+  location: string;
+  image_url: string;
+}
+
+export async function findComparableSalvageItems(itemDetails: {
+  item_type: string;
+  year: string;
+  make: string;
+  item_model: string;
+}): Promise<SalvageSearchResult[]> {
+  const { item_type, year, make, item_model } = itemDetails;
+  const query = `Find 3 comparable salvage listings for a ${year} ${make} ${item_model} ${item_type}. Focus on for-sale listings in Canada and you can check Kijiji, Iron guides, Marketbook.ca and other salvage websites in Canada.
+Return the response as a **raw JSON array of objects only**, with no additional text or formatting outside the array.
+Each object in the array must follow this **exact flat structure**:
+{
+  "title": "<value>",
+  "link": "<value>",
+  "price": "<value>",
+  "snippet": "<value>",
+  "location": "<value>",
+  "image_url": "<value>"
+}
+If a value is not available, use "Not Found".`;
+
+  try {
+    const response = await openai.responses.create({
+      model: "gpt-4.1",
+      tools: [
+        {
+          type: "web_search_preview",
+          search_context_size: "high",
+        },
+      ],
+      input: query,
+    });
+
+    const content = response.output_text;
+    const jsonRegex = /\s*(\[[\s\S]*\])/;
+    const match = content.match(jsonRegex);
+
+    if (match && match[1]) {
+      const jsonString = match[1];
+      try {
+        const parsedJson = JSON.parse(jsonString);
+        return parsedJson;
+      } catch (error) {
+        console.error("Error parsing extracted JSON from AI response:", error);
+        return [];
+      }
+    } else {
+      console.error("Could not find a JSON array in the AI response.");
+      return [];
+    }
+  } catch (error) {
+    console.error(
+      "Error performing web search for comparable salvage items:",
+      error
+    );
+    throw new Error("Failed to fetch comparable salvage items.");
+  }
+}

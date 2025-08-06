@@ -12,7 +12,7 @@ import crypto from "crypto";
 dotenv.config();
 
 export const signup = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const { email, password, companyName, contactEmail, contactPhone, companyAddress } = req.body;
 
   try {
     const existingUser = await User.findOne({ email });
@@ -32,6 +32,10 @@ export const signup = async (req: Request, res: Response) => {
       email,
       password: hashedPassword,
       username,
+      companyName,
+      contactEmail,
+      contactPhone,
+      companyAddress,
       authProvider: "email",
       verificationCode,
       verificationCodeExpires,
@@ -95,7 +99,8 @@ export const login = async (req: Request, res: Response) => {
     user.refreshToken = refreshToken;
     await user.save();
 
-    res.status(200).json({ accessToken, refreshToken });
+    const userResponse = await User.findById(user._id);
+    res.status(200).json({ accessToken, refreshToken, user: userResponse });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Something went wrong" });
@@ -149,6 +154,7 @@ export const verifyEmail = async (req: Request, res: Response) => {
       message: "Email verified successfully.",
       accessToken,
       refreshToken,
+      user: await User.findById(user._id),
     });
   } catch (error) {
     console.error("Email Verification Error:", error);

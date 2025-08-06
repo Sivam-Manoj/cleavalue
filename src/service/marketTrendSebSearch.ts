@@ -40,6 +40,41 @@ export interface MarketTrend {
   };
 }
 
+// Helper function to clean the market trend data
+function cleanMarketTrendData(data: any): any {
+  if (Array.isArray(data)) {
+    return data.map(cleanMarketTrendData);
+  }
+
+  if (data && typeof data === 'object') {
+    const cleanedObject: { [key: string]: any } = {};
+    for (const key in data) {
+      if (Object.prototype.hasOwnProperty.call(data, key)) {
+        const value = data[key];
+        if (typeof value === 'string' && value.toLowerCase() === 'not found') {
+          // Check if the key is one of the numeric fields
+          const numericFields = [
+            'march', 'june', 'yearOverYearIncreasePercent',
+            'monthsOfSupply', 'historicalAverageMonths',
+            'lowEstimatePriceGrowthPercent', 'highEstimatePriceGrowthPercent',
+            'expectedLate2025AveragePriceCAD'
+          ];
+          if (numericFields.includes(key)) {
+            cleanedObject[key] = 0;
+          } else {
+            cleanedObject[key] = value; // Keep as 'Not Found' for string fields
+          }
+        } else {
+          cleanedObject[key] = cleanMarketTrendData(value);
+        }
+      }
+    }
+    return cleanedObject;
+  }
+
+  return data;
+}
+
 export async function marketTrendSearch(
   propertyDetails: PropertyDetails,
 ): Promise<MarketTrend[]> {
@@ -97,23 +132,58 @@ If a value is not available, use "Not Found".`;
     });
 
     const content = response.output_text;
-    // Use a regex to find the JSON array. This is more robust.
-    const jsonRegex = /\s*(\[[\s\S]*\])/;
-    const match = content.match(jsonRegex);
-
-    if (match && match[1]) {
-      const jsonString = match[1];
-      try {
-        const parsedJson: MarketTrend[] = JSON.parse(jsonString);
-        return parsedJson;
-      } catch (error) {
-        console.error("Error parsing extracted JSON from AI response:", error);
-        console.error("Problematic JSON string:", jsonString);
-      }
-    } else {
+    // Find the start of the JSON array in the content
+    const jsonStartIndex = content.indexOf('[');
+    if (jsonStartIndex === -1) {
       console.error("Could not find a JSON array in the AI response.");
       console.error("Full response content:", content);
+      return [];
     }
+
+    // Extract the substring from the start of the JSON array
+    const jsonString = content.substring(jsonStartIndex);
+
+    try {
+      const parsedJson = JSON.parse(jsonString);
+      return parsedJson;
+    } catch (error) {
+      // If parsing fails, it might be due to trailing characters.
+      // We can try to find the correct end of the JSON array.
+      try {
+        let openBrackets = 0;
+        let jsonEndIndex = -1;
+
+        for (let i = 0; i < jsonString.length; i++) {
+          if (jsonString[i] === '[') {
+            openBrackets++;
+          } else if (jsonString[i] === ']') {
+            openBrackets--;
+          }
+
+          if (openBrackets === 0) {
+            jsonEndIndex = i;
+            break;
+          }
+        }
+
+        if (jsonEndIndex !== -1) {
+          const cleanedJsonString = jsonString.substring(0, jsonEndIndex + 1);
+          const parsedJson = JSON.parse(cleanedJsonString);
+          const cleanedData = cleanMarketTrendData(parsedJson);
+          return cleanedData;
+        }
+      } catch (e) {
+        // If it still fails, log the original error
+        console.error("Error parsing extracted JSON from AI response:", error);
+        console.error("Problematic JSON string:", jsonString);
+        return [];
+      }
+
+      // If we couldn't fix it, log the original error
+      console.error("Error parsing extracted JSON from AI response:", error);
+      console.error("Problematic JSON string:", jsonString);
+    }
+
 
     return [];
   } catch (error) {
