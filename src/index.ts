@@ -6,14 +6,15 @@ import salvageRoutes from "./routes/salvage.routes.js";
 import pdfReportRoutes from "./routes/pdfReport.routes.js";
 import connectDB from "./config/database.js";
 import dotenv from "dotenv";
+import cors from "cors";
 
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 4000;
 
 if (process.env.NODE_ENV === "production") {
-  console.log = () => {};
+  console.log = () => { };
 }
 
 const startServer = async () => {
@@ -24,6 +25,16 @@ const startServer = async () => {
     app.use(express.urlencoded({ extended: true, limit: "1024mb" }));
     app.use(express.static("public"));
 
+    app.use(
+      cors({
+        origin: [
+          "https://www.clearvalue.site",
+          "https://clearvalue.site"
+        ],
+        credentials: true,
+      })
+    );
+
     app.use("/api/auth", authRoutes);
     app.use("/api/user", userRoutes);
     app.use("/api/real-estate", realEstateRoutes);
@@ -31,7 +42,7 @@ const startServer = async () => {
     app.use("/api/reports", pdfReportRoutes);
 
     app.listen(port, () => {
-      console.log(`Server running at https://clearvalue.site`);
+      console.log(`Server running at http://localhost:${port}`);
     });
   } catch (error) {
     console.error("Failed to start server:", error);
