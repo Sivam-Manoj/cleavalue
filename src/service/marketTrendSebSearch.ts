@@ -48,22 +48,40 @@ function cleanMarketTrendData(data: any): any {
 
   if (data && typeof data === 'object') {
     const cleanedObject: { [key: string]: any } = {};
+    // Numeric fields we must coerce to numbers
+    const numericFields = [
+      'march',
+      'june',
+      'yearOverYearIncreasePercent',
+      'monthsOfSupply',
+      'historicalAverageMonths',
+      'lowEstimatePriceGrowthPercent',
+      'highEstimatePriceGrowthPercent',
+      'expectedLate2025AveragePriceCAD',
+    ];
+
     for (const key in data) {
       if (Object.prototype.hasOwnProperty.call(data, key)) {
         const value = data[key];
-        if (typeof value === 'string' && value.toLowerCase() === 'not found') {
-          // Check if the key is one of the numeric fields
-          const numericFields = [
-            'march', 'june', 'yearOverYearIncreasePercent',
-            'monthsOfSupply', 'historicalAverageMonths',
-            'lowEstimatePriceGrowthPercent', 'highEstimatePriceGrowthPercent',
-            'expectedLate2025AveragePriceCAD'
-          ];
-          if (numericFields.includes(key)) {
-            cleanedObject[key] = 0;
+
+        if (numericFields.includes(key)) {
+          // Coerce numeric fields robustly
+          if (typeof value === 'number') {
+            cleanedObject[key] = value;
+          } else if (typeof value === 'string') {
+            const lower = value.toLowerCase();
+            if (lower === 'not found') {
+              cleanedObject[key] = 0;
+            } else {
+              const numeric = parseFloat(value.replace(/[^0-9.-]/g, ''));
+              cleanedObject[key] = Number.isFinite(numeric) ? numeric : 0;
+            }
           } else {
-            cleanedObject[key] = value; // Keep as 'Not Found' for string fields
+            cleanedObject[key] = 0;
           }
+        } else if (typeof value === 'string' && value.toLowerCase() === 'not found') {
+          // Keep 'Not Found' for string fields
+          cleanedObject[key] = value;
         } else {
           cleanedObject[key] = cleanMarketTrendData(value);
         }
@@ -117,7 +135,7 @@ Each object in the array must follow this **exact flat structure**:
     "overallOutlook": "Positive for both appreciation and selling activity in 2025"
   }
 }
-If a value is not available, use "Not Found".`;
+If a value is not available: use 0 for numeric fields and "Not Found" for string fields.`;
 
   try {
     const response = await openai.responses.create({
@@ -145,7 +163,8 @@ If a value is not available, use "Not Found".`;
 
     try {
       const parsedJson = JSON.parse(jsonString);
-      return parsedJson;
+      const cleanedData = cleanMarketTrendData(parsedJson);
+      return cleanedData;
     } catch (error) {
       // If parsing fails, it might be due to trailing characters.
       // We can try to find the correct end of the JSON array.
