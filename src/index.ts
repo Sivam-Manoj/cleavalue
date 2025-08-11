@@ -14,7 +14,7 @@ const app = express();
 const port = process.env.PORT || 4000;
 
 if (process.env.NODE_ENV === "production") {
-  console.log = () => { };
+  console.log = () => {};
 }
 
 const startServer = async () => {
@@ -29,7 +29,8 @@ const startServer = async () => {
       cors({
         origin: [
           "https://www.clearvalue.site",
-          "https://clearvalue.site"
+          "https://clearvalue.site",
+          "http://localhost:3000",
         ],
         credentials: true,
       })

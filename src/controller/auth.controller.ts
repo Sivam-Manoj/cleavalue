@@ -12,7 +12,15 @@ import crypto from "crypto";
 dotenv.config();
 
 export const signup = async (req: Request, res: Response) => {
-  const { email, password, companyName, contactEmail, contactPhone, companyAddress } = req.body;
+  const {
+    email,
+    password,
+    companyName,
+    contactEmail,
+    contactPhone,
+    companyAddress,
+    username,
+  } = req.body;
 
   try {
     const existingUser = await User.findOne({ email });
@@ -21,8 +29,6 @@ export const signup = async (req: Request, res: Response) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
-    const username = email.split("@")[0];
-
     const verificationCode = Math.floor(
       10000 + Math.random() * 90000
     ).toString();
