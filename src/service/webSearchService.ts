@@ -44,7 +44,7 @@ export async function findComparableProperties(
 **CRITICAL CRITERIA**: 
 - Square footage MUST be close to ${square_footage} sq ft .
 - Must have at least ${bedrooms} bedrooms and ${bathrooms_full} bathrooms.
-- Year built MUST be close to ${year_built}.
+- Year built MUST be close to ${year_built}(not important).
 - Lot size MUST be close to ${lot_size_sqft} sq ft.
 - Other features MUST be close to ${other_features}.
 - Known issues MUST be close to ${known_issues}.

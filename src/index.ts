@@ -13,9 +13,9 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 4000;
 
-if (process.env.NODE_ENV === "production") {
-  console.log = () => {};
-}
+// if (process.env.NODE_ENV === "production") {
+//   console.log = () => {};
+// }
 
 const startServer = async () => {
   try {
