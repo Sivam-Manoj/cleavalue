@@ -25,16 +25,16 @@ const startServer = async () => {
     app.use(express.urlencoded({ extended: true, limit: "1024mb" }));
     app.use(express.static("public"));
 
-    app.use(
-      cors({
-        origin: [
-          "https://www.clearvalue.site",
-          "https://clearvalue.site",
-          "http://localhost:3000",
-        ],
-        credentials: true,
-      })
-    );
+    // app.use(
+    //   cors({
+    //     origin: [
+    //       "https://www.clearvalue.site",
+    //       "https://clearvalue.site",
+    //       "http://localhost:3000",
+    //     ],
+    //     credentials: true,
+    //   })
+    // );
 
     app.use("/api/auth", authRoutes);
     app.use("/api/user", userRoutes);
