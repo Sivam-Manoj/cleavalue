@@ -82,6 +82,7 @@ export const createSalvageReport = async (req: AuthRequest, res: Response) => {
       user: req.userId,
       report: newReport._id,
       reportType: "Salvage",
+      reportModel: "SalvageReport",
       address: newReport.file_number, // Using file_number as an identifier
       fairMarketValue: valuation.fairMarketValue,
     });

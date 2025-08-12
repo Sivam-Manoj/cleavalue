@@ -6,6 +6,8 @@ export interface IPdfReport extends Document {
   fairMarketValue: string;
   user: mongoose.Schema.Types.ObjectId;
   report: mongoose.Schema.Types.ObjectId;
+  reportType: 'RealEstate' | 'Salvage' | 'Asset';
+  reportModel: 'RealEstateReport' | 'SalvageReport' | 'AssetReport';
   createdAt: Date;
 }
 
@@ -28,11 +30,21 @@ const PdfReportSchema: Schema = new Schema(
       ref: 'User',
       required: true,
     },
+    reportType: {
+      type: String,
+      enum: ['RealEstate', 'Salvage', 'Asset'],
+      required: true,
+    },
+    reportModel: {
+      type: String,
+      enum: ['RealEstateReport', 'SalvageReport', 'AssetReport'],
+      required: true,
+    },
     report: {
-        type: Schema.Types.ObjectId,
-        ref: 'RealEstateReport',
-        required: true,
-    }
+      type: Schema.Types.ObjectId,
+      refPath: 'reportModel',
+      required: true,
+    },
   },
   { timestamps: true }
 );

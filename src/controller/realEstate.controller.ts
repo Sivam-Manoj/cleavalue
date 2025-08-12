@@ -157,6 +157,8 @@ export const createRealEstate = async (req: AuthRequest, res: Response) => {
       filename: filename,
       user: req.userId,
       report: newReport._id,
+      reportType: "RealEstate",
+      reportModel: "RealEstateReport",
       address: newReport.property_details?.address || "",
       fairMarketValue: newReport.valuation?.fair_market_value || "",
     });
