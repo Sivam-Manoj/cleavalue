@@ -136,6 +136,93 @@
     <div class="page-break"></div>
 
     <div class="max-w-5xl mx-auto p-4 sm:p-8">
+      <!-- Transmittal Letter -->
+      <section class="card">
+        <h2 class="text-3xl font-semibold section-title">Transmittal Letter</h2>
+        <div class="text-sm text-gray-600 mb-3">
+          <strong class="text-gray-800">Reference:</strong>
+          {{#if appraisal_purpose}}{{appraisal_purpose}}{{else}}Asset Appraisal Report{{/if}}
+        </div>
+        <div class="space-y-3 text-gray-700 leading-relaxed">
+          <p>
+            Dear {{#if client_name}}{{client_name}}{{else}}Client{{/if}},
+          </p>
+          <p>
+            At the request of {{#if client_name}}{{client_name}}{{else}}the Client{{/if}}, we have
+            prepared an appraisal of certain assets owned by {{#if owner_name}}{{owner_name}}{{else}}the Owner{{/if}}, a copy of which is enclosed.
+            This appraisal report is intended for exclusive use by {{#if client_name}}{{client_name}}{{else}}the Client{{/if}} and is intended only for
+            establishing values of the listed assets.
+          </p>
+          <p>
+            The subject assets were appraised under a premise of value appropriate for internal consideration. The cost and market approaches
+            to value have been considered for this appraisal and have either been utilized where necessary or deemed inappropriate for the
+            value conclusions found therein.
+          </p>
+          <p>
+            After a thorough analysis of the assets and information made available to us, it is our opinion that as of the Effective Date
+            ({{#if effective_date}}{{formatDate effective_date}}{{else}}{{formatDate createdAt}}{{/if}}), these assets have a Fair Market Value in US Funds
+            as shown on the certificate that we have prepared.
+          </p>
+          <p>
+            We certify that neither we nor any of our employees have any present or future interest in the appraised property. The fee charged for
+            this appraisal was not contingent on the values reported. As such, the results stated in this letter of transmittal cannot be fully understood
+            without the accompanying report and this letter should not be separated from the report.
+          </p>
+          <p>
+            If you require any additional information, please feel free to contact me at your convenience.
+          </p>
+          <div class="pt-2">
+            <p class="font-semibold text-gray-900">
+              {{#if appraiser}}{{appraiser}}{{else}}Appraiser{{/if}}, CPPA
+            </p>
+            <p class="text-gray-700">Certified Appraiser</p>
+            {{#if appraisal_company}}<p class="text-gray-700">{{appraisal_company}}</p>{{/if}}
+          </div>
+        </div>
+      </section>
+
+      <!-- Certificate of Appraisal -->
+      <section class="card">
+        <h2 class="text-3xl font-semibold section-title">Certificate of Appraisal</h2>
+        <div class="space-y-3 text-gray-700 leading-relaxed">
+          <p>
+            I hereby certify that I have personally inspected the assets described herein, and have made a thorough analysis of all factors
+            pertinent to their value, in accordance with the requirements of the Uniform Standards of Professional Appraisal Practice.
+          </p>
+          <p>
+            I further certify that I have no interest, present or contemplated, in the property appraised, and that neither the employment to
+            make this appraisal nor the compensation is contingent upon the value reported. The appraisal was made and the appraisal report
+            prepared in conformity with the Uniform Standards of Professional Appraisal Practice.
+          </p>
+          <p>
+            The statements of fact contained in this report are true and correct. The reported analyses, opinions, and conclusions are limited
+            only by the reported assumptions and limiting conditions and are my personal, impartial, and unbiased professional analyses, opinions,
+            and conclusions. No one provided significant professional assistance to the person signing this certification. I have complied with the
+            requirements of the Code of Professional Ethics and the Uniform Standards of Professional Appraisal Practice.
+          </p>
+          <p>
+            After a thorough analysis of the assets and information made available to us, it is our opinion that as of the Effective Date
+            ({{#if effective_date}}{{formatDate effective_date}}{{else}}{{formatDate createdAt}}{{/if}}), these assets have a Fair Market Value in US Funds as shown below.
+          </p>
+          <div class="mt-3 rounded-lg border border-rose-200 bg-rose-50 p-4 text-center">
+            <div class="text-xs uppercase tracking-wide text-rose-700">Total Appraised Value</div>
+            {{#if total_appraised_value}}
+              <div class="mt-1 text-2xl font-bold text-rose-800">{{total_appraised_value}}</div>
+            {{else}}
+              {{#if total_value}}
+                <div class="mt-1 text-2xl font-bold text-rose-800">{{total_value}}</div>
+              {{else}}
+                {{#if analysis.total_value}}
+                  <div class="mt-1 text-2xl font-bold text-rose-800">{{analysis.total_value}}</div>
+                {{else}}
+                  <div class="mt-1 text-sm text-rose-700">See Report Details and lot estimates for values.</div>
+                {{/if}}
+              {{/if}}
+            {{/if}}
+          </div>
+        </div>
+      </section>
+
       <section class="card">
         <h2 class="text-3xl font-semibold section-title">Report Summary</h2>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
