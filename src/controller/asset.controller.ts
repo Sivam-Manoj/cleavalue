@@ -78,12 +78,28 @@ export const createAssetReport = async (req: AuthRequest, res: Response) => {
       };
     });
 
+    // Helper to parse dates safely
+    const parseDate = (val: any): Date | undefined => {
+      if (!val) return undefined;
+      const d = new Date(val);
+      return isNaN(d.getTime()) ? undefined : d;
+    };
+
     const newReport = new AssetReport({
       user: (req as any).user._id,
       grouping_mode: groupingMode,
       imageUrls: imageUrls,
       lots,
       analysis,
+      // New metadata fields
+      client_name: details.client_name,
+      effective_date: parseDate(details.effective_date),
+      appraisal_purpose: details.appraisal_purpose,
+      owner_name: details.owner_name,
+      appraiser: details.appraiser || (req as any)?.user?.name,
+      appraisal_company: details.appraisal_company,
+      industry: details.industry,
+      inspection_date: parseDate(details.inspection_date),
     });
 
     await newReport.save();

@@ -19,6 +19,15 @@ export interface IAssetReport extends Document {
   imageUrls: string[];
   lots: IAssetLot[];
   analysis?: Record<string, any>; // raw AI output for reference
+  // Added metadata fields
+  client_name?: string;
+  effective_date?: Date;
+  appraisal_purpose?: string;
+  owner_name?: string;
+  appraiser?: string;
+  appraisal_company?: string;
+  industry?: string;
+  inspection_date?: Date;
 }
 
 const AssetLotSchema: Schema<IAssetLot> = new Schema(
@@ -49,6 +58,15 @@ const AssetReportSchema: Schema<IAssetReport> = new Schema(
     },
     imageUrls: [{ type: String, required: true }],
     lots: { type: [AssetLotSchema], default: [] },
+    // New optional report-level fields
+    client_name: { type: String },
+    effective_date: { type: Date },
+    appraisal_purpose: { type: String },
+    owner_name: { type: String },
+    appraiser: { type: String },
+    appraisal_company: { type: String },
+    industry: { type: String },
+    inspection_date: { type: Date },
     analysis: { type: Schema.Types.Mixed },
   },
   { timestamps: true }
