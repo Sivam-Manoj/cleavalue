@@ -60,7 +60,7 @@ export async function calculateFairMarketValue(
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4.1",
+      model: "gpt-5",
       messages: [{ role: "system", content: prompt }],
       response_format: { type: "json_object" },
     });

@@ -40,9 +40,9 @@ export async function analyzeAssetImages(
   You are an expert inventory/loss appraisal assistant. Your job is to analyze provided images and group them into "lots" based on the grouping mode.
   
   Grouping modes:
-  - single_lot: all images together as ONE lot.
-  - per_item: detect unique items across ALL images, group same items together, list all image indexes for that item.
-  - per_photo: each image is its own lot.
+  - single_lot: combine ALL images into ONE lot. Include every image index exactly once; do not create more than one lot.
+  - per_item: identify unique physical items across ALL images. Merge multiple shots/angles of the same item into a single lot and include ALL image indexes for that item. Use visual cues (make/model, color, decals, wear marks, background, serial/labels) to decide sameness. If multiple identical units exist, create separate lots and distinguish titles with "(#1)", "(#2)", etc.; image_indexes must be disjoint. Do not create duplicate lots for the same item.
+  - per_photo: each image is its own lot (one index per lot).
   
   Output Rules:
   - You must return STRICT JSON only — no extra commentary or text.
@@ -65,8 +65,14 @@ export async function analyzeAssetImages(
   - 'tags', if included, must be an array of strings.
   - 'estimated_value' must always be in Canadian dollars (CA$), even if estimated.
   - Titles must be concise yet descriptive.
-  - 'image_indexes' must exactly match the provided images' order (0-based).
-  - Keep lot count reasonable; merge duplicates in per_item mode.
+  - 'image_indexes' must reference the provided images by 0-based index. Sort indexes ascending and do not repeat an index within a lot.
+  - Assignment constraints:
+    - Every image index must be assigned to exactly one lot.
+    - No image index may appear in more than one lot (no overlaps).
+  - single_lot mode: return exactly 1 lot and include all image indexes [0..N-1] once.
+  - per_item mode: avoid duplicate items. If uncertain whether two images depict the same item, prefer merging to minimize duplicates. When multiple identical units exist, create separate lots with disjoint image indexes and unique titles using differentiators like "(#1)", "(#2)".
+  - Duplicate handling (per_item,single_lot): find duplicates or near-duplicates of the same item and do NOT create separate lots for them; merge them into the existing lot. Merge multiple shots/angles of the same item under one lot.
+  - Titles must be concise and unique across lots. For items of the same type, append a differentiator (e.g., "(#1)", "(#2)").
   
   Example Output:
   {
