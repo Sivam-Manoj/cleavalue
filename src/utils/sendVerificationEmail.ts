@@ -22,11 +22,11 @@ export async function sendTransactionalEmail(
     throw new Error("Missing RESEND_API_KEY in environment variables.");
   }
 
-  const fromAddress = "verify@sellsnap.co.uk"; // Your verified domain sender
+  const fromAddress = "verify@clearvalue.site"; // Your verified domain sender
 
   try {
     await resend.emails.send({
-      from: `SellSnap <${fromAddress}>`,
+      from: `ClearValue <${fromAddress}>`,
       to: options.to,
       subject: options.subject,
       html: options.htmlContent,
@@ -46,13 +46,13 @@ export const sendEmail = async (
 };
 
 export async function sendVerificationCode(to: string, code: string) {
-  const subject = `Your SellSnap Verification Code: ${code}`;
+  const subject = `Your ClearValue Verification Code: ${code}`;
   const htmlContent = getVerificationEmailHtml(code);
   await sendTransactionalEmail({ to, subject, htmlContent });
 }
 
 export async function sendPasswordResetLink(to: string, resetLink: string) {
-  const subject = "Your SellSnap Password Reset Link";
+  const subject = "Your ClearValue Password Reset Link";
   const htmlContent = getPasswordResetEmailHtml(resetLink);
   await sendTransactionalEmail({ to, subject, htmlContent });
 }
