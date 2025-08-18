@@ -15,7 +15,12 @@ handlebars.registerHelper("formatDate", function (dateString) {
 
 export async function generateAssetPdfFromReport(reportData: any): Promise<Buffer> {
   try {
-    const templatePath = path.resolve(process.cwd(), "src/templates/asset.html");
+    const templatePath = path.resolve(
+      process.cwd(),
+      reportData?.grouping_mode === "per_item"
+        ? "src/templates/asset_per_item.html"
+        : "src/templates/asset.html"
+    );
     const htmlTemplate = await fs.readFile(templatePath, "utf-8");
 
     const logoPath = path.resolve(process.cwd(), "public/logo.jpg");
