@@ -54,7 +54,7 @@ export async function analyzeAssetImages(
           content: [
             {
               type: "text",
-              text: `Grouping mode: per_item. Analyze this single image as one standalone item if applicable. Use the exact original URL provided below in the 'image_url' field of the output. Also include the original image index ${i} in 'image_indexes'.`,
+              text: `Grouping mode: per_item. Analyze THIS SINGLE IMAGE and return ALL distinct items visible as separate lots (do not collapse multiple items). If multiple identical units are visible, create separate lots and distinguish titles with "(#1)", "(#2)", etc. For each returned lot, include: (1) the exact original URL provided below in the 'image_url' field (do NOT fabricate), (2) the original image index ${i} in 'image_indexes' (and do NOT include any other index), and (3) 'serial_no_or_label' if visible else null, plus 'details' with concise attributes (color, material, size/dimensions, capacity, model/specs, inclusions/issues).`,
             },
             {
               type: "image_url" as const,

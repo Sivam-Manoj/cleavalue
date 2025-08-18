@@ -63,26 +63,26 @@ Example Output (per_item):
   "lots": [
     {
       "lot_id": "lot-001",
-      "title": "Canon EOS 80D DSLR Camera (#1)",
+      "title": "Canon EOS 80D DSLR Camera Body",
       "serial_no_or_label": "SN: 12345678",
-      "description": "24MP DSLR with 18-135mm lens; light cosmetic wear.",
+      "description": "24MP DSLR camera body; light cosmetic wear.",
       "details": "Includes battery and strap; shutter count unknown.",
-      "estimated_value": "CA$650",
-      "image_indexes": [0, 3],
+      "estimated_value": "CA$520",
+      "image_indexes": [0],
       "image_url": null
     },
     {
       "lot_id": "lot-002",
-      "title": "Canon EOS 80D DSLR Camera (#2)",
+      "title": "Canon EF-S 18-135mm Lens",
       "serial_no_or_label": null,
-      "description": "Body only; noticeable wear on grip.",
-      "details": "No lens included; battery not visible.",
-      "estimated_value": "CA$520",
-      "image_indexes": [5],
+      "description": "Zoom lens attached in the same frame; no visible damage.",
+      "details": "Optical stabilization; standard zoom range.",
+      "estimated_value": "CA$180",
+      "image_indexes": [0],
       "image_url": null
     }
   ],
-  "summary": "2 DSLR camera units identified with differing completeness."
+  "summary": "2 distinct items identified in a single image: camera body and lens."
 }`;
 
   const perPhoto = `
@@ -95,17 +95,15 @@ Grouping mode: per_photo
 
   const perItem = `
 Grouping mode: per_item ("everything you see")
-- Identify every unique physical item across ALL images.
-- Merge multiple frames/angles of the same item into a single lot and include ALL relevant image indexes for that item.
-- Use visual cues (make/model, color, decals, wear marks, background, serial/labels) to decide sameness.
- - If a single image contains multiple distinct items, return EACH as its own lot; never collapse distinct items into one lot.
- - If multiple identical units exist (even within a single image), create separate lots for each unit and distinguish titles with "(#1)", "(#2)", etc.; image_indexes must be disjoint. Do not return just one.
- - Avoid overlaps between lots and do not create duplicates for the same item.
+- Single-image analysis (typical usage): Identify every unique physical item visible in THIS SINGLE IMAGE and return EACH as its own lot. Do not collapse distinct items.
+- If multiple identical units exist in the same image, create separate lots for each unit and distinguish titles with "(#1)", "(#2)", etc.
+- For single-image analysis, set 'image_indexes' to exactly the provided index for that image ONLY (the caller/user message will specify it). Do NOT include any other indexes.
 - Titles must be concise and unique across lots.
 - Additional per_item fields to include for each lot:
-  - serial_no_or_label: string | null — extract any visible serial number, model number, or label text; use null if not visible.
+  - serial_no_or_label: string | null — extract any visible serial/model numbers or label text; use null if not visible.
   - details: string — concise attributes like color, material, size/dimensions, capacity, or model/specs; also note inclusions or notable issues.
-  - image_url: OPTIONAL — Do NOT fabricate URLs. If you do not know the real URL, omit this field or set it to null. image_indexes are authoritative.
+  - image_url: OPTIONAL — only include the exact URL if you know it (do NOT fabricate). 'image_indexes' are authoritative.
+- Less common multi-image analysis: If you are ever given MULTIPLE images at once, identify each unique physical item across all images, merge multiple frames/angles of the same item into one lot, include all relevant 'image_indexes', avoid overlaps, and do not create duplicates for the same item.
 `;
 
   const singleLot = `
@@ -141,5 +139,6 @@ Assignment Constraints:
 - single_lot: Return exactly ONE lot. For duplicate/near-identical frames of the same shot, include only ONE representative index per duplicate group.
 
 ${exampleBlock}
+
 `;
 }

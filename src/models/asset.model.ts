@@ -9,6 +9,9 @@ export interface IAssetLot {
   condition?: string;
   estimated_value?: string;
   tags?: string[];
+  serial_no_or_label?: string | null;
+  details?: string;
+  image_url?: string | null;
   image_indexes: number[]; // 0-based indexes of images that belong to this lot
   image_urls?: string[]; // resolved URLs for the images in this lot
 }
@@ -38,6 +41,9 @@ const AssetLotSchema: Schema<IAssetLot> = new Schema(
     condition: { type: String },
     estimated_value: { type: String },
     tags: [{ type: String }],
+    serial_no_or_label: { type: String },
+    details: { type: String },
+    image_url: { type: String },
     image_indexes: [{ type: Number, required: true }],
     image_urls: [{ type: String }],
   },
