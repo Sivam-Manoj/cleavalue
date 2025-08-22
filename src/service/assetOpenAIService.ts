@@ -131,7 +131,7 @@ async function deduplicateAssetLotsAI(
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: "gpt-5-mini",
       messages: [
         { role: "system", content: system },
         {
