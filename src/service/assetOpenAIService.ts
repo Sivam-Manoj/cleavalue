@@ -30,6 +30,186 @@ async function imageUrlToBase64(url: string): Promise<string> {
   return buffer.toString("base64");
 }
 
+// Use OpenAI to deduplicate lots produced from per-image analysis.
+// IMPORTANT: This function ONLY REMOVES duplicate items. It does NOT merge fields, does NOT edit image_indexes, and does NOT change image_url.
+// It returns the same JSON structure { lots: AssetLotAI[] } with duplicates filtered out.
+async function deduplicateAssetLotsAI(
+  imageUrls: string[],
+  lots: AssetLotAI[]
+): Promise<AssetLotAI[]> {
+  if (!Array.isArray(lots) || lots.length === 0) return [];
+
+  const system = `You are an expert at deduplicating JSON records of physical assets described as 'lots'.\n\n` +
+    `Goal: REMOVE duplicate records that represent the SAME physical item across multiple photos, and return JSON with the SAME SCHEMA.\n\n` +
+    `Rules:\n` +
+    `- Output strictly valid JSON: { "lots": AssetLot[] }. No extra commentary.\n` +
+    `- AssetLot fields: lot_id (string), title (string), description (string), condition (string), estimated_value (string), tags (string[] optional), serial_no_or_label (string|null optional), details (string optional), image_url (string|null optional), image_indexes (number[]).\n` +
+    `- Do NOT modify any fields of remaining lots. Do NOT edit image_indexes or image_url. Do NOT merge data across lots.\n` +
+    `- Dedup heuristics: identical serial_no_or_label => same item; extremely similar titles + compatible details => likely same.\n` +
+    `- When duplicates exist, keep a single representative (prefer one with non-null serial_no_or_label); discard the rest.\n` +
+    `- Do not invent new lots. Do not discard genuinely distinct items.\n`;
+
+  const user = {
+    imageUrls,
+    lots,
+  } as const;
+
+  // Example payloads to guide the model (remove-only dedup; no field edits)
+  const exampleInput = `{
+  "imageUrls": [
+    "https://example.com/img-0.jpg",
+    "https://example.com/img-1.jpg"
+  ],
+  "lots": [
+    {
+      "lot_id": "lot-001",
+      "title": "Canon EOS 80D DSLR Camera Body",
+      "description": "24MP DSLR camera body; light cosmetic wear.",
+      "condition": "Used - Good",
+      "estimated_value": "CA$520",
+      "tags": ["camera", "dslr", "canon"],
+      "serial_no_or_label": "SN: 12345678",
+      "details": "Includes battery and strap; shutter count unknown.",
+      "image_url": "https://example.com/img-0.jpg",
+      "image_indexes": [0]
+    },
+    {
+      "lot_id": "lot-002",
+      "title": "Canon EOS 80D DSLR Camera Body",
+      "description": "24MP DSLR; similar unit view.",
+      "condition": "Used - Good",
+      "estimated_value": "CA$520",
+      "tags": ["camera", "dslr", "canon"],
+      "serial_no_or_label": "SN: 12345678",
+      "details": "Same serial as lot-001.",
+      "image_url": "https://example.com/img-1.jpg",
+      "image_indexes": [1]
+    },
+    {
+      "lot_id": "lot-003",
+      "title": "Canon EF-S 18-135mm Lens",
+      "description": "Zoom lens; no visible damage.",
+      "condition": "Used - Good",
+      "estimated_value": "CA$180",
+      "tags": ["lens", "canon", "18-135mm"],
+      "serial_no_or_label": null,
+      "details": "Optical stabilization; standard zoom range.",
+      "image_url": "https://example.com/img-0.jpg",
+      "image_indexes": [0]
+    }
+  ]
+}`;
+
+  const exampleOutput = `{
+  "lots": [
+    {
+      "lot_id": "lot-001",
+      "title": "Canon EOS 80D DSLR Camera Body",
+      "description": "24MP DSLR camera body; light cosmetic wear.",
+      "condition": "Used - Good",
+      "estimated_value": "CA$520",
+      "tags": ["camera", "dslr", "canon"],
+      "serial_no_or_label": "SN: 12345678",
+      "details": "Includes battery and strap; shutter count unknown.",
+      "image_url": "https://example.com/img-0.jpg",
+      "image_indexes": [0]
+    },
+    {
+      "lot_id": "lot-003",
+      "title": "Canon EF-S 18-135mm Lens",
+      "description": "Zoom lens; no visible damage.",
+      "condition": "Used - Good",
+      "estimated_value": "CA$180",
+      "tags": ["lens", "canon", "18-135mm"],
+      "serial_no_or_label": null,
+      "details": "Optical stabilization; standard zoom range.",
+      "image_url": "https://example.com/img-0.jpg",
+      "image_indexes": [0]
+    }
+  ]
+}`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-5",
+      messages: [
+        { role: "system", content: system },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `Here are the uploaded image URLs and the lots detected from each image individually. Deduplicate and return the same JSON shape.`,
+            },
+            {
+              type: "text",
+              text: `Example Input (with duplicates):`,
+            },
+            {
+              type: "text",
+              text: exampleInput,
+            },
+            {
+              type: "text",
+              text: `Example Output (duplicates removed; fields/indexes unchanged):`,
+            },
+            {
+              type: "text",
+              text: exampleOutput,
+            },
+            {
+              type: "text",
+              text: JSON.stringify(user),
+            },
+          ],
+        },
+      ],
+      response_format: { type: "json_object" },
+    });
+
+    const content = response.choices?.[0]?.message?.content?.trim();
+    if (!content) throw new Error("Empty response from AI dedupe");
+    const parsed = JSON.parse(content) as AssetAnalysisResult;
+    const resultLots = Array.isArray(parsed?.lots) ? parsed.lots : [];
+    // Return as-is (no field/index modifications)
+    return resultLots as AssetLotAI[];
+  } catch (e) {
+    // Fallback: simple heuristic dedupe by serial or (title+details), keeping the first representative intact
+    const norm = (s?: string | null) =>
+      (s || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const out: AssetLotAI[] = [];
+    const chosenBySerial = new Map<string, number>();
+    const chosenByKey = new Map<string, number>();
+
+    for (const lot of lots) {
+      const serialKey = norm(lot.serial_no_or_label || undefined);
+      const titleKey = norm(lot.title);
+      const detailsKey = norm(lot.details || undefined);
+      const key = `${titleKey}|${detailsKey}`;
+
+      let existsIndex: number | undefined = undefined;
+      if (serialKey) existsIndex = chosenBySerial.get(serialKey);
+      if (existsIndex === undefined) existsIndex = chosenByKey.get(key);
+
+      if (existsIndex === undefined) {
+        chosenByKey.set(key, out.length);
+        if (serialKey) chosenBySerial.set(serialKey, out.length);
+        // push as-is (no modifications)
+        out.push(lot);
+      } else {
+        // already kept a representative; skip this duplicate
+      }
+    }
+
+    return out;
+  }
+}
+
 export async function analyzeAssetImages(
   imageUrls: string[],
   groupingMode: AssetGroupingMode
@@ -96,9 +276,12 @@ export async function analyzeAssetImages(
       }
     }
 
+    // Deduplicate across images to merge the same physical item
+    const dedupedLots = await deduplicateAssetLotsAI(imageUrls, combinedLots);
+
     return {
-      lots: combinedLots,
-      summary: `${combinedLots.length} items identified from ${imageUrls.length} images (per item).`,
+      lots: dedupedLots,
+      summary: `${dedupedLots.length} unique items identified from ${imageUrls.length} images (per_item, deduped).`,
     };
   }
 

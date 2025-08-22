@@ -103,7 +103,7 @@ Grouping mode: per_item ("everything you see")
   - serial_no_or_label: string | null — extract any visible serial/model numbers or label text; use null if not visible.
   - details: string — concise attributes like color, material, size/dimensions, capacity, or model/specs; also note inclusions or notable issues.
   - image_url: OPTIONAL — only include the exact URL if you know it (do NOT fabricate). 'image_indexes' are authoritative.
-- Less common multi-image analysis: If you are ever given MULTIPLE images at once, identify each unique physical item across all images, merge multiple frames/angles of the same item into one lot, include all relevant 'image_indexes', avoid overlaps, and do not create duplicates for the same item.
+- If MULTIPLE images are provided at once (rare), treat each image independently. Do NOT merge items across images. It's acceptable if duplicates appear across images; a separate deduplication step will remove duplicates later.
 `;
 
   const singleLot = `
