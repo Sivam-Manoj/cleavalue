@@ -131,7 +131,7 @@ async function deduplicateAssetLotsAI(
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: "gpt-5",
       messages: [
         { role: "system", content: system },
         {
@@ -226,6 +226,8 @@ export async function analyzeAssetImages(
 
     for (let i = 0; i < imageUrls.length; i++) {
       const url = imageUrls[i];
+      // Use base64 to ensure the model can always see the image content
+      const b64 = await imageUrlToBase64(url);
 
       const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
         { role: "system", content: systemPrompt },
@@ -238,7 +240,7 @@ export async function analyzeAssetImages(
             },
             {
               type: "image_url" as const,
-              image_url: { url },
+              image_url: { url: `data:image/jpeg;base64,${b64}` },
             },
             {
               type: "text",
@@ -276,12 +278,56 @@ export async function analyzeAssetImages(
       }
     }
 
-    // Deduplicate across images to merge the same physical item
+    // If nothing was extracted in per_item pass, fallback to a per_photo-style analysis (one lot per image)
+    if (combinedLots.length === 0) {
+      try {
+        const fallbackPrompt = getAssetSystemPrompt("per_photo");
+        const base64Images = await Promise.all(imageUrls.map(imageUrlToBase64));
+        const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+          { role: "system", content: fallbackPrompt },
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: `Fallback invoked: per_item returned zero lots. Analyze these images per_photo (one lot per image).`,
+              },
+              ...base64Images.map((b64) => ({
+                type: "image_url" as const,
+                image_url: { url: `data:image/jpeg;base64,${b64}` },
+              })),
+            ],
+          },
+        ];
+
+        const resp = await openai.chat.completions.create({
+          model: "gpt-5",
+          messages,
+          response_format: { type: "json_object" },
+        });
+        const content = resp.choices?.[0]?.message?.content?.trim();
+        if (content) {
+          const parsed = JSON.parse(content) as AssetAnalysisResult;
+          const fallbackLots = Array.isArray(parsed?.lots) ? parsed.lots : [];
+          return {
+            lots: fallbackLots,
+            summary: `${fallbackLots.length} items identified via fallback per_photo analysis of ${imageUrls.length} images.`,
+          };
+        }
+      } catch (e) {
+        console.error("Fallback per_photo analysis failed:", e);
+      }
+      // If fallback also fails, return empty
+      return { lots: [], summary: `0 items identified (per_item), fallback failed.` };
+    }
+
+    // Deduplicate across images to remove the same physical item
     const dedupedLots = await deduplicateAssetLotsAI(imageUrls, combinedLots);
+    const finalLots = dedupedLots.length > 0 ? dedupedLots : combinedLots; // safeguard against over-aggressive dedup
 
     return {
-      lots: dedupedLots,
-      summary: `${dedupedLots.length} unique items identified from ${imageUrls.length} images (per_item, deduped).`,
+      lots: finalLots,
+      summary: `${finalLots.length} unique items identified from ${imageUrls.length} images (per_item, deduped).`,
     };
   }
 
