@@ -87,4 +87,4 @@ export const getAssetProgress = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const uploadMiddleware = upload.array("images", 10);
+export const uploadMiddleware = upload.array("images", 100);
