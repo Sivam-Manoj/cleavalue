@@ -1,5 +1,6 @@
 import AWS from "aws-sdk";
 import fs from "fs";
+import path from "path";
 import { config } from "dotenv";
 
 config();
@@ -24,8 +25,49 @@ export const uploadToR2 = async (
   bucketName: string,
   fileName: string
 ): Promise<string> => {
-  // Read file from path since multer is using diskStorage
-  const fileContent = fs.readFileSync(file.path);
+  // Read file content (support both diskStorage and memoryStorage)
+  let fileContent: Buffer;
+  let usedPath: string | null = null;
+  const anyFile = file as any;
+
+  if (anyFile?.buffer && Buffer.isBuffer(anyFile.buffer)) {
+    // Memory storage path
+    fileContent = anyFile.buffer as Buffer;
+  } else {
+    // Disk storage: resolve possible locations robustly
+    const candidates: string[] = [];
+    if (typeof (file as any)?.path === "string") {
+      candidates.push((file as any).path);
+    }
+    if (typeof (file as any)?.destination === "string" && typeof file.filename === "string") {
+      const dest = (file as any).destination as string;
+      const joined = path.isAbsolute(dest)
+        ? path.join(dest, file.filename)
+        : path.resolve(process.cwd(), dest, file.filename);
+      candidates.push(joined);
+    }
+    if (typeof file.filename === "string") {
+      candidates.push(path.resolve(process.cwd(), "uploads", file.filename));
+      candidates.push(path.resolve(process.cwd(), "server", "uploads", file.filename));
+    }
+
+    let found: string | undefined;
+    for (const p of candidates) {
+      try {
+        if (p && fs.existsSync(p)) {
+          found = p;
+          break;
+        }
+      } catch {}
+    }
+    if (!found) {
+      throw new Error(
+        `Local upload temp file not found; tried: ${candidates.filter(Boolean).join(" | ")}`
+      );
+    }
+    usedPath = found;
+    fileContent = fs.readFileSync(found);
+  }
 
   const params = {
     Bucket: bucketName,
@@ -38,11 +80,15 @@ export const uploadToR2 = async (
   try {
     const data = await s3.upload(params).promise();
     // Clean up the temporary file from disk
-    fs.unlinkSync(file.path);
+    try {
+      if (usedPath) fs.unlinkSync(usedPath);
+    } catch {}
     return data.Location; // Return the URL of the uploaded file
   } catch (error: any) {
     // Clean up the temporary file in case of an error
-    fs.unlinkSync(file.path);
+    try {
+      if (usedPath) fs.unlinkSync(usedPath);
+    } catch {}
     throw new Error(`Error uploading to R2: ${error.message}`);
   }
 };

@@ -36,10 +36,14 @@ export interface AssetAnalysisResult {
   summary?: string;
 }
 
-async function imageUrlToBase64(url: string): Promise<string> {
+async function imageUrlToBase64WithMime(
+  url: string
+): Promise<{ base64: string; mime: string }> {
   const response = await axios.get(url, { responseType: "arraybuffer" });
   const buffer = Buffer.from(response.data as ArrayBuffer);
-  return buffer.toString("base64");
+  const mimeHeader = String(response.headers?.["content-type"] || "").split(";")[0];
+  const mime = mimeHeader && mimeHeader.startsWith("image/") ? mimeHeader : "image/jpeg";
+  return { base64: buffer.toString("base64"), mime };
 }
 
 // Use OpenAI to deduplicate lots produced from per-image analysis.
@@ -240,7 +244,7 @@ export async function analyzeAssetImages(
     for (let i = 0; i < imageUrls.length; i++) {
       const url = imageUrls[i];
       // Use base64 to ensure the model can always see the image content
-      const b64 = await imageUrlToBase64(url);
+      const { base64: b64, mime } = await imageUrlToBase64WithMime(url);
 
       const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
         { role: "system", content: systemPrompt },
@@ -253,7 +257,7 @@ export async function analyzeAssetImages(
             },
             {
               type: "image_url" as const,
-              image_url: { url: `data:image/jpeg;base64,${b64}` },
+              image_url: { url: `data:${mime};base64,${b64}` },
             },
             {
               type: "text",
@@ -295,7 +299,7 @@ export async function analyzeAssetImages(
     if (combinedLots.length === 0) {
       try {
         const fallbackPrompt = getAssetSystemPrompt("per_photo");
-        const base64Images = await Promise.all(imageUrls.map(imageUrlToBase64));
+        const imgs = await Promise.all(imageUrls.map(imageUrlToBase64WithMime));
         const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
           { role: "system", content: fallbackPrompt },
           {
@@ -305,9 +309,15 @@ export async function analyzeAssetImages(
                 type: "text",
                 text: `Fallback invoked: per_item returned zero lots. Analyze these images per_photo (one lot per image).`,
               },
-              ...base64Images.map((b64) => ({
+              {
+                type: "text",
+                text: `Original image URLs (index -> URL):\n${imageUrls
+                  .map((u, idx) => `#${idx}: ${u}`)
+                  .join("\n")}`,
+              },
+              ...imgs.map(({ base64, mime }) => ({
                 type: "image_url" as const,
-                image_url: { url: `data:image/jpeg;base64,${b64}` },
+                image_url: { url: `data:${mime};base64,${base64}` },
               })),
             ],
           },
@@ -347,8 +357,8 @@ export async function analyzeAssetImages(
     };
   }
 
-  // Default handling for single_lot and per_photo: send all images together (base64 for consistency)
-  const base64Images = await Promise.all(imageUrls.map(imageUrlToBase64));
+  // Default handling for single_lot, per_photo, and catalogue: send all images together (base64 for consistency)
+  const imgs = await Promise.all(imageUrls.map(imageUrlToBase64WithMime));
 
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },
@@ -359,9 +369,15 @@ export async function analyzeAssetImages(
           type: "text",
           text: `Grouping mode: ${groupingMode}. Analyze these images and return the JSON result.`,
         },
-        ...base64Images.map((b64) => ({
+        {
+          type: "text",
+          text: `Original image URLs (index -> URL):\n${imageUrls
+            .map((u, idx) => `#${idx}: ${u}`)
+            .join("\n")}`,
+        },
+        ...imgs.map(({ base64, mime }) => ({
           type: "image_url" as const,
-          image_url: { url: `data:image/jpeg;base64,${b64}` },
+          image_url: { url: `data:${mime};base64,${base64}` },
         })),
       ],
     },

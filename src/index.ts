@@ -1,4 +1,6 @@
 import express from "express";
+import fs from "fs/promises";
+import path from "path";
 import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import realEstateRoutes from "./routes/realEstate.routes.js";
@@ -28,18 +30,23 @@ const startServer = async () => {
     // Serve generated PDF reports
     app.use("/reports", express.static("reports"));
 
-    // if (process.env.NODE_ENV === "development") {
-    //   app.use(
-    //     cors({
-    //       origin: [
-    //         "https://www.clearvalue.site",
-    //         "https://clearvalue.site",
-    //         "http://localhost:3000",
-    //       ],
-    //       credentials: true,
-    //     })
-    //   );
-    // }
+    // Ensure uploads directory exists (covers varied working directories)
+    try {
+      await fs.mkdir(path.resolve(process.cwd(), "uploads"), { recursive: true });
+    } catch {}
+
+    if (process.env.NODE_ENV === "development") {
+      app.use(
+        cors({
+          origin: [
+            "https://www.clearvalue.site",
+            "https://clearvalue.site",
+            "http://localhost:3000",
+          ],
+          credentials: true,
+        })
+      );
+    }
 
     app.use("/api/auth", authRoutes);
     app.use("/api/user", userRoutes);
