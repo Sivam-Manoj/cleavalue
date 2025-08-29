@@ -2,6 +2,17 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export type AssetGroupingMode = "single_lot" | "per_item" | "per_photo" | "catalogue";
 
+export interface ICatalogueItem {
+  title: string;
+  sn_vin?: string; // "not found" when missing
+  description?: string;
+  details?: string;
+  estimated_value?: string; // CA$...
+  // Optional per-item image reference (global index resolved by job)
+  image_index?: number; // 0-based index into report-level imageUrls
+  image_url?: string; // resolved URL for convenience in templates
+}
+
 export interface IAssetLot {
   lot_id: string;
   title: string;
@@ -14,6 +25,7 @@ export interface IAssetLot {
   image_url?: string | null;
   image_indexes: number[]; // 0-based indexes of images that belong to this lot
   image_urls?: string[]; // resolved URLs for the images in this lot
+  items?: ICatalogueItem[]; // catalogue-specific nested items
 }
 
 export interface IAssetReport extends Document {
@@ -33,6 +45,19 @@ export interface IAssetReport extends Document {
   inspection_date?: Date;
 }
 
+const CatalogueItemSchema: Schema<ICatalogueItem> = new Schema(
+  {
+    title: { type: String, required: true },
+    sn_vin: { type: String },
+    description: { type: String },
+    details: { type: String },
+    estimated_value: { type: String },
+    image_index: { type: Number },
+    image_url: { type: String },
+  },
+  { _id: false }
+);
+
 const AssetLotSchema: Schema<IAssetLot> = new Schema(
   {
     lot_id: { type: String, required: true },
@@ -46,6 +71,7 @@ const AssetLotSchema: Schema<IAssetLot> = new Schema(
     image_url: { type: String },
     image_indexes: [{ type: Number, required: true }],
     image_urls: [{ type: String }],
+    items: { type: [CatalogueItemSchema], default: undefined },
   },
   { _id: false }
 );

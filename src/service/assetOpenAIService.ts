@@ -3,7 +3,7 @@ import openai from "../utils/openaiClient.js";
 import axios from "axios";
 import { getAssetSystemPrompt } from "../utils/assetPrompts.js";
 
-export type AssetGroupingMode = "single_lot" | "per_item" | "per_photo";
+export type AssetGroupingMode = "single_lot" | "per_item" | "per_photo" | "catalogue";
 
 export interface AssetLotAI {
   lot_id: string;
@@ -17,6 +17,18 @@ export interface AssetLotAI {
   details?: string;
   image_url?: string | null;
   image_indexes: number[]; // 0-based indexes
+  // Optional nested items for catalogue mode
+  items?: Array<{
+    title: string;
+    sn_vin: string;
+    description: string;
+    details: string;
+    estimated_value: string;
+    // Preferred per-item image reference relative to the provided images for this catalogue segment
+    image_local_index?: number | null;
+    // Optional direct URL if known by the model (rare when using base64)
+    image_url?: string | null;
+  }>;
 }
 
 export interface AssetAnalysisResult {
@@ -39,7 +51,8 @@ async function deduplicateAssetLotsAI(
 ): Promise<AssetLotAI[]> {
   if (!Array.isArray(lots) || lots.length === 0) return [];
 
-  const system = `You are an expert at deduplicating JSON records of physical assets described as 'lots'.\n\n` +
+  const system =
+    `You are an expert at deduplicating JSON records of physical assets described as 'lots'.\n\n` +
     `Goal: REMOVE duplicate records that represent the SAME physical item across multiple photos, and return JSON with the SAME SCHEMA.\n\n` +
     `Rules:\n` +
     `- Output strictly valid JSON: { "lots": AssetLot[] }. No extra commentary.\n` +
@@ -251,7 +264,7 @@ export async function analyzeAssetImages(
       ];
 
       const response = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-4.1",
         messages,
         response_format: { type: "json_object" },
       });
@@ -318,7 +331,10 @@ export async function analyzeAssetImages(
         console.error("Fallback per_photo analysis failed:", e);
       }
       // If fallback also fails, return empty
-      return { lots: [], summary: `0 items identified (per_item), fallback failed.` };
+      return {
+        lots: [],
+        summary: `0 items identified (per_item), fallback failed.`,
+      };
     }
 
     // Deduplicate across images to remove the same physical item

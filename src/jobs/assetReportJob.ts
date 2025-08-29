@@ -16,7 +16,11 @@ import { sendEmail } from "../utils/sendVerificationEmail.js";
 import fs from "fs/promises";
 import path from "path";
 
-export type AssetGroupingMode = "single_lot" | "per_item" | "per_photo" | "catalogue";
+export type AssetGroupingMode =
+  | "single_lot"
+  | "per_item"
+  | "per_photo"
+  | "catalogue";
 
 export type AssetJobInput = {
   user: { id: string; email: string; name?: string | null };
@@ -27,15 +31,29 @@ export type AssetJobInput = {
 
 export function queueAssetReportJob(input: AssetJobInput) {
   // Run in background without awaiting response lifecycle
-  setImmediate(() => runAssetReportJob(input).catch((e) => {
-    if (input.progressId) endProgress(input.progressId, false, "Error processing request");
-    console.error("Asset job failed:", e);
-  }));
+  setImmediate(() =>
+    runAssetReportJob(input).catch((e) => {
+      if (input.progressId)
+        endProgress(input.progressId, false, "Error processing request");
+      console.error("Asset job failed:", e);
+    })
+  );
 }
 
-export async function runAssetReportJob({ user, images, details, progressId }: AssetJobInput) {
+export async function runAssetReportJob({
+  user,
+  images,
+  details,
+  progressId,
+}: AssetJobInput) {
   const processStartedAt = Date.now();
-  type StepRec = { key: string; label: string; startedAt?: string; endedAt?: string; durationMs?: number };
+  type StepRec = {
+    key: string;
+    label: string;
+    startedAt?: string;
+    endedAt?: string;
+    durationMs?: number;
+  };
   const steps: StepRec[] = [];
 
   if (progressId) startProgress(progressId);
@@ -48,7 +66,12 @@ export async function runAssetReportJob({ user, images, details, progressId }: A
     const clamped = Math.max(0, Math.min(1, v));
     updateProgress(progressId, { serverProgress01: clamped });
   };
-  const SERVER_WEIGHTS = { r2_upload: 0.2, ai_analysis: 0.6, generate_pdf: 0.2, finalize: 0 } as const;
+  const SERVER_WEIGHTS = {
+    r2_upload: 0.2,
+    ai_analysis: 0.6,
+    generate_pdf: 0.2,
+    finalize: 0,
+  } as const;
   let serverAccum = 0;
   const startStep = (key: string, label: string) => {
     steps.push({ key, label, startedAt: new Date().toISOString() });
@@ -59,7 +82,9 @@ export async function runAssetReportJob({ user, images, details, progressId }: A
       const s = steps[i];
       if (s.key === key && !s.endedAt) {
         s.endedAt = new Date().toISOString();
-        const start = s.startedAt ? new Date(s.startedAt).getTime() : Date.now();
+        const start = s.startedAt
+          ? new Date(s.startedAt).getTime()
+          : Date.now();
         s.durationMs = new Date(s.endedAt).getTime() - start;
         break;
       }
@@ -115,8 +140,8 @@ export async function runAssetReportJob({ user, images, details, progressId }: A
             typeof x?.cover_index === "number"
               ? x.cover_index
               : typeof x?.coverIndex === "number"
-              ? x.coverIndex
-              : 0,
+                ? x.coverIndex
+                : 0,
         }))
         .filter((m: LotMap) => Number.isFinite(m.count) && m.count > 0);
 
@@ -127,8 +152,8 @@ export async function runAssetReportJob({ user, images, details, progressId }: A
         mappings.length > 0 && sum <= totalImages
           ? mappings
           : totalImages > 0
-          ? [{ count: Math.min(20, totalImages), cover_index: 0 }]
-          : [];
+            ? [{ count: Math.min(20, totalImages), cover_index: 0 }]
+            : [];
 
       // Adjust last mapping to consume remaining images (if any shortfall)
       const mappedSum = useMappings.reduce((s, m) => s + m.count, 0);
@@ -136,15 +161,22 @@ export async function runAssetReportJob({ user, images, details, progressId }: A
         useMappings[useMappings.length - 1].count += totalImages - mappedSum;
       }
 
-      // Analyze each lot independently using single_lot prompt
+      // Analyze each lot independently using catalogue prompt
       startStep("ai_analysis", "AI analysis of images (catalogue)");
       let base = 0;
       for (let lotIdx = 0; lotIdx < useMappings.length; lotIdx++) {
         const { count, cover_index } = useMappings[lotIdx];
-        const cappedCount = Math.max(0, Math.min(20, count));
-        const end = Math.min(imageUrls.length, base + cappedCount);
-        const localIdxs = Array.from({ length: Math.max(0, end - base) }, (_, i) => base + i);
-        const subUrls = localIdxs.map((i) => imageUrls[i]);
+        // End of this lot in GLOBAL terms must always respect the original count
+        const end = Math.min(imageUrls.length, base + Math.max(0, count));
+
+        // For AI, we can limit the number of images to analyze (performance),
+        // but we will still assign the FULL range of indexes to the lot below.
+        const aiEnd = Math.min(end, base + Math.max(0, Math.min(20, count)));
+        const aiLocalIdxs = Array.from(
+          { length: Math.max(0, aiEnd - base) },
+          (_, i) => base + i
+        );
+        const subUrls = aiLocalIdxs.map((i) => imageUrls[i]);
 
         if (subUrls.length === 0) {
           base = end;
@@ -152,46 +184,93 @@ export async function runAssetReportJob({ user, images, details, progressId }: A
         }
 
         try {
-          const aiRes = await analyzeAssetImages(subUrls, "single_lot");
+          const aiRes = await analyzeAssetImages(subUrls, "catalogue");
           if (!analysis) analysis = { per_lot: [] };
           analysis.per_lot.push(aiRes);
 
           const lotResults = Array.isArray(aiRes?.lots) ? aiRes.lots : [];
           for (const lot of lotResults as any[]) {
-            // Remap image indexes to global
-            const total = imageUrls.length;
-            const local = Array.isArray(lot?.image_indexes)
-              ? Array.from(
-                  new Set<number>(
-                    (lot.image_indexes as any[])
-                      .map((n: any) => parseInt(String(n), 10))
-                      .filter((n: number) => Number.isFinite(n) && n >= 0 && n < subUrls.length)
-                  )
-                )
-              : [];
-            // If empty, assume all images in this lot
-            const mappedIdxs = (local.length > 0 ? local : Array.from({ length: subUrls.length }, (_, i) => i)).map(
-              (li) => base + li
+            // Build FULL global index range for this lot (not limited by AI subset)
+            const mappedIdxs = Array.from(
+              { length: Math.max(0, end - base) },
+              (_, i) => base + i
             );
-            const urlsFromIdx = mappedIdxs.map((gi) => imageUrls[gi]).filter(Boolean);
+            const urlsFromIdx = mappedIdxs
+              .map((gi) => imageUrls[gi])
+              .filter(Boolean);
 
-            // Determine cover image: client-provided within lot; default 0
-            const coverLocal = Math.max(0, Math.min(subUrls.length - 1, typeof cover_index === "number" ? cover_index : 0));
+            // Determine cover image: client-provided within lot range; default 0
+            const coverLocal = Math.max(
+              0,
+              Math.min(
+                Math.max(0, count) - 1,
+                typeof cover_index === "number" ? cover_index : 0
+              )
+            );
             const coverGlobal = base + coverLocal;
             const coverUrl = imageUrls[coverGlobal];
 
-            const urlsSet = new Set<string>([...urlsFromIdx, ...(coverUrl ? [coverUrl] : [])]);
+            const urlsSet = new Set<string>([
+              ...urlsFromIdx,
+              ...(coverUrl ? [coverUrl] : []),
+            ]);
             const urls = Array.from(urlsSet);
+
+            // Ensure unique, sequential lot IDs across the whole report
+            const uniqueLotId = `lot-${String(lotIdx + 1).padStart(3, "0")}`;
+
+            // Map per-item image references (if provided) from local index -> global index/url
+            let itemsOut: any[] | undefined = undefined;
+            if (Array.isArray(lot?.items)) {
+              itemsOut = (lot.items as any[]).map(
+                (it: any, itemIdx: number) => {
+                  const {
+                    image_local_index,
+                    image_url: aiItemUrl,
+                    ...rest
+                  } = it || {};
+                  let globalIdx: number | undefined = undefined;
+                  if (Number.isFinite(image_local_index)) {
+                    const local = Math.max(0, Math.floor(image_local_index));
+                    // image_local_index is relative to subUrls order
+                    if (local >= 0 && local < aiLocalIdxs.length) {
+                      globalIdx = aiLocalIdxs[local];
+                    }
+                  }
+                  // Fallback: assign a distinct-ish index from the full mapped range
+                  if (globalIdx == null && mappedIdxs.length > 0) {
+                    // Distribute items across available images in a round-robin fashion
+                    globalIdx = mappedIdxs[itemIdx % mappedIdxs.length];
+                  }
+                  const resolvedUrl: string | undefined =
+                    typeof aiItemUrl === "string" && aiItemUrl
+                      ? aiItemUrl
+                      : globalIdx != null
+                        ? imageUrls[globalIdx]
+                        : undefined;
+                  return {
+                    ...rest,
+                    image_index: globalIdx,
+                    image_url: resolvedUrl,
+                  };
+                }
+              );
+            }
 
             lots.push({
               ...lot,
+              lot_id: uniqueLotId,
               image_url: coverUrl || lot?.image_url || urls[0] || undefined,
               image_indexes: mappedIdxs,
               image_urls: urls,
+              ...(itemsOut ? { items: itemsOut } : {}),
             });
           }
         } catch (e) {
-          console.error(`AI analysis failed for catalogue lot #${lotIdx + 1}:`, e);
+          console.error(
+            `AI analysis failed for catalogue lot #${lotIdx + 1}:`,
+            e
+          );
         }
 
         // Partial progress update within AI phase
@@ -201,6 +280,7 @@ export async function runAssetReportJob({ user, images, details, progressId }: A
           setServerProg01(current);
         }
 
+        // Advance base by the ORIGINAL count to keep subsequent lots aligned
         base = end;
       }
       endStep("ai_analysis");
@@ -225,19 +305,27 @@ export async function runAssetReportJob({ user, images, details, progressId }: A
               new Set<number>(
                 (lot.image_indexes as any[])
                   .map((n: any) => parseInt(String(n), 10))
-                  .filter((n: number) => Number.isFinite(n) && n >= 0 && n < total)
+                  .filter(
+                    (n: number) => Number.isFinite(n) && n >= 0 && n < total
+                  )
               )
             )
           : [];
-        if (groupingMode === "per_photo" && idxs.length === 0 && imageUrls[idx]) idxs.push(idx);
+        if (groupingMode === "per_photo" && idxs.length === 0 && imageUrls[idx])
+          idxs.push(idx);
         const urlsFromIdx = idxs.map((i) => imageUrls[i]).filter(Boolean);
         const directUrl: string | undefined =
-          typeof lot?.image_url === "string" && lot.image_url ? lot.image_url : undefined;
+          typeof lot?.image_url === "string" && lot.image_url
+            ? lot.image_url
+            : undefined;
         if (idxs.length === 0 && directUrl) {
           const inferred = imageUrls.indexOf(directUrl);
           if (inferred >= 0) idxs.push(inferred);
         }
-        const urlsSet = new Set<string>([...urlsFromIdx, ...(directUrl ? [directUrl] : [])]);
+        const urlsSet = new Set<string>([
+          ...urlsFromIdx,
+          ...(directUrl ? [directUrl] : []),
+        ]);
         const urls = Array.from(urlsSet);
         return { ...lot, image_indexes: idxs, image_urls: urls };
       });
@@ -292,7 +380,9 @@ export async function runAssetReportJob({ user, images, details, progressId }: A
       s = s.replace(/[\u2012\u2013\u2014\u2212]/g, "-");
       const matches = s.match(/\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?/g);
       if (!matches) return 0;
-      const nums = matches.map((m) => parseFloat(m.replace(/,/g, ""))).filter((n) => Number.isFinite(n) && n >= 0);
+      const nums = matches
+        .map((m) => parseFloat(m.replace(/,/g, "")))
+        .filter((n) => Number.isFinite(n) && n >= 0);
       if (nums.length === 0) return 0;
       if (nums.length >= 2) {
         const min = Math.min(...nums);
@@ -302,8 +392,14 @@ export async function runAssetReportJob({ user, images, details, progressId }: A
       return nums[0];
     };
 
-    const totalValue = (lots || []).reduce((sum: number, lot: any) => sum + parseEstimated(lot?.estimated_value), 0);
-    const fairMarketValue = totalValue > 0 ? `CAD ${Math.round(totalValue).toLocaleString("en-CA")}` : "N/A";
+    const totalValue = (lots || []).reduce(
+      (sum: number, lot: any) => sum + parseEstimated(lot?.estimated_value),
+      0
+    );
+    const fairMarketValue =
+      totalValue > 0
+        ? `CAD ${Math.round(totalValue).toLocaleString("en-CA")}`
+        : "N/A";
 
     const newPdfReport = new PdfReport({
       filename,
@@ -324,7 +420,10 @@ export async function runAssetReportJob({ user, images, details, progressId }: A
     }
 
     // Send notification email with link
-    const baseUrl = process.env.PUBLIC_BASE_URL || "http://localhost:4000";
+    const baseUrl =
+      process.env.NODE_ENV === "development"
+        ? "http://localhost:4000"
+        : "https://www.clearvalue.site";
     const downloadUrl = `${baseUrl}/reports/${filename}`;
     const subject = "Your Asset Report is ready";
     const html = `

@@ -19,6 +19,8 @@ export async function generateAssetPdfFromReport(reportData: any): Promise<Buffe
       process.cwd(),
       reportData?.grouping_mode === "per_item"
         ? "src/templates/asset_per_item.html"
+        : reportData?.grouping_mode === "catalogue"
+        ? "src/templates/catalogue.html"
         : "src/templates/asset.html"
     );
     const htmlTemplate = await fs.readFile(templatePath, "utf-8");

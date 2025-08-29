@@ -1,10 +1,16 @@
-export type AssetGroupingModeUtil = "single_lot" | "per_item" | "per_photo";
+export type AssetGroupingModeUtil =
+  | "single_lot"
+  | "per_item"
+  | "per_photo"
+  | "catalogue";
 
 /**
  * Returns a system prompt tailored to the desired grouping mode.
  * The prompt enforces strict JSON output and consistent field semantics.
  */
-export function getAssetSystemPrompt(groupingMode: AssetGroupingModeUtil): string {
+export function getAssetSystemPrompt(
+  groupingMode: AssetGroupingModeUtil
+): string {
   const commonOutputRules = `
 You are an expert inventory/loss appraisal assistant. Analyze provided images and produce coherent "lots".
 
@@ -57,6 +63,61 @@ Example Output (default modes):
   "summary": "2 lots identified: a red mountain bike and a wooden dining table."
 }`;
 
+  const catalogue = `
+Grouping mode: catalogue (sales catalogue style)
+- Treat the provided images as one catalogue lot segment. Return exactly ONE lot that summarizes the set of images and also includes an 'items' array.
+- Each item represents a distinct saleable item within the lot segment.
+- Identify EVERY distinct saleable item visible across ALL provided images for this segment. Do NOT omit any item. If uncertain, include the item and note uncertainty in 'details'.
+- Lot-level fields: lot_id, title, description, condition, estimated_value, tags?, image_indexes (0-based indexes of the images for this lot).
+- REQUIRED item fields (table row fields):
+  - title: concise and specific. For vehicles, use: "YYYY Make Model Trim" (e.g., "2018 Honda Civic EX-L").
+  - sn_vin: string. If serial/VIN not visible or unknown, set to the literal text "not found".
+  - description: short description of the item.
+  - details: compact attributes (e.g., Price, Mileage, Condition, Transmission, Drivetrain, Extras like winter tires), when applicable.
+  - estimated_value: string in Canadian dollars, prefixed with CA$, e.g., "CA$12,500".
+  - image_local_index: integer (0-based) referencing the SINGLE best image among the provided images for this catalogue segment that most clearly shows this item. Always include this. If unsure, pick the clearest view.
+  - image_url: OPTIONAL direct URL for that image if and only if it is explicitly provided to you (do not fabricate). Base64 inputs will not have URLs.
+- Additional guidance:
+  - Titles must be concise and attention-grabbing; avoid repetition across items in the same lot.
+  - If an item appears in multiple frames, do not duplicate the item; list it once.
+  - Keep all output strictly valid JSON.
+`;
+
+  const exampleCatalogue = `
+Example Output (catalogue):
+{
+  "lots": [
+    {
+      "lot_id": "lot-101",
+      "title": "Vehicle Listings — Two Sedans",
+      "description": "Two compact sedans with clean interiors; light exterior wear noted.",
+      "condition": "Mixed — Used",
+      "estimated_value": "CA$23,500",
+      "tags": ["vehicles", "sedans"],
+      "image_indexes": [0,1,2,3],
+      "items": [
+        {
+          "title": "2018 Honda Civic EX-L",
+          "sn_vin": "2HGFC1F97JH012345",
+          "description": "White exterior, black leather; clean interior.",
+          "details": "Price: CA$12,500; Mileage: 82,000 km; Condition: Used - Good; Transmission: Automatic; Drivetrain: FWD; Extras: winter tires included",
+          "estimated_value": "CA$12,500",
+          "image_local_index": 1
+        },
+        {
+          "title": "2017 Toyota Corolla LE",
+          "sn_vin": "not found",
+          "description": "Silver exterior; minor scuffs on rear bumper.",
+          "details": "Price: CA$11,000; Mileage: 95,500 km; Condition: Used - Fair; Transmission: Automatic; Drivetrain: FWD",
+          "estimated_value": "CA$11,000",
+          "image_local_index": 2
+        }
+      ]
+    }
+  ],
+  "summary": "Catalogue lot with 2 vehicles identified from 4 images."
+}`;
+
   const examplePerItem = `
 Example Output (per_item):
 {
@@ -95,7 +156,7 @@ Grouping mode: per_photo
 
   const perItem = `
 Grouping mode: per_item ("everything you see")
-- Single-image analysis (typical usage): Identify every unique physical item visible in THIS SINGLE IMAGE and return EACH as its own lot. Do not collapse distinct items.
+- Single-image analysis (typical usage): Identify EVERY unique physical item visible in THIS SINGLE IMAGE and return EACH as its own lot. Do NOT omit any single item. Do not collapse distinct items.
 - If multiple identical units exist in the same image, create separate lots for each unit and distinguish titles with "(#1)", "(#2)", etc.
 - For single-image analysis, set 'image_indexes' to exactly the provided index for that image ONLY (the caller/user message will specify it). Do NOT include any other indexes.
 - Titles must be concise and unique across lots.
@@ -122,13 +183,21 @@ Grouping mode: single_lot
     case "single_lot":
       modeSection = singleLot;
       break;
+    case "catalogue":
+      modeSection = catalogue;
+      break;
     case "per_item":
     default:
       modeSection = perItem;
       break;
   }
 
-  const exampleBlock = groupingMode === "per_item" ? examplePerItem : exampleDefault;
+  const exampleBlock =
+    groupingMode === "per_item"
+      ? examplePerItem
+      : groupingMode === "catalogue"
+      ? exampleCatalogue
+      : exampleDefault;
 
   return `
 ${commonOutputRules}
