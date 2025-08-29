@@ -102,10 +102,17 @@ export const login = async (req: Request, res: Response) => {
       { expiresIn: "7d" }
     );
 
-    user.refreshToken = refreshToken;
+    const decodedRt: any = jwt.decode(refreshToken);
+    const expiresAt = decodedRt?.exp
+      ? new Date(decodedRt.exp * 1000)
+      : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const tokenHash = crypto.createHash("sha256").update(refreshToken).digest("hex");
+    const remainingTokens = (user.refreshTokens || []).filter((t: any) => !t.expiresAt || t.expiresAt > new Date());
+    user.set("refreshTokens", remainingTokens as any);
+    user.refreshTokens.push({ tokenHash, expiresAt, createdAt: new Date() });
     await user.save();
 
-    const userResponse = await User.findById(user._id);
+    const userResponse = await User.findById(user._id).select("-password -refreshTokens");
     res.status(200).json({ accessToken, refreshToken, user: userResponse });
   } catch (error) {
     console.log(error);
@@ -153,14 +160,21 @@ export const verifyEmail = async (req: Request, res: Response) => {
       { expiresIn: "7d" }
     );
 
-    user.refreshToken = refreshToken;
+    const decodedRt: any = jwt.decode(refreshToken);
+    const expiresAt = decodedRt?.exp
+      ? new Date(decodedRt.exp * 1000)
+      : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const tokenHash = crypto.createHash("sha256").update(refreshToken).digest("hex");
+    const remainingTokensVerify = (user.refreshTokens || []).filter((t: any) => !t.expiresAt || t.expiresAt > new Date());
+    user.set("refreshTokens", remainingTokensVerify as any);
+    user.refreshTokens.push({ tokenHash, expiresAt, createdAt: new Date() });
     await user.save();
 
     res.status(200).json({
       message: "Email verified successfully.",
       accessToken,
       refreshToken,
-      user: await User.findById(user._id),
+      user: await User.findById(user._id).select("-password -refreshTokens"),
     });
   } catch (error) {
     console.error("Email Verification Error:", error);
@@ -214,11 +228,34 @@ export const refreshToken = async (req: Request, res: Response) => {
 
   try {
     const decoded: any = jwt.verify(token, process.env.JWT_REFRESH_SECRET!);
-    const user = await User.findById(decoded.id);
+    const user = await User.findById(decoded.id).select("+refreshToken");
 
-    if (!user || user.refreshToken !== token) {
+    if (!user) {
       return res.status(403).json({ message: "Invalid refresh token" });
     }
+
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const now = new Date();
+    user.set("refreshTokens", ((user.refreshTokens || []).filter((t: any) => t.expiresAt && t.expiresAt > now)) as any);
+    let isValid = Array.isArray((user as any).refreshTokens)
+      && user.refreshTokens.some((t: any) => t.tokenHash === tokenHash);
+
+    if (!isValid) {
+      const legacyToken = (user as any).refreshToken;
+      if (legacyToken && legacyToken === token) {
+        const expiresAtLegacy = (decoded?.exp)
+          ? new Date(decoded.exp * 1000)
+          : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        user.refreshTokens.push({ tokenHash, expiresAt: expiresAtLegacy, createdAt: new Date() });
+        isValid = true;
+      }
+    }
+
+    if (!isValid) {
+      return res.status(403).json({ message: "Invalid refresh token" });
+    }
+
+    await user.save();
 
     const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET!, {
       expiresIn: "15m",
@@ -307,7 +344,7 @@ export const resetPassword = async (req: Request, res: Response) => {
     user.passwordResetExpires = undefined;
 
     // Invalidate any existing refresh tokens by clearing them
-    user.refreshToken = undefined;
+    user.set("refreshTokens", [] as any);
 
     await user.save();
 
@@ -321,7 +358,13 @@ export const resetPassword = async (req: Request, res: Response) => {
       { expiresIn: "7d" }
     );
 
-    user.refreshToken = refreshToken;
+    const decodedRt3: any = jwt.decode(refreshToken);
+    const expiresAt3 = decodedRt3?.exp
+      ? new Date(decodedRt3.exp * 1000)
+      : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const tokenHash3 = crypto.createHash("sha256").update(refreshToken).digest("hex");
+    // refreshTokens already initialized above
+    user.refreshTokens.push({ tokenHash: tokenHash3, expiresAt: expiresAt3, createdAt: new Date() });
     await user.save({ validateBeforeSave: false });
 
     res.status(200).json({

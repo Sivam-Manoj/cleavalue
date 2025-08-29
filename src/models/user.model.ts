@@ -45,9 +45,18 @@ const userSchema = new mongoose.Schema({
   verificationCodeExpires: {
     type: Date,
   },
+  // Legacy single refresh token (kept for backward-compatible migration only)
   refreshToken: {
     type: String,
+    select: false,
   },
+  refreshTokens: [
+    {
+      tokenHash: { type: String, required: true },
+      expiresAt: { type: Date, required: true },
+      createdAt: { type: Date, default: Date.now },
+    },
+  ],
   passwordResetToken: {
     type: String,
   },

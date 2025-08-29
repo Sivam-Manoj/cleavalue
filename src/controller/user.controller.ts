@@ -8,7 +8,7 @@ import { AuthRequest } from '../middleware/auth.middleware.js';
 // @access  Private
 export const getUserProfile = async (req: AuthRequest, res: Response) => {
   try {
-    const user = await User.findById(req.userId).select('-password -refreshToken');
+    const user = await User.findById(req.userId).select('-password -refreshTokens');
     if (user) {
       res.json(user);
     } else {
