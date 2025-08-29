@@ -16,7 +16,7 @@ import { sendEmail } from "../utils/sendVerificationEmail.js";
 import fs from "fs/promises";
 import path from "path";
 
-export type AssetGroupingMode = "single_lot" | "per_item" | "per_photo";
+export type AssetGroupingMode = "single_lot" | "per_item" | "per_photo" | "catalogue";
 
 export type AssetJobInput = {
   user: { id: string; email: string; name?: string | null };
@@ -73,7 +73,9 @@ export async function runAssetReportJob({ user, images, details, progressId }: A
 
   try {
     const groupingMode: AssetGroupingMode =
-      details?.grouping_mode === "per_item" || details?.grouping_mode === "per_photo"
+      details?.grouping_mode === "per_item" ||
+      details?.grouping_mode === "per_photo" ||
+      details?.grouping_mode === "catalogue"
         ? details.grouping_mode
         : "single_lot";
 
@@ -97,38 +99,149 @@ export async function runAssetReportJob({ user, images, details, progressId }: A
       endStep("r2_upload");
     }
 
-    const urlsForAI = imageUrls.slice(0, 10);
+    let analysis: any = null;
+    let lots: any[] = [];
 
-    let analysis: AssetAnalysisResult | null = null;
-    if (urlsForAI.length > 0) {
-      try {
-        startStep("ai_analysis", "AI analysis of images");
-        analysis = await analyzeAssetImages(urlsForAI, groupingMode);
-        endStep("ai_analysis");
-      } catch (e) {
-        console.error("Error during asset AI analysis:", e);
-        if (progressId) endStep("ai_analysis");
-      }
-    }
-
-    const lots = (analysis?.lots || []).map((lot: any, idx: number) => {
-      const total = imageUrls.length;
-      const idxs: number[] = Array.isArray(lot?.image_indexes)
-        ? Array.from(new Set<number>((lot.image_indexes as any[])
-            .map((n: any) => parseInt(String(n), 10))
-            .filter((n: number) => Number.isFinite(n) && n >= 0 && n < total)))
+    if (groupingMode === "catalogue") {
+      // Parse mapping from details
+      const rawLots: any[] = Array.isArray(details?.catalogue_lots)
+        ? details.catalogue_lots
         : [];
-      if (groupingMode === "per_photo" && idxs.length === 0 && imageUrls[idx]) idxs.push(idx);
-      const urlsFromIdx = idxs.map((i) => imageUrls[i]).filter(Boolean);
-      const directUrl: string | undefined = typeof lot?.image_url === "string" && lot.image_url ? lot.image_url : undefined;
-      if (idxs.length === 0 && directUrl) {
-        const inferred = imageUrls.indexOf(directUrl);
-        if (inferred >= 0) idxs.push(inferred);
+      type LotMap = { count: number; cover_index?: number };
+      const mappings: LotMap[] = rawLots
+        .map((x: any) => ({
+          count: Math.max(0, parseInt(String(x?.count ?? 0), 10) || 0),
+          cover_index:
+            typeof x?.cover_index === "number"
+              ? x.cover_index
+              : typeof x?.coverIndex === "number"
+              ? x.coverIndex
+              : 0,
+        }))
+        .filter((m: LotMap) => Number.isFinite(m.count) && m.count > 0);
+
+      // Fallback: if mapping missing/invalid, treat all as one lot
+      const totalImages = imageUrls.length;
+      const sum = mappings.reduce((s, m) => s + m.count, 0);
+      const useMappings: LotMap[] =
+        mappings.length > 0 && sum <= totalImages
+          ? mappings
+          : totalImages > 0
+          ? [{ count: Math.min(20, totalImages), cover_index: 0 }]
+          : [];
+
+      // Adjust last mapping to consume remaining images (if any shortfall)
+      const mappedSum = useMappings.reduce((s, m) => s + m.count, 0);
+      if (mappedSum < totalImages && useMappings.length > 0) {
+        useMappings[useMappings.length - 1].count += totalImages - mappedSum;
       }
-      const urlsSet = new Set<string>([...urlsFromIdx, ...(directUrl ? [directUrl] : [])]);
-      const urls = Array.from(urlsSet);
-      return { ...lot, image_indexes: idxs, image_urls: urls };
-    });
+
+      // Analyze each lot independently using single_lot prompt
+      startStep("ai_analysis", "AI analysis of images (catalogue)");
+      let base = 0;
+      for (let lotIdx = 0; lotIdx < useMappings.length; lotIdx++) {
+        const { count, cover_index } = useMappings[lotIdx];
+        const cappedCount = Math.max(0, Math.min(20, count));
+        const end = Math.min(imageUrls.length, base + cappedCount);
+        const localIdxs = Array.from({ length: Math.max(0, end - base) }, (_, i) => base + i);
+        const subUrls = localIdxs.map((i) => imageUrls[i]);
+
+        if (subUrls.length === 0) {
+          base = end;
+          continue;
+        }
+
+        try {
+          const aiRes = await analyzeAssetImages(subUrls, "single_lot");
+          if (!analysis) analysis = { per_lot: [] };
+          analysis.per_lot.push(aiRes);
+
+          const lotResults = Array.isArray(aiRes?.lots) ? aiRes.lots : [];
+          for (const lot of lotResults as any[]) {
+            // Remap image indexes to global
+            const total = imageUrls.length;
+            const local = Array.isArray(lot?.image_indexes)
+              ? Array.from(
+                  new Set<number>(
+                    (lot.image_indexes as any[])
+                      .map((n: any) => parseInt(String(n), 10))
+                      .filter((n: number) => Number.isFinite(n) && n >= 0 && n < subUrls.length)
+                  )
+                )
+              : [];
+            // If empty, assume all images in this lot
+            const mappedIdxs = (local.length > 0 ? local : Array.from({ length: subUrls.length }, (_, i) => i)).map(
+              (li) => base + li
+            );
+            const urlsFromIdx = mappedIdxs.map((gi) => imageUrls[gi]).filter(Boolean);
+
+            // Determine cover image: client-provided within lot; default 0
+            const coverLocal = Math.max(0, Math.min(subUrls.length - 1, typeof cover_index === "number" ? cover_index : 0));
+            const coverGlobal = base + coverLocal;
+            const coverUrl = imageUrls[coverGlobal];
+
+            const urlsSet = new Set<string>([...urlsFromIdx, ...(coverUrl ? [coverUrl] : [])]);
+            const urls = Array.from(urlsSet);
+
+            lots.push({
+              ...lot,
+              image_url: coverUrl || lot?.image_url || urls[0] || undefined,
+              image_indexes: mappedIdxs,
+              image_urls: urls,
+            });
+          }
+        } catch (e) {
+          console.error(`AI analysis failed for catalogue lot #${lotIdx + 1}:`, e);
+        }
+
+        // Partial progress update within AI phase
+        if (progressId) {
+          const partial = (lotIdx + 1) / useMappings.length;
+          const current = serverAccum + partial * SERVER_WEIGHTS.ai_analysis;
+          setServerProg01(current);
+        }
+
+        base = end;
+      }
+      endStep("ai_analysis");
+    } else {
+      // Existing behavior for single_lot, per_item, per_photo (limit to 10 for AI)
+      const urlsForAI = imageUrls.slice(0, 10);
+      if (urlsForAI.length > 0) {
+        try {
+          startStep("ai_analysis", "AI analysis of images");
+          analysis = await analyzeAssetImages(urlsForAI, groupingMode);
+          endStep("ai_analysis");
+        } catch (e) {
+          console.error("Error during asset AI analysis:", e);
+          if (progressId) endStep("ai_analysis");
+        }
+      }
+
+      lots = (analysis?.lots || []).map((lot: any, idx: number) => {
+        const total = imageUrls.length;
+        const idxs: number[] = Array.isArray(lot?.image_indexes)
+          ? Array.from(
+              new Set<number>(
+                (lot.image_indexes as any[])
+                  .map((n: any) => parseInt(String(n), 10))
+                  .filter((n: number) => Number.isFinite(n) && n >= 0 && n < total)
+              )
+            )
+          : [];
+        if (groupingMode === "per_photo" && idxs.length === 0 && imageUrls[idx]) idxs.push(idx);
+        const urlsFromIdx = idxs.map((i) => imageUrls[i]).filter(Boolean);
+        const directUrl: string | undefined =
+          typeof lot?.image_url === "string" && lot.image_url ? lot.image_url : undefined;
+        if (idxs.length === 0 && directUrl) {
+          const inferred = imageUrls.indexOf(directUrl);
+          if (inferred >= 0) idxs.push(inferred);
+        }
+        const urlsSet = new Set<string>([...urlsFromIdx, ...(directUrl ? [directUrl] : [])]);
+        const urls = Array.from(urlsSet);
+        return { ...lot, image_indexes: idxs, image_urls: urls };
+      });
+    }
 
     const parseDate = (val: any): Date | undefined => {
       if (!val) return undefined;

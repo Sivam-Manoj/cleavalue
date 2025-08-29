@@ -28,16 +28,18 @@ const startServer = async () => {
     // Serve generated PDF reports
     app.use("/reports", express.static("reports"));
 
-    // app.use(
-    //   cors({
-    //     origin: [
-    //       "https://www.clearvalue.site",
-    //       "https://clearvalue.site",
-    //       "http://localhost:3000",
-    //     ],
-    //     credentials: true,
-    //   })
-    // );
+    if (process.env.NODE_ENV === "development") {
+      app.use(
+        cors({
+          origin: [
+            "https://www.clearvalue.site",
+            "https://clearvalue.site",
+            "http://localhost:3000",
+          ],
+          credentials: true,
+        })
+      );
+    }
 
     app.use("/api/auth", authRoutes);
     app.use("/api/user", userRoutes);

@@ -5,7 +5,7 @@ import { endProgress, getProgress } from "../utils/progressStore.js";
 import { queueAssetReportJob } from "../jobs/assetReportJob.js";
 import AssetReport from "../models/asset.model.js";
 
-export type AssetGroupingMode = "single_lot" | "per_item" | "per_photo";
+export type AssetGroupingMode = "single_lot" | "per_item" | "per_photo" | "catalogue";
 
 export const createAssetReport = async (req: AuthRequest, res: Response) => {
   try {
