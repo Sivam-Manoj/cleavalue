@@ -66,6 +66,7 @@ Example Output (default modes):
   const catalogue = `
 Grouping mode: catalogue (sales catalogue style)
 - Treat the provided images as one catalogue lot segment. Return exactly ONE lot that summarizes the set of images and also includes an 'items' array.
+-only add item that 100% visible in the image not include item that is not visible in the image or half visible.
 - Each item represents a distinct saleable item within the lot segment.
 - Identify EVERY distinct saleable item visible across ALL provided images for this segment. Do NOT omit any item. If uncertain, include the item and note uncertainty in 'details'.
 - Lot-level fields: lot_id, title, description, condition, estimated_value, tags?, image_indexes (0-based indexes of the images for this lot).
