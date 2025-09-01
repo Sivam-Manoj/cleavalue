@@ -19,6 +19,46 @@ export const getUserProfile = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// @desc    Update user profile (excluding email)
+// @route   PATCH /api/user
+// @access  Private
+export const updateUserProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    const allowedFields = [
+      'username',
+      'companyName',
+      'contactEmail',
+      'contactPhone',
+      'companyAddress',
+    ];
+
+    const update: Record<string, any> = {};
+    for (const key of allowedFields) {
+      if (Object.prototype.hasOwnProperty.call(req.body || {}, key)) {
+        update[key] = (req.body as any)[key];
+      }
+    }
+
+    if (Object.keys(update).length === 0) {
+      return res.status(400).json({ message: 'No valid fields to update' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.userId,
+      { $set: update },
+      { new: true, runValidators: true }
+    ).select('-password -refreshTokens');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // @desc    Delete user account
 // @route   DELETE /api/user
 // @access  Private
