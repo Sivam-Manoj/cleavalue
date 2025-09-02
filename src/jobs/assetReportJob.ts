@@ -5,7 +5,7 @@ import {
   analyzeAssetImages,
   type AssetAnalysisResult,
 } from "../service/assetOpenAIService.js";
-import { generateAssetPdfFromReport } from "../service/assetPdfService.js";
+import { generateAssetDocxFromReport } from "../service/assetDocxService.js";
 import {
   startProgress,
   updateProgress,
@@ -69,7 +69,7 @@ export async function runAssetReportJob({
   const SERVER_WEIGHTS = {
     r2_upload: 0.2,
     ai_analysis: 0.6,
-    generate_pdf: 0.2,
+    generate_docx: 0.2,
     finalize: 0,
   } as const;
   let serverAccum = 0;
@@ -95,6 +95,19 @@ export async function runAssetReportJob({
       setServerProg01(serverAccum);
     }
   };
+
+  async function withStep<T>(
+    key: string,
+    label: string,
+    fn: () => Promise<T>
+  ): Promise<T> {
+    startStep(key, label);
+    try {
+      return await fn();
+    } finally {
+      endStep(key);
+    }
+  }
 
   try {
     const groupingMode: AssetGroupingMode =
@@ -353,26 +366,46 @@ export async function runAssetReportJob({
       inspection_date: parseDate(details?.inspection_date),
     });
 
-    startStep("save_report", "Persisting report to database");
-    await newReport.save();
-    endStep("save_report");
-
-    const reportObjectForPdf = newReport.toObject();
-    startStep("generate_pdf", "Generating PDF");
-    const pdfBuffer = await generateAssetPdfFromReport({
-      ...reportObjectForPdf,
-      inspector_name: user?.name || "",
+    await withStep("save_report", "Persisting report to database", async () => {
+      await newReport.save();
     });
-    endStep("generate_pdf");
+
+    const reportObjectForDocx = newReport.toObject();
+    const docxBuffer = await withStep(
+      "generate_docx",
+      "Generating DOCX",
+      async () => {
+        const t0 = Date.now();
+        console.log(
+          `[AssetReportJob] DOCX generation start for report ${newReport._id} at ${new Date(
+            t0
+          ).toISOString()}`
+        );
+        const buf = await generateAssetDocxFromReport({
+          ...reportObjectForDocx,
+          inspector_name: user?.name || "",
+        });
+        const t1 = Date.now();
+        console.log(
+          `[AssetReportJob] DOCX generation finished in ${t1 - t0}ms for report ${newReport._id}`
+        );
+        return buf;
+      }
+    );
 
     const reportsDir = path.resolve(process.cwd(), "reports");
     await fs.mkdir(reportsDir, { recursive: true });
 
-    const filename = `asset-report-${newReport._id}-${Date.now()}.pdf`;
+    const filename = `asset-report-${newReport._id}-${Date.now()}.docx`;
     const filePath = path.join(reportsDir, filename);
-    startStep("save_pdf_file", "Saving PDF file");
-    await fs.writeFile(filePath, pdfBuffer);
-    endStep("save_pdf_file");
+    await withStep("save_docx_file", "Saving DOCX file", async () => {
+      const t0 = Date.now();
+      await fs.writeFile(filePath, docxBuffer);
+      const t1 = Date.now();
+      console.log(
+        `[AssetReportJob] DOCX saved to ${filePath} in ${t1 - t0}ms (size=${docxBuffer.length} bytes)`
+      );
+    });
 
     const parseEstimated = (val: unknown): number => {
       if (!val) return 0;
@@ -410,9 +443,9 @@ export async function runAssetReportJob({
       address: `Asset Report (${lots.length} lots)`,
       fairMarketValue,
     });
-    startStep("create_pdf_record", "Creating PDF record");
-    await newPdfReport.save();
-    endStep("create_pdf_record");
+    await withStep("create_docx_record", "Creating DOCX record", async () => {
+      await newPdfReport.save();
+    });
 
     if (progressId) {
       setServerProg01(1);

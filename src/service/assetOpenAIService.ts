@@ -3,7 +3,11 @@ import openai from "../utils/openaiClient.js";
 import axios from "axios";
 import { getAssetSystemPrompt } from "../utils/assetPrompts.js";
 
-export type AssetGroupingMode = "single_lot" | "per_item" | "per_photo" | "catalogue";
+export type AssetGroupingMode =
+  | "single_lot"
+  | "per_item"
+  | "per_photo"
+  | "catalogue";
 
 export interface AssetLotAI {
   lot_id: string;
@@ -41,8 +45,11 @@ async function imageUrlToBase64WithMime(
 ): Promise<{ base64: string; mime: string }> {
   const response = await axios.get(url, { responseType: "arraybuffer" });
   const buffer = Buffer.from(response.data as ArrayBuffer);
-  const mimeHeader = String(response.headers?.["content-type"] || "").split(";")[0];
-  const mime = mimeHeader && mimeHeader.startsWith("image/") ? mimeHeader : "image/jpeg";
+  const mimeHeader = String(response.headers?.["content-type"] || "").split(
+    ";"
+  )[0];
+  const mime =
+    mimeHeader && mimeHeader.startsWith("image/") ? mimeHeader : "image/jpeg";
   return { base64: buffer.toString("base64"), mime };
 }
 
@@ -268,7 +275,7 @@ export async function analyzeAssetImages(
       ];
 
       const response = await openai.chat.completions.create({
-        model: "gpt-4.1",
+        model: "gpt-5-mini",
         messages,
         response_format: { type: "json_object" },
       });
@@ -324,7 +331,7 @@ export async function analyzeAssetImages(
         ];
 
         const resp = await openai.chat.completions.create({
-          model: "gpt-5",
+          model: "gpt-5-mini",
           messages,
           response_format: { type: "json_object" },
         });
@@ -382,9 +389,9 @@ export async function analyzeAssetImages(
       ],
     },
   ];
-
+  console.log("messages", messages);
   const response = await openai.chat.completions.create({
-    model: "gpt-5",
+    model: "gpt-5-mini",
     messages,
     response_format: { type: "json_object" },
   });
@@ -393,6 +400,7 @@ export async function analyzeAssetImages(
   if (!content) throw new Error("OpenAI returned an empty response.");
 
   try {
+    console.log("content", content);
     return JSON.parse(content) as AssetAnalysisResult;
   } catch (err) {
     console.error("Invalid JSON from model:", content);
