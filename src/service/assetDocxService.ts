@@ -2,6 +2,7 @@ import htmlToDocx from "html-to-docx";
 import handlebars from "handlebars";
 import fs from "fs/promises";
 import path from "path";
+import { generateCatalogueDocx } from "./docx/catalogueDocxBuilder.js";
 
 // Helpers
 handlebars.registerHelper("formatDate", function (dateString) {
@@ -15,12 +16,14 @@ handlebars.registerHelper("formatDate", function (dateString) {
 
 export async function generateAssetDocxFromReport(reportData: any): Promise<Buffer> {
   try {
+    // Use high-fidelity DOCX builder for catalogue mode
+    if (reportData?.grouping_mode === "catalogue") {
+      return await generateCatalogueDocx(reportData);
+    }
     const templatePath = path.resolve(
       process.cwd(),
       reportData?.grouping_mode === "per_item"
         ? "src/templates/asset_per_item.html"
-        : reportData?.grouping_mode === "catalogue"
-        ? "src/templates/catalogue.html"
         : "src/templates/asset.html"
     );
     const htmlTemplate = await fs.readFile(templatePath, "utf-8");
