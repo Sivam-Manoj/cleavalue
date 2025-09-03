@@ -8,6 +8,7 @@
     "dev": "nodemon src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "sample:docx": "npm run build && node dist/scripts/generateSampleDocx.js",
     "deploy": "git pull && npm install && npm run build && pm2 restart clearvalue-server"
   },
   "keywords": [],

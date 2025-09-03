@@ -82,7 +82,7 @@
       .thumb {
         width: 90px;
         height: 70px;
-        object-fit: cover;
+        object-fit: contain;
         border-radius: 8px;
         border: 1px solid #fee2e2;
         background: #fff;
@@ -115,11 +115,7 @@
           ></div>
         </div>
         <div class="relative z-10 text-center p-8">
-          <img
-            src="{{logo_url}}"
-            alt="Company Logo"
-            class="h-20 mx-auto mb-6"
-          />
+          <img src="{{logo_url}}" alt="Company Logo" class="mx-auto mb-6" width="180" height="64" style="width:180px;height:64px;object-fit:contain;" />
           <h1 class="text-5xl font-bold brand-rose mb-4">Asset Report</h1>
           <p class="text-2xl text-gray-700">
             {{lots.length}} Items ({{grouping_mode}})
@@ -343,15 +339,11 @@
                 </td>
                 <td>
                   {{#if image_url}}
-                  <img src="{{image_url}}" alt="Item" class="thumb" />
+                  <img src="{{image_url}}" alt="Item" class="thumb" width="90" height="70" />
                   {{else}} {{#if image_urls}}
-                  <img src="{{lookup image_urls 0}}" alt="Item" class="thumb" />
+                  <img src="{{lookup image_urls 0}}" alt="Item" class="thumb" width="90" height="70" />
                   {{else}} {{#if image_indexes}}
-                  <img
-                    src="{{lookup @root.imageUrls (lookup image_indexes 0)}}"
-                    alt="Item"
-                    class="thumb"
-                  />
+                  <img src="{{lookup @root.imageUrls (lookup image_indexes 0)}}" alt="Item" class="thumb" width="90" height="70" />
                   {{else}}
                   <div class="text-xs text-gray-400">No image</div>
                   {{/if}} {{/if}} {{/if}}

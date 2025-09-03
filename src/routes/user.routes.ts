@@ -12,4 +12,4 @@ router.get("/me", protect, getUserProfile);
 router.put("/", protect, updateUserProfile);
 router.delete("/", protect, deleteUserAccount);
 
-export default router;
+export default router; 

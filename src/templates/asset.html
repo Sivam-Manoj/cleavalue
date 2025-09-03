@@ -83,7 +83,7 @@
       .img-tile img {
         width: 100%;
         height: 160px;
-        object-fit: cover;
+        object-fit: contain;
         border-radius: 10px;
         border: 1px solid #fee2e2; /* rose-200 */
         break-inside: avoid;
@@ -102,7 +102,7 @@
     <!-- Cover Page -->
     <section id="cover-page" class="w-full h-screen flex items-center justify-center bg-white">
       <div class="max-w-3xl w-full text-center p-10">
-        <img src="{{logo_url}}" alt="Company Logo" class="h-16 mx-auto mb-6" />
+        <img src="{{logo_url}}" alt="Company Logo" class="mx-auto mb-6" width="180" height="64" style="width:180px;height:64px;object-fit:contain;" />
         <h1 class="text-5xl font-bold brand-rose mb-2">Asset Report</h1>
         <p class="text-xl text-gray-700 mb-8">{{lots.length}} Lots ({{grouping_mode}})</p>
         <div class="mx-auto max-w-2xl text-left">
@@ -302,14 +302,11 @@
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
               {{#if image_urls}} {{#each image_urls}}
               <div class="img-tile">
-                <img src="{{this}}" alt="Lot Image {{@index}}" />
+                <img src="{{this}}" alt="Lot Image {{@index}}" width="220" height="160" style="width:220px;height:160px;object-fit:contain;border-radius:10px;border:1px solid #fee2e2;" />
               </div>
               {{/each}} {{else}} {{#each image_indexes}}
               <div class="img-tile">
-                <img
-                  src="{{lookup @root.imageUrls this}}"
-                  alt="Lot Image {{this}}"
-                />
+                <img src="{{lookup @root.imageUrls this}}" alt="Lot Image {{this}}" width="220" height="160" style="width:220px;height:160px;object-fit:contain;border-radius:10px;border:1px solid #fee2e2;" />
               </div>
               {{/each}} {{/if}}
             </div>
