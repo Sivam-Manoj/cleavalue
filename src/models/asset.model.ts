@@ -6,9 +6,11 @@ export interface ICatalogueItem {
   title: string;
   sn_vin?: string; // "not found" when missing
   description?: string;
+  condition?: string;
   details?: string;
   estimated_value?: string; // CA$...
   // Optional per-item image reference (global index resolved by job)
+  image_local_index?: number; // preferred local best image index within this lot's image set
   image_index?: number; // 0-based index into report-level imageUrls
   image_url?: string; // resolved URL for convenience in templates
 }
@@ -50,8 +52,10 @@ const CatalogueItemSchema: Schema<ICatalogueItem> = new Schema(
     title: { type: String, required: true },
     sn_vin: { type: String },
     description: { type: String },
+    condition: { type: String },
     details: { type: String },
     estimated_value: { type: String },
+    image_local_index: { type: Number },
     image_index: { type: Number },
     image_url: { type: String },
   },

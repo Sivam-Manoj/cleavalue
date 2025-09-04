@@ -629,88 +629,7 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
             .map((idx: number) => rootImageUrls?.[idx])
             .filter(Boolean)
         : [];
-    if (lotImgUrls.length) {
-      const perRow = 3;
-      const colW = Math.floor(contentWidthTw / perRow);
-      const rows: TableRow[] = [];
-      let cells: TableCell[] = [];
-      for (const u of lotImgUrls.slice(0, 12)) {
-        const buf = await fetchImageBuffer(u);
-        const cell = new TableCell({
-          width: { size: colW, type: WidthType.DXA },
-          margins: { top: 80, bottom: 80, left: 80, right: 80 },
-          children: buf
-            ? [
-                new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  children: [
-                    new ImageRun({
-                      data: buf as any,
-                      transformation: { width: 180, height: 128 },
-                    } as any),
-                  ],
-                }),
-              ]
-            : [
-                new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  children: [
-                    new TextRun({
-                      text: "No image",
-                      italics: true,
-                      color: "6B7280",
-                    }),
-                  ],
-                }),
-              ],
-        });
-        cells.push(cell);
-        if (cells.length === perRow) {
-          rows.push(new TableRow({ children: cells }));
-          cells = [];
-        }
-      }
-      if (cells.length) {
-        while (cells.length < perRow) {
-          cells.push(
-            new TableCell({
-              width: { size: colW, type: WidthType.DXA },
-              children: [new Paragraph("")],
-            })
-          );
-        }
-        rows.push(new TableRow({ children: cells }));
-      }
-      // breathing space before images grid
-      children.push(
-        new Paragraph({ text: "", spacing: { before: 120, after: 80 } })
-      );
-      children.push(
-        new Table({
-          width: { size: contentWidthTw, type: WidthType.DXA },
-          layout: TableLayoutType.FIXED,
-          alignment: AlignmentType.LEFT,
-          columnWidths: Array(perRow).fill(colW),
-          borders: {
-            top: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-            bottom: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-            left: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-            right: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-            insideHorizontal: {
-              style: BorderStyle.SINGLE,
-              size: 1,
-              color: "FFFFFF",
-            },
-            insideVertical: {
-              style: BorderStyle.SINGLE,
-              size: 1,
-              color: "FFFFFF",
-            },
-          },
-          rows,
-        })
-      );
-    }
+    // Images grid removed above the items table per requirements
 
     // Items table
     const items: any[] = Array.isArray(lot?.items) ? lot.items : [];
@@ -774,7 +693,7 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
             children: [
               new Paragraph({
                 alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: "Details", bold: true })],
+                children: [new TextRun({ text: "Condition", bold: true })],
               }),
             ],
           }),
@@ -869,7 +788,11 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
                 shading: zebra
                   ? { type: ShadingType.CLEAR, fill: "FAFAFA", color: "auto" }
                   : undefined,
-                children: [new Paragraph(String(item?.details || "—"))],
+                children: [
+                  new Paragraph(
+                    String(item?.condition ?? item?.details ?? "—")
+                  ),
+                ],
               }),
               new TableCell({
                 width: { size: w.value, type: WidthType.DXA },

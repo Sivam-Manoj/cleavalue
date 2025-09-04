@@ -245,19 +245,6 @@
         </div>
         <p class="text-gray-700 mt-2 whitespace-pre-line">{{description}}</p>
 
-        <!-- Lot Images -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-          {{#if image_urls}}
-            {{#each image_urls}}
-              <div class="img-tile"><img src="{{this}}" alt="Lot Image {{@index}}" width="220" height="160" style="width:220px;height:160px;object-fit:contain;border-radius:10px;border:1px solid #fee2e2;" /></div>
-            {{/each}}
-          {{else}}
-            {{#each image_indexes}}
-              <div class="img-tile"><img src="{{lookup @root.imageUrls this}}" alt="Lot Image {{this}}" width="220" height="160" style="width:220px;height:160px;object-fit:contain;border-radius:10px;border:1px solid #fee2e2;" /></div>
-            {{/each}}
-          {{/if}}
-        </div>
-
         <!-- Items Table -->
         <div class="mt-4 overflow-x-auto">
           <table>
@@ -266,7 +253,7 @@
                 <th>Title</th>
                 <th>SN/VIN</th>
                 <th>Description</th>
-                <th>Details</th>
+                <th>Condition</th>
                 <th>Est. Value (CAD)</th>
                 <th>Image</th>
               </tr>
@@ -278,7 +265,7 @@
                     <td class="font-semibold text-gray-900">{{title}}</td>
                     <td>{{#if sn_vin}}{{sn_vin}}{{else}}not found{{/if}}</td>
                     <td class="whitespace-pre-line">{{#if description}}{{description}}{{else}}—{{/if}}</td>
-                    <td class="whitespace-pre-line">{{#if details}}{{details}}{{else}}—{{/if}}</td>
+                    <td class="whitespace-pre-line">{{#if condition}}{{condition}}{{else}}{{#if details}}{{details}}{{else}}—{{/if}}{{/if}}</td>
                     <td>{{#if estimated_value}}{{estimated_value}}{{else}}—{{/if}}</td>
                     <td>
                       {{#if (lookup @root.imageUrls image_local_index)}}

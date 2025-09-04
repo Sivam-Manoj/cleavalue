@@ -374,97 +374,100 @@ Wheel Base:
 `;
 
   const catalogue = `
-Grouping mode: catalogue (sales catalogue style)
-- Treat the provided images as one catalogue lot segment. Return exactly ONE lot that summarizes the set of images and also includes an 'items' array.
--only add item that 100% visible in the image not include item that is not visible in the image or half visible.
-- Each item represents a distinct saleable item within the lot segment.
-- Identify EVERY distinct saleable item visible across ALL provided images for this segment. Do NOT omit any item. If uncertain, include the item and note uncertainty in 'details'.
-- Lot-level fields: lot_id, title, description, condition, estimated_value, tags?, image_indexes (0-based indexes of the images for this lot).
-- REQUIRED item fields (table row fields):
-  - title: concise and specific. For vehicles, use: "YYYY Make Model Trim" (e.g., "2018 Honda Civic EX-L").
-  - sn_vin: string. If serial/VIN not visible or unknown, set to the literal text "not found".
-  - description: short description of the item.
-  - details: compact attributes (e.g., Price, Mileage, Condition, Transmission, Drivetrain, Extras like winter tires), when applicable.
-  - estimated_value: string in Canadian dollars, prefixed with CA$, e.g., "CA$12,500".
-  - image_local_index: integer (0-based) referencing the SINGLE best image among the provided images for this catalogue segment that most clearly shows this item. Always include this. If unsure, pick the clearest view.
-  - image_url: OPTIONAL direct URL for that image if and only if it is explicitly provided to you (do not fabricate). Base64 inputs will not have URLs.
-- Additional guidance:
+  Grouping mode: catalogue (sales catalogue style)
+  - Treat the provided images as one catalogue lot segment. Return exactly ONE lot that summarizes the set of images and also includes an 'items' array.
+  - Only include items that are fully visible in the images; do not include items that are partially visible or not visible.
+  - Each item represents a distinct saleable item within the lot segment.
+  - Identify EVERY distinct saleable item visible across ALL provided images for this segment. Do NOT omit any item. If uncertain, include the item and note uncertainty in 'details'.
+  - Lot-level fields: lot_id, title, description, condition, estimated_value, tags?, image_indexes (0-based indexes of the images for this lot).
+  - REQUIRED item fields (table row fields):
+    - title: concise and specific. For vehicles, use: "YYYY Make Model Trim" (e.g., "2018 Honda Civic EX-L").
+    - sn_vin: string. If serial/VIN not visible or unknown, set to the literal text "not found".
+    - description: short description of the item using the vehicle attribute order below — order by Section Order ascending and within each section keep the exact label order. Output only labels and values (no section headers).
+    - condition: string describing the item's condition with clear explanation of how you determined it.
+    - estimated_value: string in Canadian dollars, prefixed with CA$, e.g., "CA$12,500".
+    - image_local_index: integer (0-based) referencing the SINGLE best image among the provided images for this catalogue segment that most clearly shows this item. Always include this. If unsure, pick the clearest view.
+    - image_url: OPTIONAL direct URL for that image if and only if it is explicitly provided to you (do not fabricate). Base64 inputs will not have URLs.
+  - OPTIONAL item fields:
+    - details: compact attributes (e.g., Mileage, Transmission, Drivetrain, Extras like winter tires). Do not duplicate the price/value here; that belongs in 'estimated_value'.
+  - Additional guidance:
   - Titles must be concise and attention-grabbing; avoid repetition across items in the same lot.
   - If an item appears in multiple frames, do not duplicate the item; list it once.
   - Item description formatting (for each item.description):
     - Start with YEAR MAKE MODEL [TRIM/TYPE], followed by concise attributes separated by commas.
     - Extract as many of the following attribute labels as are clearly visible; do NOT fabricate; omit unknowns. Keep serial/VIN in 'sn_vin' and do not repeat it in the description.
-    - If the item is a VEHICLE,Generator, truck, or if it has SN/VIN strictly follow the vehicle attribute order below — order by Section Order ascending and within each section keep the exact label order. Output only labels and values (no section headers):
+    - If the item is a VEHICLE, strictly follow the vehicle attribute order below — order by Section Order ascending and within each section keep the exact label order. Output only labels and values (no section headers):
     - ${vehicleAttributeFieldList}
-    - For non-vehicle items, use the general attribute 
-
-    - Example formatting (single-line per item):
-      2002 Kenworth T800 T/A Truck Tractor, CAT C15 475 HP Diesel Engine, 18 Spd Trans, A/R Susp., WetKit, Sliding 5th Wheel, 16,000 lb Front, 46,000 lb Rear, Aluminum Wheels, Front Tires 385/65R22.5, Rear Tires 11R24.5, New CVI
+    - For non-vehicle items, use the general attributes:
   - Keep all output strictly valid JSON.
 `;
 
   const exampleCatalogue = `
-Example Output (catalogue):
-{
-  "lots": [
-    {
-      "lot_id": "lot-101",
-      "title": "Vehicle Listings — Two Sedans",
-      "description": "Two compact sedans with clean interiors; light exterior wear noted.",
-      "condition": "Mixed — Used",
-      "estimated_value": "CA$23,500",
-      "tags": ["vehicles", "sedans"],
-      "image_indexes": [0,1,2,3],
-      "items": [
-        {
-          "title": "2018 Honda Civic EX-L",
-          "sn_vin": "2HGFC1F97JH012345",
-          "description": "White exterior, black leather; clean interior.",
-          "details": "Price: CA$12,500; Mileage: 82,000 km; Condition: Used - Good; Transmission: Automatic; Drivetrain: FWD; Extras: winter tires included",
-          "estimated_value": "CA$12,500",
-          "image_local_index": 1
-        },
-        {
-          "title": "2017 Toyota Corolla LE",
-          "sn_vin": "not found",
-          "description": "Silver exterior; minor scuffs on rear bumper.",
-          "details": "Price: CA$11,000; Mileage: 95,500 km; Condition: Used - Fair; Transmission: Automatic; Drivetrain: FWD",
-          "estimated_value": "CA$11,000",
-          "image_local_index": 2
-        }
-      ]
-    }
-  ],
-  "summary": "Catalogue lot with 2 vehicles identified from 4 images."
-}`;
+  Example Output (catalogue):
+  {
+    "lots": [
+      {
+        "lot_id": "lot-101",
+        "title": "Vehicle Listings — Two Sedans",
+        "description": "Two compact sedans with clean interiors; light exterior wear noted.",
+        "condition": "Mixed — Used",
+        "estimated_value": "CA$23,500",
+        "tags": ["vehicles", "sedans"],
+        "image_indexes": [0,1,2,3],
+        "items": [
+          {
+            "title": "2018 Honda Civic EX-L",
+            "sn_vin": "2HGFC1F97JH012345",
+            "description": "White exterior, black leather; clean interior.",
+            "condition": "Used - Good",
+            "details": "Mileage: 82,000 km; Transmission: Automatic; Drivetrain: FWD; Extras: winter tires included",
+            "estimated_value": "CA$12,500",
+            "image_local_index": 1
+          },
+          {
+            "title": "2017 Toyota Corolla LE",
+            "sn_vin": "not found",
+            "description": "Silver exterior; minor scuffs on rear bumper.",
+            "condition": "Used - Fair",
+            "details": "Mileage: 95,500 km; Transmission: Automatic; Drivetrain: FWD",
+            "estimated_value": "CA$11,000",
+            "image_local_index": 2
+          }
+        ]
+      }
+    ],
+    "summary": "Catalogue lot with 2 vehicles identified from 4 images."
+  };
+`;
 
   const examplePerItem = `
-Example Output (per_item):
-{
-  "lots": [
-    {
-      "lot_id": "lot-001",
-      "title": "Canon EOS 80D DSLR Camera Body",
-      "serial_no_or_label": "SN: 12345678",
-      "description": "24MP DSLR camera body; light cosmetic wear.",
-      "details": "Includes battery and strap; shutter count unknown.",
-      "estimated_value": "CA$520",
-      "image_indexes": [0],
-      "image_url": null
-    },
-    {
-      "lot_id": "lot-002",
-      "title": "Canon EF-S 18-135mm Lens",
-      "serial_no_or_label": null,
-      "description": "Zoom lens attached in the same frame; no visible damage.",
-      "details": "Optical stabilization; standard zoom range.",
-      "estimated_value": "CA$180",
-      "image_indexes": [0],
-      "image_url": null
-    }
-  ],
-  "summary": "2 distinct items identified in a single image: camera body and lens."
-}`;
+  Example Output (per_item):
+  {
+    "lots": [
+      {
+        "lot_id": "lot-001",
+        "title": "Canon EOS 80D DSLR Camera Body",
+        "serial_no_or_label": "SN: 12345678",
+        "description": "24MP DSLR camera body; light cosmetic wear.",
+        "details": "Includes battery and strap; shutter count unknown.",
+        "estimated_value": "CA$520",
+        "image_indexes": [0],
+        "image_url": null
+      },
+      {
+        "lot_id": "lot-002",
+        "title": "Canon EF-S 18-135mm Lens",
+        "serial_no_or_label": null,
+        "description": "Zoom lens attached in the same frame; no visible damage.",
+        "details": "Optical stabilization; standard zoom range.",
+        "estimated_value": "CA$180",
+        "image_indexes": [0],
+        "image_url": null
+      }
+    ],
+    "summary": "2 distinct items identified in a single image: camera body and lens."
+  };
+`;
 
   const perPhoto = `
 Grouping mode: per_photo
