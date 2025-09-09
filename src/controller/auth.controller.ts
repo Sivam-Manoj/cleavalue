@@ -85,6 +85,10 @@ export const login = async (req: Request, res: Response) => {
         .json({ message: "Please verify your email before logging in." });
     }
 
+    if ((user as any).isBlocked) {
+      return res.status(403).json({ message: "Your account is blocked." });
+    }
+
     if (!user.password) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
@@ -232,6 +236,10 @@ export const refreshToken = async (req: Request, res: Response) => {
 
     if (!user) {
       return res.status(403).json({ message: "Invalid refresh token" });
+    }
+
+    if ((user as any).isBlocked) {
+      return res.status(403).json({ message: "Account is blocked" });
     }
 
     const tokenHash = crypto.createHash("sha256").update(token).digest("hex");

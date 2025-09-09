@@ -7,6 +7,7 @@ import realEstateRoutes from "./routes/realEstate.routes.js";
 import salvageRoutes from "./routes/salvage.routes.js";
 import assetRoutes from "./routes/asset.routes.js";
 import pdfReportRoutes from "./routes/pdfReport.routes.js";
+import adminRoutes from "./routes/admin.routes.js";
 import connectDB from "./config/database.js";
 import dotenv from "dotenv";
 import cors from "cors";
@@ -32,7 +33,9 @@ const startServer = async () => {
 
     // Ensure uploads directory exists (covers varied working directories)
     try {
-      await fs.mkdir(path.resolve(process.cwd(), "uploads"), { recursive: true });
+      await fs.mkdir(path.resolve(process.cwd(), "uploads"), {
+        recursive: true,
+      });
     } catch {}
 
     if (process.env.NODE_ENV === "development") {
@@ -42,6 +45,7 @@ const startServer = async () => {
             "https://www.clearvalue.site",
             "https://clearvalue.site",
             "http://localhost:3000",
+            "http://localhost:3001",
           ],
           credentials: true,
         })
@@ -54,6 +58,7 @@ const startServer = async () => {
     app.use("/api/salvage", salvageRoutes);
     app.use("/api/asset", assetRoutes);
     app.use("/api/reports", pdfReportRoutes);
+    app.use("/api/admin", adminRoutes);
 
     app.listen(port, () => {
       console.log(`Server running at http://localhost:${port}`);

@@ -29,6 +29,17 @@ const userSchema = new mongoose.Schema({
   companyAddress: {
     type: String,
   },
+  role: {
+    type: String,
+    enum: ['user', 'admin', 'superadmin'],
+    default: 'user',
+    index: true,
+  },
+  isBlocked: {
+    type: Boolean,
+    default: false,
+    index: true,
+  },
   authProvider: {
     type: String,
     required: true,

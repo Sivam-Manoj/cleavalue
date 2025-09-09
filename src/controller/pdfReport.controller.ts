@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import PdfReport from "../models/pdfReport.model.js";
 import fs from "fs/promises";
 import path from "path";
-import { AuthRequest } from "../types/authRequest.js";
+import type { AuthRequest } from "../middleware/auth.middleware.js";
 
 // @desc    Download a specific report
 // @route   GET /api/reports/:id/download
@@ -14,7 +14,29 @@ export const downloadReport = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "Report not found" });
     }
 
+    // Users cannot download until the report is approved. Admins and superadmins can bypass.
+    const role = (req as any)?.user?.role as string | undefined;
+    const isAdmin = role === "admin" || role === "superadmin";
+    // Non-admin users must be the owner
+    if (!isAdmin) {
+      if (String(report.user) !== String(req.userId)) {
+        return res.status(403).json({ message: "Not authorized to download this report" });
+      }
+    }
+    if (!isAdmin) {
+      const status = (report as any).approvalStatus as 'pending' | 'approved' | 'rejected' | undefined;
+      // Backward compatibility: missing status means pre-approval-era, allow download
+      if (status && status !== "approved") {
+        return res.status(403).json({ message: status === 'rejected' ? "Report was rejected" : "Report is not approved yet" });
+      }
+    }
+
     const filePath = path.resolve(process.cwd(), "reports", report.filename);
+    try {
+      await fs.access(filePath);
+    } catch {
+      return res.status(404).json({ message: "File not found on server" });
+    }
     res.download(filePath);
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
@@ -35,7 +57,14 @@ export const deleteReport = async (req: Request, res: Response) => {
 
     // Remove file from server
     const filePath = path.resolve(process.cwd(), "reports", report.filename);
-    await fs.unlink(filePath);
+    try {
+      await fs.unlink(filePath);
+    } catch (e: any) {
+      if (e?.code !== "ENOENT") {
+        // Only ignore missing file; rethrow other errors
+        throw e;
+      }
+    }
 
     // Remove record from DB
     await report.deleteOne();
@@ -65,8 +94,12 @@ export const getAllReports = async (req: Request, res: Response) => {
 // @access  Private
 export const getReportsByUser = async (req: AuthRequest, res: Response) => {
   try {
-    const reports = await PdfReport.find({ user: req.userId });
-    res.json(reports);
+    const reports = await PdfReport.find({ user: req.userId })
+      .sort({ createdAt: -1 })
+      .lean();
+    // Add 'type' alias for front-end compatibility
+    const result = (reports || []).map((r: any) => ({ ...r, type: r.type ?? r.reportType }));
+    res.json(result);
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
   }

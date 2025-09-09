@@ -9,6 +9,10 @@ export interface IPdfReport extends Document {
   reportType: 'RealEstate' | 'Salvage' | 'Asset';
   reportModel: 'RealEstateReport' | 'SalvageReport' | 'AssetReport';
   createdAt: Date;
+  approvalStatus: 'pending' | 'approved' | 'rejected';
+  approvalNote?: string;
+  reviewedBy?: mongoose.Schema.Types.ObjectId | null;
+  reviewedAt?: Date | null;
 }
 
 const PdfReportSchema: Schema = new Schema(
@@ -44,6 +48,26 @@ const PdfReportSchema: Schema = new Schema(
       type: Schema.Types.ObjectId,
       refPath: 'reportModel',
       required: true,
+    },
+    approvalStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'pending',
+      index: true,
+    },
+    approvalNote: {
+      type: String,
+      default: '',
+      maxlength: 2000,
+    },
+    reviewedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    reviewedAt: {
+      type: Date,
+      default: null,
     },
   },
   { timestamps: true }
