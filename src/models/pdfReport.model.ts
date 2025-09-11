@@ -8,6 +8,8 @@ export interface IPdfReport extends Document {
   report: mongoose.Schema.Types.ObjectId;
   reportType: 'RealEstate' | 'Salvage' | 'Asset';
   reportModel: 'RealEstateReport' | 'SalvageReport' | 'AssetReport';
+  fileType?: 'pdf' | 'docx' | 'xlsx';
+  filePath?: string; // relative path like "reports/<filename>"
   createdAt: Date;
   approvalStatus: 'pending' | 'approved' | 'rejected';
   approvalNote?: string;
@@ -20,6 +22,17 @@ const PdfReportSchema: Schema = new Schema(
     filename: {
       type: String,
       required: true,
+    },
+    fileType: {
+      type: String,
+      enum: ['pdf', 'docx', 'xlsx'],
+      required: false,
+      index: true,
+    },
+    filePath: {
+      type: String,
+      required: false,
+      default: '',
     },
     address: {
       type: String,

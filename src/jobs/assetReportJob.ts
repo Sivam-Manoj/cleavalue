@@ -6,6 +6,8 @@ import {
   type AssetAnalysisResult,
 } from "../service/assetOpenAIService.js";
 import { generateAssetDocxFromReport } from "../service/assetDocxService.js";
+import { generateAssetPdfFromReport } from "../service/assetPdfService.js";
+import { generateAssetXlsxFromReport } from "../service/xlsx/assetXlsxService.js";
 import {
   startProgress,
   updateProgress,
@@ -68,8 +70,16 @@ export async function runAssetReportJob({
   };
   const SERVER_WEIGHTS = {
     r2_upload: 0.2,
-    ai_analysis: 0.6,
-    generate_docx: 0.2,
+    ai_analysis: 0.5,
+    generate_pdf: 0.12,
+    generate_docx: 0.12,
+    generate_xlsx: 0.06,
+    save_pdf_file: 0.02,
+    save_docx_file: 0.02,
+    save_xlsx_file: 0.01,
+    create_pdf_record: 0.0,
+    create_docx_record: 0.0,
+    create_xlsx_record: 0.0,
     finalize: 0,
   } as const;
   let serverAccum = 0;
@@ -370,19 +380,31 @@ export async function runAssetReportJob({
       await newReport.save();
     });
 
-    const reportObjectForDocx = newReport.toObject();
-    const docxBuffer = await withStep(
-      "generate_docx",
-      "Generating DOCX",
-      async () => {
+    const reportObject = newReport.toObject();
+    // Generate all outputs concurrently
+    const [pdfBuffer, docxBuffer, xlsxBuffer] = await Promise.all([
+      withStep("generate_pdf", "Generating PDF", async () => {
         const t0 = Date.now();
         console.log(
-          `[AssetReportJob] DOCX generation start for report ${newReport._id} at ${new Date(
-            t0
-          ).toISOString()}`
+          `[AssetReportJob] PDF generation start for report ${newReport._id} at ${new Date(t0).toISOString()}`
+        );
+        const buf = await generateAssetPdfFromReport({
+          ...reportObject,
+          inspector_name: user?.name || "",
+        });
+        const t1 = Date.now();
+        console.log(
+          `[AssetReportJob] PDF generation finished in ${t1 - t0}ms for report ${newReport._id}`
+        );
+        return buf;
+      }),
+      withStep("generate_docx", "Generating DOCX", async () => {
+        const t0 = Date.now();
+        console.log(
+          `[AssetReportJob] DOCX generation start for report ${newReport._id} at ${new Date(t0).toISOString()}`
         );
         const buf = await generateAssetDocxFromReport({
-          ...reportObjectForDocx,
+          ...reportObject,
           inspector_name: user?.name || "",
         });
         const t1 = Date.now();
@@ -390,22 +412,62 @@ export async function runAssetReportJob({
           `[AssetReportJob] DOCX generation finished in ${t1 - t0}ms for report ${newReport._id}`
         );
         return buf;
-      }
-    );
+      }),
+      withStep("generate_xlsx", "Generating Excel", async () => {
+        const t0 = Date.now();
+        console.log(
+          `[AssetReportJob] XLSX generation start for report ${newReport._id} at ${new Date(t0).toISOString()}`
+        );
+        const buf = await generateAssetXlsxFromReport({
+          ...reportObject,
+          inspector_name: user?.name || "",
+        });
+        const t1 = Date.now();
+        console.log(
+          `[AssetReportJob] XLSX generation finished in ${t1 - t0}ms for report ${newReport._id}`
+        );
+        return buf;
+      }),
+    ]);
 
     const reportsDir = path.resolve(process.cwd(), "reports");
     await fs.mkdir(reportsDir, { recursive: true });
 
-    const filename = `asset-report-${newReport._id}-${Date.now()}.docx`;
-    const filePath = path.join(reportsDir, filename);
-    await withStep("save_docx_file", "Saving DOCX file", async () => {
-      const t0 = Date.now();
-      await fs.writeFile(filePath, docxBuffer);
-      const t1 = Date.now();
-      console.log(
-        `[AssetReportJob] DOCX saved to ${filePath} in ${t1 - t0}ms (size=${docxBuffer.length} bytes)`
-      );
-    });
+    const ts = Date.now();
+    const pdfFilename = `asset-report-${newReport._id}-${ts}.pdf`;
+    const docxFilename = `asset-report-${newReport._id}-${ts}.docx`;
+    const xlsxFilename = `asset-report-${newReport._id}-${ts}.xlsx`;
+
+    const pdfPath = path.join(reportsDir, pdfFilename);
+    const docxPath = path.join(reportsDir, docxFilename);
+    const xlsxPath = path.join(reportsDir, xlsxFilename);
+
+    await Promise.all([
+      withStep("save_pdf_file", "Saving PDF file", async () => {
+        const t0 = Date.now();
+        await fs.writeFile(pdfPath, pdfBuffer);
+        const t1 = Date.now();
+        console.log(
+          `[AssetReportJob] PDF saved to ${pdfPath} in ${t1 - t0}ms (size=${pdfBuffer.length} bytes)`
+        );
+      }),
+      withStep("save_docx_file", "Saving DOCX file", async () => {
+        const t0 = Date.now();
+        await fs.writeFile(docxPath, docxBuffer);
+        const t1 = Date.now();
+        console.log(
+          `[AssetReportJob] DOCX saved to ${docxPath} in ${t1 - t0}ms (size=${docxBuffer.length} bytes)`
+        );
+      }),
+      withStep("save_xlsx_file", "Saving XLSX file", async () => {
+        const t0 = Date.now();
+        await fs.writeFile(xlsxPath, xlsxBuffer);
+        const t1 = Date.now();
+        console.log(
+          `[AssetReportJob] XLSX saved to ${xlsxPath} in ${t1 - t0}ms (size=${xlsxBuffer.length} bytes)`
+        );
+      }),
+    ]);
 
     const parseEstimated = (val: unknown): number => {
       if (!val) return 0;
@@ -434,8 +496,11 @@ export async function runAssetReportJob({
         ? `CAD ${Math.round(totalValue).toLocaleString("en-CA")}`
         : "N/A";
 
-    const newPdfReport = new PdfReport({
-      filename,
+    // Create three approval records (pending by default)
+    const pdfRec = new PdfReport({
+      filename: pdfFilename,
+      fileType: "pdf",
+      filePath: path.join("reports", pdfFilename),
       user: user.id,
       report: newReport._id,
       reportType: "Asset",
@@ -443,33 +508,60 @@ export async function runAssetReportJob({
       address: `Asset Report (${lots.length} lots)`,
       fairMarketValue,
     });
-    await withStep("create_docx_record", "Creating DOCX record", async () => {
-      await newPdfReport.save();
+    const docxRec = new PdfReport({
+      filename: docxFilename,
+      fileType: "docx",
+      filePath: path.join("reports", docxFilename),
+      user: user.id,
+      report: newReport._id,
+      reportType: "Asset",
+      reportModel: "AssetReport",
+      address: `Asset Report (${lots.length} lots)`,
+      fairMarketValue,
     });
+    const xlsxRec = new PdfReport({
+      filename: xlsxFilename,
+      fileType: "xlsx",
+      filePath: path.join("reports", xlsxFilename),
+      user: user.id,
+      report: newReport._id,
+      reportType: "Asset",
+      reportModel: "AssetReport",
+      address: `Asset Report (${lots.length} lots)`,
+      fairMarketValue,
+    });
+    await Promise.all([
+      withStep("create_pdf_record", "Creating PDF record (pending approval)", async () => {
+        await pdfRec.save();
+      }),
+      withStep("create_docx_record", "Creating DOCX record (pending approval)", async () => {
+        await docxRec.save();
+      }),
+      withStep("create_xlsx_record", "Creating XLSX record (pending approval)", async () => {
+        await xlsxRec.save();
+      }),
+    ]);
 
     if (progressId) {
       setServerProg01(1);
       endProgress(progressId, true, "Completed");
     }
 
-    // Send notification email with link
-    const baseUrl =
-      process.env.NODE_ENV === "development"
-        ? "http://localhost:4000"
-        : "https://www.clearvalue.site";
-    const downloadUrl = `${baseUrl}/reports/${filename}`;
-    const subject = "Your Asset Report is ready";
+    // Send notification email (submitted for approval)
+    const webUrl = process.env.WEB_APP_URL || "http://localhost:3000";
+    const subject = "Your Asset reports were submitted for approval";
     const html = `
       <div style="font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;line-height:1.6;color:#111">
-        <h2 style="margin:0 0 12px">Asset Report Ready</h2>
+        <h2 style="margin:0 0 12px">Asset Reports Submitted</h2>
         <p>Hello${user?.name ? ` ${user.name}` : ""},</p>
-        <p>Your asset report has been generated successfully.</p>
-        <p>
-          <a href="${downloadUrl}" style="display:inline-block;background:#e11d48;color:#fff;padding:10px 14px;border-radius:6px;text-decoration:none">Download Report</a>
-        </p>
-        <p style="font-size:12px;color:#555">If the button doesn't work, copy and paste this link into your browser:<br />
-          <a href="${downloadUrl}">${downloadUrl}</a>
-        </p>
+        <p>Your Asset report outputs (PDF, DOCX, and Excel) have been generated and submitted for admin approval.</p>
+        <ul>
+          <li>PDF: ${pdfFilename}</li>
+          <li>DOCX: ${docxFilename}</li>
+          <li>Excel: ${xlsxFilename}</li>
+        </ul>
+        <p>You will receive an email when your reports are approved and ready to download.</p>
+        <p><a href="${webUrl}/reports" style="display:inline-block;background:#e11d48;color:#fff;padding:10px 14px;border-radius:6px;text-decoration:none">Go to Reports</a></p>
         <hr style="border:none;border-top:1px solid #eee;margin:16px 0" />
         <p style="font-size:12px;color:#777">ClearValue</p>
       </div>

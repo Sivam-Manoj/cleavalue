@@ -31,13 +31,16 @@ export const downloadReport = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    const filePath = path.resolve(process.cwd(), "reports", report.filename);
+    const preferred = (report as any).filePath as string | undefined;
+    const resolvedPath = preferred && preferred.trim().length > 0
+      ? path.resolve(process.cwd(), preferred)
+      : path.resolve(process.cwd(), "reports", report.filename);
     try {
-      await fs.access(filePath);
+      await fs.access(resolvedPath);
     } catch {
       return res.status(404).json({ message: "File not found on server" });
     }
-    res.download(filePath);
+    res.download(resolvedPath);
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
   }
