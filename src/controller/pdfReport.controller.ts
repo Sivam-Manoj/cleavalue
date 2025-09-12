@@ -58,8 +58,11 @@ export const deleteReport = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Report not found" });
     }
 
-    // Remove file from server
-    const filePath = path.resolve(process.cwd(), "reports", report.filename);
+    // Remove file from server (prefer stored filePath if present)
+    const preferred = (report as any).filePath as string | undefined;
+    const filePath = preferred && preferred.trim().length > 0
+      ? path.resolve(process.cwd(), preferred)
+      : path.resolve(process.cwd(), "reports", report.filename);
     try {
       await fs.unlink(filePath);
     } catch (e: any) {

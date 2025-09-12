@@ -17,6 +17,8 @@ import {
 import { sendEmail } from "../utils/sendVerificationEmail.js";
 import fs from "fs/promises";
 import path from "path";
+import { createWriteStream } from "fs";
+import archiver from "archiver";
 
 export type AssetGroupingMode =
   | "single_lot"
@@ -77,9 +79,12 @@ export async function runAssetReportJob({
     save_pdf_file: 0.02,
     save_docx_file: 0.02,
     save_xlsx_file: 0.01,
+    save_images_folder: 0.02,
+    zip_images: 0.02,
     create_pdf_record: 0.0,
     create_docx_record: 0.0,
     create_xlsx_record: 0.0,
+    create_images_record: 0.0,
     finalize: 0,
   } as const;
   let serverAccum = 0;
@@ -437,10 +442,14 @@ export async function runAssetReportJob({
     const pdfFilename = `asset-report-${newReport._id}-${ts}.pdf`;
     const docxFilename = `asset-report-${newReport._id}-${ts}.docx`;
     const xlsxFilename = `asset-report-${newReport._id}-${ts}.xlsx`;
+    const imagesFolderName = `asset-report-${newReport._id}-${ts}-images`;
+    const imagesZipFilename = `asset-report-${newReport._id}-${ts}-images.zip`;
 
     const pdfPath = path.join(reportsDir, pdfFilename);
     const docxPath = path.join(reportsDir, docxFilename);
     const xlsxPath = path.join(reportsDir, xlsxFilename);
+    const imagesDirPath = path.join(reportsDir, imagesFolderName);
+    const imagesZipPath = path.join(reportsDir, imagesZipFilename);
 
     await Promise.all([
       withStep("save_pdf_file", "Saving PDF file", async () => {
@@ -469,6 +478,54 @@ export async function runAssetReportJob({
       }),
     ]);
 
+    // Save original uploaded images into a folder and zip it
+    await withStep(
+      "save_images_folder",
+      "Saving original images to folder",
+      async () => {
+        await fs.mkdir(imagesDirPath, { recursive: true });
+        const extFromMime = (m?: string) => {
+          if (!m) return "";
+          if (m.includes("jpeg")) return ".jpg";
+          if (m.includes("png")) return ".png";
+          if (m.includes("webp")) return ".webp";
+          if (m.includes("heic")) return ".heic";
+          if (m.includes("heif")) return ".heif";
+          if (m.includes("gif")) return ".gif";
+          if (m.includes("bmp")) return ".bmp";
+          if (m.includes("tiff")) return ".tiff";
+          return "";
+        };
+        const sanitize = (name: string) =>
+          name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        for (let i = 0; i < images.length; i++) {
+          const file = images[i];
+          const orig = file.originalname || "";
+          const fallback = `image-${String(i + 1).padStart(3, "0")}`;
+          const ext =
+            path.extname(orig) || extFromMime((file as any)?.mimetype) || "";
+          const base = sanitize(
+            (orig && orig.split("/").pop()!) || fallback + ext
+          );
+          const filePath = path.join(imagesDirPath, base);
+          await fs.writeFile(filePath, file.buffer);
+        }
+      }
+    );
+
+    await withStep("zip_images", "Zipping images folder", async () => {
+      await new Promise<void>((resolve, reject) => {
+        const output = createWriteStream(imagesZipPath);
+        const archive = archiver("zip", { zlib: { level: 9 } });
+        output.on("close", () => resolve());
+        archive.on("error", (err: any) => reject(err));
+        archive.pipe(output);
+        archive.directory(imagesDirPath, false);
+        archive.finalize();
+      });
+      console.log(`[AssetReportJob] Images zipped to ${imagesZipPath}`);
+    });
+
     const parseEstimated = (val: unknown): number => {
       if (!val) return 0;
       let s = String(val).trim();
@@ -496,7 +553,7 @@ export async function runAssetReportJob({
         ? `CAD ${Math.round(totalValue).toLocaleString("en-CA")}`
         : "N/A";
 
-    // Create three approval records (pending by default)
+    // Create approval records (pending by default)
     const pdfRec = new PdfReport({
       filename: pdfFilename,
       fileType: "pdf",
@@ -530,16 +587,47 @@ export async function runAssetReportJob({
       address: `Asset Report (${lots.length} lots)`,
       fairMarketValue,
     });
+    const imagesRec = new PdfReport({
+      filename: imagesZipFilename,
+      fileType: "images",
+      filePath: path.join("reports", imagesZipFilename),
+      imagesFolderPath: path.join("reports", imagesFolderName),
+      user: user.id,
+      report: newReport._id,
+      reportType: "Asset",
+      reportModel: "AssetReport",
+      address: `Asset Report (${lots.length} lots) - Images`,
+      fairMarketValue,
+    });
     await Promise.all([
-      withStep("create_pdf_record", "Creating PDF record (pending approval)", async () => {
-        await pdfRec.save();
-      }),
-      withStep("create_docx_record", "Creating DOCX record (pending approval)", async () => {
-        await docxRec.save();
-      }),
-      withStep("create_xlsx_record", "Creating XLSX record (pending approval)", async () => {
-        await xlsxRec.save();
-      }),
+      withStep(
+        "create_pdf_record",
+        "Creating PDF record (pending approval)",
+        async () => {
+          await pdfRec.save();
+        }
+      ),
+      withStep(
+        "create_docx_record",
+        "Creating DOCX record (pending approval)",
+        async () => {
+          await docxRec.save();
+        }
+      ),
+      withStep(
+        "create_xlsx_record",
+        "Creating XLSX record (pending approval)",
+        async () => {
+          await xlsxRec.save();
+        }
+      ),
+      withStep(
+        "create_images_record",
+        "Creating IMAGES record (pending approval)",
+        async () => {
+          await imagesRec.save();
+        }
+      ),
     ]);
 
     if (progressId) {
@@ -554,11 +642,12 @@ export async function runAssetReportJob({
       <div style="font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;line-height:1.6;color:#111">
         <h2 style="margin:0 0 12px">Asset Reports Submitted</h2>
         <p>Hello${user?.name ? ` ${user.name}` : ""},</p>
-        <p>Your Asset report outputs (PDF, DOCX, and Excel) have been generated and submitted for admin approval.</p>
+        <p>Your Asset report outputs (PDF, DOCX, Excel, and Images ZIP) have been generated and submitted for admin approval.</p>
         <ul>
           <li>PDF: ${pdfFilename}</li>
           <li>DOCX: ${docxFilename}</li>
           <li>Excel: ${xlsxFilename}</li>
+          <li>Images ZIP: ${imagesZipFilename}</li>
         </ul>
         <p>You will receive an email when your reports are approved and ready to download.</p>
         <p><a href="${webUrl}/reports" style="display:inline-block;background:#e11d48;color:#fff;padding:10px 14px;border-radius:6px;text-decoration:none">Go to Reports</a></p>
