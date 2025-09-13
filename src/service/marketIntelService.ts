@@ -1,0 +1,161 @@
+import axios from "axios";
+import openai from "../utils/openaiClient.js";
+
+export type MarketIndicators = {
+  bullets: string[];
+  sources: { title: string; url: string }[];
+  series: { years: number[]; values: number[] };
+};
+
+/**
+ * Fetch market indicators using OpenAI Responses API with web_search_preview.
+ * Falls back to safe, sample values when unavailable or on any errors.
+ */
+export async function fetchMarketIndicators(
+  industry: string,
+  region?: string
+): Promise<MarketIndicators> {
+  const fallback: MarketIndicators = {
+    bullets: [
+      `Sample insight: ${industry} demand has shown steady growth over 5 years in ${region || "target region"}.`,
+      "Auction activity and secondary market pricing remain supportive of appraised values.",
+      "Capital expenditure cycles and infrastructure investments underpin medium‑term stability.",
+    ],
+    sources: [
+      { title: "Industry overview (sample)", url: "https://www.ritchiebros.com/market-trends" },
+      { title: "Equipment market trends (sample)", url: "https://www.statcan.gc.ca/" },
+      { title: "Machinery outlook (sample)", url: "https://fred.stlouisfed.org/" },
+    ],
+    series: { years: [2021, 2022, 2023, 2024, 2025], values: [3.6, 4.0, 4.2, 4.1, 4.3] },
+  };
+
+  // Use OpenAI web_search_preview to retrieve sources and insights
+  try {
+    const yearNow = new Date().getFullYear();
+    const prompt = `You are a market analyst. Using web search, produce:
+{
+  "bullets": ["3-5 concise insights about the ${industry} market${region ? ` in ${region}` : ""}"],
+  "sources": [{"title": "string", "url": "https://..."}],
+  "series": {"years": [${yearNow - 4}, ${yearNow - 3}, ${yearNow - 2}, ${yearNow - 1}, ${yearNow}], "values": [n1, n2, n3, n4, n5]}
+}
+Rules:
+- Output JSON ONLY with the exact keys and structure above — no prose before or after.
+- "values" represent an approximate market size or appraised value proxy in CAD billions with one decimal place.
+- Sources must be reputable pages relevant to the query.
+Query focus: ${industry} market ${region ? `in ${region}` : "(global or relevant region)"}.`;
+
+    const response = await openai.responses.create({
+      model: "gpt-4.1",
+      tools: [
+        {
+          type: "web_search_preview",
+          search_context_size: "high",
+        },
+      ],
+      input: prompt,
+    });
+
+    const content = (response as any)?.output_text as string | undefined;
+    let parsed: any | null = null;
+    if (content) {
+      // Try direct JSON parse first
+      try {
+        parsed = JSON.parse(content);
+      } catch {
+        // Fallback: capture JSON object substring
+        const m = content.match(/\{[\s\S]*\}/);
+        if (m && m[0]) {
+          try {
+            parsed = JSON.parse(m[0]);
+          } catch {
+            parsed = null;
+          }
+        }
+      }
+    }
+
+    if (!parsed) return fallback;
+
+    const bullets = Array.isArray(parsed.bullets)
+      ? parsed.bullets.filter((b: any) => typeof b === "string").slice(0, 5)
+      : [];
+    const sources = Array.isArray(parsed.sources)
+      ? parsed.sources
+          .map((s: any) => ({ title: String(s?.title || "Untitled"), url: String(s?.url || "") }))
+          .filter((s: any) => s.url)
+          .slice(0, 6)
+      : [];
+    const years = Array.isArray(parsed?.series?.years)
+      ? parsed.series.years.map((n: any) => Number(n)).filter((n: any) => Number.isFinite(n))
+      : [];
+    const values = Array.isArray(parsed?.series?.values)
+      ? parsed.series.values.map((n: any) => Number(n)).filter((n: any) => Number.isFinite(n))
+      : [];
+
+    const seriesOk = years.length === values.length && years.length >= 3;
+    return {
+      bullets: bullets.length ? bullets : fallback.bullets,
+      sources: sources.length ? sources : fallback.sources,
+      series: seriesOk ? { years, values } : fallback.series,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * Generate a line chart image Buffer using QuickChart.
+ * No API key required. Returns PNG bytes.
+ */
+export async function generateTrendChartImage(
+  years: number[],
+  values: number[],
+  title: string,
+  width = 1000,
+  height = 600
+): Promise<Buffer> {
+  const config = {
+    type: "line",
+    data: {
+      labels: years,
+      datasets: [
+        {
+          label: "Value (CAD Billions)",
+          data: values,
+          fill: false,
+          borderColor: "#D4AF37",
+          borderWidth: 3,
+          pointBackgroundColor: "#D4AF37",
+          pointRadius: 3,
+        },
+      ],
+    },
+    options: {
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: title },
+      },
+      scales: {
+        y: { title: { display: true, text: "Value (CAD Billions)" } },
+        x: { title: { display: true, text: "Year" } },
+      },
+    },
+  };
+
+  const url = `https://quickchart.io/chart?width=${width}&height=${height}&backgroundColor=white&devicePixelRatio=2&c=${encodeURIComponent(
+    JSON.stringify(config)
+  )}`;
+
+  const resp = await axios.get<ArrayBuffer>(url, { responseType: "arraybuffer", timeout: 15000 });
+  return Buffer.from(resp.data);
+}
+
+export async function fetchCanadaAndNorthAmericaIndicators(
+  industry: string
+): Promise<{ canada: MarketIndicators; northAmerica: MarketIndicators }> {
+  const [canada, northAmerica] = await Promise.all([
+    fetchMarketIndicators(industry, "Canada"),
+    fetchMarketIndicators(industry, "North America"),
+  ]);
+  return { canada, northAmerica };
+}
