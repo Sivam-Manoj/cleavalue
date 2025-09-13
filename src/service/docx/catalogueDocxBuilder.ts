@@ -1,6 +1,5 @@
 import fs from "fs/promises";
 import path from "path";
-import axios from "axios";
 import {
   Document,
   Packer,
@@ -8,118 +7,29 @@ import {
   HeadingLevel,
   AlignmentType,
   TextRun,
-  ImageRun,
   Table,
-  TableRow,
-  TableCell,
-  WidthType,
-  BorderStyle,
-  convertInchesToTwip,
-  TableLayoutType,
-  ShadingType,
-  VerticalAlign,
-  HeightRule,
   TableOfContents,
+  convertInchesToTwip,
   Header,
+  Footer,
   PageNumber,
 } from "docx";
+import { buildHeaderTable } from "./builders/header.js";
+import { buildCatalogueLots } from "./builders/catalogueLots.js";
+import { buildAppendixPhotoGallery } from "./builders/appendix.js";
+import { buildCover } from "./builders/cover.js";
+import { buildTOC } from "./builders/toc.js";
+import { buildTransmittalLetter } from "./builders/transmittal.js";
+import { buildCertificateOfAppraisal } from "./builders/certificate.js";
+import { buildMarketOverview } from "./builders/marketOverview.js";
 import {
-  fetchCanadaAndNorthAmericaIndicators,
-  generateTrendChartImage,
-} from "../marketIntelService.js";
+  formatDateUS,
+  formatMonthYear,
+  goldDivider,
+  buildKeyValueTable,
+} from "./builders/utils.js";
 
-function formatDateUS(dateString?: string): string {
-  if (!dateString) return "";
-  const d = new Date(dateString);
-  if (isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
-
-// Visual divider for major sections
-function goldDivider(): Paragraph {
-  return new Paragraph({
-    border: {
-      bottom: { style: BorderStyle.SINGLE, size: 16, color: "D4AF37" },
-    },
-    spacing: { before: 120, after: 160 },
-  });
-}
-
-function formatMonthYear(dateString?: string): string {
-  if (!dateString) return "";
-  const d = new Date(dateString);
-  if (isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-}
-
-async function dataUrlToBuffer(dataUrl: string): Promise<Buffer> {
-  const m = dataUrl.match(/^data:(.*?);base64,(.*)$/);
-  if (!m) throw new Error("Invalid data URL");
-  return Buffer.from(m[2], "base64");
-}
-
-async function fetchImageBuffer(url?: string | null): Promise<Buffer | null> {
-  try {
-    if (!url) return null;
-    if (url.startsWith("data:")) return await dataUrlToBuffer(url);
-    const resp = await axios.get<ArrayBuffer>(url, {
-      responseType: "arraybuffer",
-    });
-    return Buffer.from(resp.data);
-  } catch {
-    return null;
-  }
-}
-
-function buildKeyValueTable(
-  rows: Array<{ label: string; value?: string }>
-): Table {
-  return new Table({
-    width: { size: convertInchesToTwip(6.5), type: WidthType.DXA },
-    columnWidths: [
-      Math.round(convertInchesToTwip(6.5) * 0.32),
-      Math.round(convertInchesToTwip(6.5) * 0.68),
-    ],
-    borders: {
-      top: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      bottom: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      left: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      right: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
-      insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-    },
-    rows: rows.map(
-      (r) =>
-        new TableRow({
-          children: [
-            new TableCell({
-              margins: { top: 60, bottom: 60, left: 100, right: 100 },
-              shading: {
-                type: ShadingType.CLEAR,
-                fill: "F9FAFB",
-                color: "auto",
-              },
-              children: [
-                new Paragraph({
-                  children: [new TextRun({ text: r.label, bold: true })],
-                }),
-              ],
-            }),
-            new TableCell({
-              margins: { top: 60, bottom: 60, left: 100, right: 100 },
-              children: [
-                new Paragraph(r.value && r.value.trim() ? r.value : "—"),
-              ],
-            }),
-          ],
-        })
-    ),
-  });
-}
+// utils moved to ./builders/utils
 
 export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
   const lots: any[] = Array.isArray(reportData?.lots) ? reportData.lots : [];
@@ -137,794 +47,23 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
     logoBuffer = null;
   }
 
-  // Header: left (logo + contact), right (page number)
-  const headerLeftChildren: Paragraph[] = [];
-  if (logoBuffer) {
-    headerLeftChildren.push(
-      new Paragraph({
-        children: [
-          new ImageRun({
-            data: logoBuffer as any,
-            transformation: { width: 120, height: 42 },
-          } as any),
-        ],
-        spacing: { after: 40 },
-      })
-    );
-  }
-  headerLeftChildren.push(
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: "P.O. Box 3081 Regina, SK S4P 3G7",
-          size: 20,
-          color: "6B7280",
-        }),
-      ],
-      spacing: { after: 20 },
-    })
-  );
+  // Header table via builder
+  const headerTable = buildHeaderTable(logoBuffer, contentWidthTw);
 
-  headerLeftChildren.push(
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: "www.McDougallBay.com  (306)757-1747  johnwwilliams24@gmail.com",
-          size: 20,
-          color: "6B7280",
-        }),
-      ],
-      spacing: { after: 0 },
-    })
-  );
-
-  const headerTable = new Table({
-    width: { size: contentWidthTw, type: WidthType.DXA },
-    layout: TableLayoutType.FIXED,
-    columnWidths: [
-      Math.round(contentWidthTw * 0.7),
-      Math.round(contentWidthTw * 0.3),
-    ],
-    borders: {
-      top: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      bottom: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      left: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      right: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-    },
-    rows: [
-      new TableRow({
-        children: [
-          new TableCell({
-            margins: { top: 80, bottom: 40, left: 80, right: 80 },
-            children: headerLeftChildren,
-          }),
-          new TableCell({
-            margins: { top: 80, bottom: 40, left: 80, right: 80 },
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.RIGHT,
-                children: [
-                  PageNumber.CURRENT as any,
-                  new TextRun({ text: " | P a g e" }),
-                ],
-              }),
-            ],
-          }),
-        ],
-      }),
-    ],
-  });
-
-  const children: Array<Paragraph | Table> = [];
-
-  // Cover
-  const preparedFor =
-    (reportData?.client_name as string) ||
-    (reportData?.inspector_name as string) ||
-    "";
+  const children: Array<Paragraph | Table | TableOfContents> = [];
   const reportDate = formatDateUS(
     reportData?.createdAt || new Date().toISOString()
   );
-  const coverCellMarginTw = 60; // reduce side padding so content can span wider
-  const coverInnerWidthTw = contentWidthTw - coverCellMarginTw * 2;
-  // Top hero content
-  const coverTop: Paragraph[] = [];
-  if (logoBuffer) {
-    coverTop.push(
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 200 },
-        children: [
-          new ImageRun({
-            data: logoBuffer as any,
-            transformation: { width: 540, height: 192 },
-          } as any),
-        ],
-      })
-    );
-  }
-  coverTop.push(
-    new Paragraph({
-      text: "Asset Catalogue",
-      heading: HeadingLevel.TITLE,
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 120 },
-    })
-  );
-
-  // Contents page (after cover)
-  children.push(
-    new Paragraph({
-      text: "Contents",
-      heading: HeadingLevel.HEADING_1,
-      pageBreakBefore: true,
-      spacing: { after: 160 },
-    })
-  );
-  children.push(goldDivider());
-  children.push(
-    new TableOfContents("", {
-      hyperlink: true,
-      headingStyleRange: "1-5",
-    })
-  );
-
-  coverTop.push(
-    new Paragraph({
-      text: `${lots.length} Lots (${reportData?.grouping_mode || "catalogue"})`,
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 120 },
-    })
-  );
-  // Bottom-aligned details
-  const coverDetails = new Table({
-    width: { size: coverInnerWidthTw, type: WidthType.DXA },
-    layout: TableLayoutType.FIXED,
-    columnWidths: [
-      Math.round(coverInnerWidthTw * 0.28),
-      Math.round(coverInnerWidthTw * 0.72),
-    ],
-    borders: {
-      top: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
-      bottom: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
-      left: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
-      right: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
-      insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
-      insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-    },
-    rows: [
-      new TableRow({
-        children: [
-          new TableCell({
-            margins: { top: 80, bottom: 80, left: 120, right: 120 },
-            shading: { type: ShadingType.CLEAR, fill: "F9FAFB", color: "auto" },
-            children: [
-              new Paragraph({
-                children: [new TextRun({ text: "Prepared For", bold: true })],
-              }),
-            ],
-          }),
-          new TableCell({
-            margins: { top: 80, bottom: 80, left: 120, right: 120 },
-            children: [new Paragraph(preparedFor || "—")],
-          }),
-        ],
-      }),
-      new TableRow({
-        children: [
-          new TableCell({
-            margins: { top: 80, bottom: 80, left: 120, right: 120 },
-            shading: { type: ShadingType.CLEAR, fill: "F9FAFB", color: "auto" },
-            children: [
-              new Paragraph({
-                children: [new TextRun({ text: "Report Date", bold: true })],
-              }),
-            ],
-          }),
-          new TableCell({
-            margins: { top: 80, bottom: 80, left: 120, right: 120 },
-            children: [new Paragraph(reportDate || "—")],
-          }),
-        ],
-      }),
-    ],
-  });
-  children.push(
-    new Table({
-      width: { size: contentWidthTw, type: WidthType.DXA },
-      layout: TableLayoutType.FIXED,
-      columnWidths: [contentWidthTw],
-      borders: {
-        top: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-        bottom: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-        left: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-        right: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-        insideHorizontal: {
-          style: BorderStyle.SINGLE,
-          size: 1,
-          color: "FFFFFF",
-        },
-        insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      },
-      rows: [
-        new TableRow({
-          height: { value: convertInchesToTwip(6.5), rule: HeightRule.ATLEAST },
-          children: [
-            new TableCell({
-              margins: {
-                top: 240,
-                bottom: 120,
-                left: coverCellMarginTw,
-                right: coverCellMarginTw,
-              },
-              children: coverTop,
-            }),
-          ],
-        }),
-        new TableRow({
-          height: { value: convertInchesToTwip(2.0), rule: HeightRule.EXACT },
-          children: [
-            new TableCell({
-              margins: {
-                top: 120,
-                bottom: 120,
-                left: coverCellMarginTw,
-                right: coverCellMarginTw,
-              },
-              verticalAlign: VerticalAlign.BOTTOM,
-              children: [coverDetails],
-            }),
-          ],
-        }),
-      ],
-    })
-  );
-
-  // Certification of Inspection and Appraisal (after Certificate of Appraisal)
-  {
-    const appraiserName = String(reportData?.appraiser || "John Williams");
-    const companyName = String(
-      reportData?.appraisal_company || "McDougall Auctioneers Ltd."
-    );
-    const inspectedMY =
-      formatMonthYear(reportData?.inspection_date) || "February 2024";
-
-    children.push(
-      new Paragraph({
-        text: "CERTIFICATION OF INSPECTION AND APPRAISAL",
-        heading: HeadingLevel.HEADING_1,
-        pageBreakBefore: true,
-        spacing: { after: 160 },
-      })
-    );
-    children.push(goldDivider());
-    children.push(
-      new Paragraph({
-        style: "BodyLarge",
-        children: [
-          new TextRun({ text: "I do hereby certify that:", bold: true }),
-        ],
-        spacing: { after: 120 },
-        keepLines: true,
-        keepNext: true,
-      })
-    );
-    children.push(
-      new Paragraph({
-        style: "BodyLarge",
-        text: "The statement of fact contained in this appraisal report, upon which the analysis, opinions and conclusions expressed herein are based, are true and accurate.",
-        spacing: { after: 100 },
-        keepLines: true,
-        keepNext: true,
-      })
-    );
-    children.push(
-      new Paragraph({
-        style: "BodyLarge",
-        text: "The reported analyses, opinions and conclusions are limited only by the reported assumptions and limiting conditions and are our personal, unbiased professional analyses, opinions and conclusions.",
-        spacing: { after: 100 },
-        keepLines: true,
-        keepNext: true,
-      })
-    );
-    children.push(
-      new Paragraph({
-        style: "BodyLarge",
-        text: "We have no present or prospective interest in the subject property or assets which are the subject of this report, and we have no personal interest or bias with respect to the parties involved.",
-        spacing: { after: 100 },
-        keepLines: true,
-        keepNext: true,
-      })
-    );
-    children.push(
-      new Paragraph({
-        style: "BodyLarge",
-        text: `${appraiserName} of ${companyName} has successfully completed the personal property appraiser certification program with the Certified Personal Property Appraisers’ Group of Canada and is a member in good standing. This report was prepared in accordance with the standards and practices of the Certified Personal Property Appraisers Group, which has review authority of this report.`,
-        spacing: { after: 100 },
-        keepLines: true,
-        keepNext: true,
-      })
-    );
-    children.push(
-      new Paragraph({
-        style: "BodyLarge",
-        text: "Our engagement was not contingent upon developing or reporting predetermined results.",
-        spacing: { after: 60 },
-        keepLines: true,
-        keepNext: true,
-      })
-    );
-    children.push(
-      new Paragraph({
-        style: "BodyLarge",
-        text: "Our compensation was not contingent upon the reporting of a predetermined value, the amount of the value opinion, the attainment of a stipulated result, or the occurrence of a subsequent event directly related to the intended use of this appraisal.",
-        spacing: { after: 100 },
-        keepLines: true,
-        keepNext: true,
-      })
-    );
-    children.push(
-      new Paragraph({
-        style: "BodyLarge",
-        text: `An inspection of the assets included in this report was made by ${appraiserName} in ${inspectedMY}.`,
-        spacing: { after: 100 },
-        keepLines: true,
-        keepNext: true,
-      })
-    );
-    children.push(
-      new Paragraph({
-        style: "BodyLarge",
-        text: `No one other than the undersigned and any listed personnel provided significant appraisal assistance in the preparation, analysis, opinions, and conclusions concerning the property that is set forth in this appraisal report. ${appraiserName} conducted the site visits and research. ${appraiserName} examined and compared asking prices on the assets appraised.`,
-        spacing: { after: 160 },
-        keepLines: true,
-        keepNext: true,
-      })
-    );
-    children.push(
-      new Paragraph({
-        style: "BodyLarge",
-        text: "Sincerely:",
-        spacing: { after: 120 },
-      })
-    );
-    children.push(
-      new Paragraph({
-        style: "BodyLarge",
-        text: appraiserName,
-        spacing: { after: 80 },
-      })
-    );
-    children.push(
-      new Paragraph({
-        style: "BodyLarge",
-        children: [new TextRun({ text: companyName, bold: true })],
-      })
-    );
-  }
-
-  // Transmittal Letter (one page, clear spacing, large text)
-  const tlBodySize = 28; // ~14pt to help fit on one page
-  const clientName = String(reportData?.client_name || "XYZ Ltd");
-  const exclusiveUseBy = String(
-    (reportData as any)?.exclusive_use_by || "Borger Group of Companies"
-  );
-  const attentionName = String(
-    (reportData as any)?.attention || (reportData as any)?.contact_name || "LLL"
-  );
-  children.push(
-    new Paragraph({
-      text: "TRANSMITTAL LETTER",
-      heading: HeadingLevel.HEADING_1,
-      pageBreakBefore: true,
-      spacing: { after: 160 },
-    })
-  );
-  children.push(goldDivider());
-  children.push(
-    new Paragraph({
-      style: "BodyLarge",
-      children: [new TextRun({ text: reportDate })],
-      keepLines: true,
-      keepNext: true,
-      spacing: { after: 140 },
-    })
-  );
-  children.push(
-    new Paragraph({
-      style: "BodyLarge",
-      children: [new TextRun({ text: clientName, bold: true })],
-      keepLines: true,
-      keepNext: true,
-      spacing: { after: 120 },
-    })
-  );
-  children.push(
-    new Paragraph({
-      style: "BodyLarge",
-      children: [new TextRun({ text: `Attention: ${attentionName}` })],
-      keepLines: true,
-      keepNext: true,
-      spacing: { after: 80 },
-    })
-  );
-  children.push(
-    new Paragraph({
-      style: "BodyLarge",
-      children: [new TextRun({ text: `Re: ${clientName} – Asset Appraisal` })],
-      keepLines: true,
-      keepNext: true,
-      spacing: { after: 140 },
-    })
-  );
-  children.push(
-    new Paragraph({
-      style: "BodyLarge",
-      children: [new TextRun({ text: "Dear Sirs," })],
-      keepLines: true,
-      keepNext: true,
-      spacing: { after: 100 },
-    })
-  );
-  children.push(
-    new Paragraph({
-      style: "BodyLarge",
-      children: [
-        new TextRun({
-          text:
-            `At your request, we have prepared an appraisal of certain equipment owned by ${clientName}, a copy of which is enclosed. ` +
-            `This appraisal report is intended for exclusive use by ${exclusiveUseBy} and is intended only for establishing values of the listed equipment.`,
-        }),
-      ],
-      keepLines: true,
-      keepNext: true,
-      spacing: { after: 120 },
-    })
-  );
-  children.push(
-    new Paragraph({
-      style: "BodyLarge",
-      children: [
-        new TextRun({
-          text: "The subject assets were appraised under the premise of Orderly Liquidation Value for internal consideration.",
-        }),
-      ],
-      keepLines: true,
-      keepNext: true,
-      spacing: { after: 110 },
-    })
-  );
-  children.push(
-    new Paragraph({
-      style: "BodyLarge",
-      children: [
-        new TextRun({
-          text: "The cost and market approaches to value have been considered for this appraisal and have either been utilized where necessary or deemed inappropriate for the value conclusions found therein.",
-        }),
-      ],
-      keepLines: true,
-      keepNext: true,
-      spacing: { after: 110 },
-    })
-  );
-  children.push(
-    new Paragraph({
-      style: "BodyLarge",
-      children: [
-        new TextRun({
-          text: `After a thorough analysis of the assets and information made available to us, it is our opinion that as of the Effective Date, these assets have an Orderly Liquidation Value in Canadian Funds as shown on the certificate that we have prepared.`,
-        }),
-      ],
-      keepLines: true,
-      keepNext: true,
-      spacing: { after: 110 },
-    })
-  );
-  children.push(
-    new Paragraph({
-      style: "BodyLarge",
-      children: [
-        new TextRun({
-          text: "We certify that neither we nor any of our employees have any present or future interest in the appraised property. The fee charged for this appraisal was not contingent on the values reported. As such, the results stated in this letter of transmittal cannot be fully understood without the accompanying report and this letter should not be separated from the report.",
-        }),
-      ],
-      keepLines: true,
-      keepNext: true,
-      spacing: { after: 120 },
-    })
-  );
-  children.push(
-    new Paragraph({
-      style: "BodyLarge",
-      children: [
-        new TextRun({
-          text: "If you require any additional information, please feel free to contact me at your convenience.",
-        }),
-      ],
-      keepLines: true,
-      keepNext: true,
-      spacing: { after: 140 },
-    })
-  );
-  children.push(
-    new Paragraph({
-      style: "BodyLarge",
-      children: [new TextRun({ text: "Sincerely," })],
-      keepLines: true,
-      keepNext: true,
-      spacing: { before: 60, after: 120 },
-    })
-  );
-  const appraiserLine = `${reportData?.appraiser || "Certified Appraiser"}`;
-  const companyLine = `${reportData?.appraisal_company || "McDougall Auctioneers Ltd."}`;
-  children.push(
-    new Paragraph({
-      style: "BodyLarge",
-      children: [new TextRun({ text: appraiserLine })],
-      keepLines: true,
-      keepNext: true,
-      spacing: { after: 80 },
-    })
-  );
-  children.push(
-    new Paragraph({
-      style: "BodyLarge",
-      children: [new TextRun({ text: companyLine, bold: true })],
-    })
-  );
-
-  // Certificate of Appraisal
-  children.push(
-    new Paragraph({
-      text: "Certificate of Appraisal",
-      heading: HeadingLevel.HEADING_1,
-      pageBreakBefore: true,
-      spacing: { after: 160 },
-    })
-  );
-  children.push(goldDivider());
-  const totalVal =
-    (reportData?.total_appraised_value as string) ||
-    (reportData?.total_value as string) ||
-    (reportData?.analysis?.total_value as string) ||
-    undefined;
-  const preparedBy = [reportData?.appraiser, reportData?.appraisal_company]
-    .filter(Boolean)
-    .join(", ");
-  // Certificate inner width based on cell side margins
-  const certCellMarginTw = 60;
-  const certInnerWidthTw = contentWidthTw - certCellMarginTw * 2;
-
-  // Certificate block: bordered container with content
-  const certDetails = new Table({
-    width: { size: certInnerWidthTw, type: WidthType.DXA },
-    layout: TableLayoutType.FIXED,
-    columnWidths: [
-      Math.round(certInnerWidthTw * 0.34),
-      Math.round(certInnerWidthTw * 0.66),
-    ],
-    borders: {
-      top: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      bottom: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      left: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      right: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-    },
-    rows: [
-      new TableRow({
-        children: [
-          new TableCell({
-            margins: { top: 60, bottom: 60, left: 100, right: 100 },
-            children: [
-              new Paragraph({
-                children: [new TextRun({ text: "Client", bold: true })],
-              }),
-            ],
-          }),
-          new TableCell({
-            margins: { top: 60, bottom: 60, left: 100, right: 100 },
-            children: [new Paragraph(String(reportData?.client_name || "—"))],
-          }),
-        ],
-      }),
-      new TableRow({
-        children: [
-          new TableCell({
-            margins: { top: 60, bottom: 60, left: 100, right: 100 },
-            children: [
-              new Paragraph({
-                children: [new TextRun({ text: "Effective Date", bold: true })],
-              }),
-            ],
-          }),
-          new TableCell({
-            margins: { top: 60, bottom: 60, left: 100, right: 100 },
-            children: [
-              new Paragraph(
-                formatDateUS(reportData?.effective_date) || reportDate || "—"
-              ),
-            ],
-          }),
-        ],
-      }),
-      new TableRow({
-        children: [
-          new TableCell({
-            margins: { top: 60, bottom: 60, left: 100, right: 100 },
-            children: [
-              new Paragraph({
-                children: [new TextRun({ text: "Purpose", bold: true })],
-              }),
-            ],
-          }),
-          new TableCell({
-            margins: { top: 60, bottom: 60, left: 100, right: 100 },
-            children: [
-              new Paragraph(String(reportData?.appraisal_purpose || "—")),
-            ],
-          }),
-        ],
-      }),
-      new TableRow({
-        children: [
-          new TableCell({
-            margins: { top: 60, bottom: 60, left: 100, right: 100 },
-            children: [
-              new Paragraph({
-                children: [new TextRun({ text: "Prepared By", bold: true })],
-              }),
-            ],
-          }),
-          new TableCell({
-            margins: { top: 60, bottom: 60, left: 100, right: 100 },
-            children: [new Paragraph(preparedBy || "—")],
-          }),
-        ],
-      }),
-    ],
-  });
-
-  const signatureRow = new Table({
-    width: { size: certInnerWidthTw, type: WidthType.DXA },
-    layout: TableLayoutType.FIXED,
-    columnWidths: [
-      Math.round(certInnerWidthTw / 2),
-      Math.round(certInnerWidthTw / 2),
-    ],
-    borders: {
-      top: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      bottom: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      left: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      right: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-    },
-    rows: [
-      new TableRow({
-        children: [
-          new TableCell({
-            margins: { top: 80, bottom: 20, left: 100, right: 100 },
-            children: [
-              new Paragraph({
-                border: {
-                  top: { style: BorderStyle.SINGLE, size: 4, color: "A3A3A3" },
-                },
-                spacing: { before: 120, after: 60 },
-              }),
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [
-                  new TextRun({ text: "Appraiser Signature", color: "6B7280" }),
-                ],
-              }),
-            ],
-          }),
-          new TableCell({
-            margins: { top: 80, bottom: 20, left: 100, right: 100 },
-            children: [
-              new Paragraph({
-                border: {
-                  top: { style: BorderStyle.SINGLE, size: 4, color: "A3A3A3" },
-                },
-                spacing: { before: 120, after: 60 },
-              }),
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [
-                  new TextRun({ text: `Date: ${reportDate}`, color: "6B7280" }),
-                ],
-              }),
-            ],
-          }),
-        ],
-      }),
-    ],
-  });
-
-  children.push(
-    new Table({
-      width: { size: contentWidthTw, type: WidthType.DXA },
-      layout: TableLayoutType.FIXED,
-      columnWidths: [contentWidthTw],
-      borders: {
-        top: { style: BorderStyle.SINGLE, size: 16, color: "D4AF37" },
-        bottom: { style: BorderStyle.SINGLE, size: 16, color: "D4AF37" },
-        left: { style: BorderStyle.SINGLE, size: 16, color: "D4AF37" },
-        right: { style: BorderStyle.SINGLE, size: 16, color: "D4AF37" },
-        insideHorizontal: {
-          style: BorderStyle.SINGLE,
-          size: 16,
-          color: "D4AF37",
-        },
-        insideVertical: {
-          style: BorderStyle.SINGLE,
-          size: 16,
-          color: "D4AF37",
-        },
-      },
-      rows: [
-        new TableRow({
-          children: [
-            new TableCell({
-              margins: {
-                top: 240,
-                bottom: 240,
-                left: certCellMarginTw,
-                right: certCellMarginTw,
-              },
-              shading: {
-                type: ShadingType.CLEAR,
-                fill: "FFFFFF",
-                color: "auto",
-              },
-              children: [
-                new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  spacing: { after: 120 },
-                  children: [
-                    new TextRun({
-                      text: "CERTIFICATE OF APPRAISAL",
-                      bold: true,
-                      size: 44,
-                    }),
-                  ],
-                }),
-                new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  spacing: { after: 200 },
-                  children: [
-                    new TextRun({
-                      text: "This is to certify that the assets described herein have been appraised in accordance with accepted professional standards.",
-                      color: "374151",
-                    }),
-                  ],
-                }),
-                new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  spacing: { after: 200 },
-                  children: [
-                    new TextRun({
-                      text: totalVal ? String(totalVal) : "Value: see details",
-                      bold: true,
-                      size: 36,
-                    }),
-                  ],
-                }),
-                certDetails,
-                new Paragraph({
-                  text: "",
-                  spacing: { before: 120, after: 60 },
-                }),
-                signatureRow,
-              ],
-            }),
-          ],
-        }),
-      ],
-    })
+  // Build non-header sections separately (do not include in main children)
+  const coverChildren: Array<Paragraph | Table | TableOfContents> = [
+    buildCover(reportData, logoBuffer, contentWidthTw),
+  ];
+  const tocChildren = buildTOC(reportData);
+  const transmittalChildren = buildTransmittalLetter(reportData, reportDate);
+  const certificateChildren = buildCertificateOfAppraisal(
+    reportData,
+    contentWidthTw,
+    reportDate
   );
 
   // Report Summary
@@ -1104,22 +243,7 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
     })
   );
 
-  // Market Overview and Recent Trends (placeholder)
-  children.push(
-    new Paragraph({
-      text: "Market Overview and Recent Trends",
-      heading: HeadingLevel.HEADING_1,
-      pageBreakBefore: true,
-      spacing: { after: 80 },
-    })
-  );
-  children.push(goldDivider());
-  children.push(
-    new Paragraph({
-      style: "BodyLarge",
-      text: "This section is informed by the Market Overview pages in this report, which incorporate current market indicators and recent trends for Canada and North America.",
-    })
-  );
+  // (Removed placeholder Market Overview section; a full Market Overview with charts is added later)
 
   // Observations and Comments
   children.push(
@@ -1533,138 +657,8 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
     })
   );
 
-  // Market Overview (Canada & North America)
-  try {
-    const industry = String(reportData?.industry || "Construction Equipment");
-    const { canada, northAmerica } =
-      await fetchCanadaAndNorthAmericaIndicators(industry);
-
-    children.push(
-      new Paragraph({
-        text: "Market Overview",
-        heading: HeadingLevel.HEADING_1,
-        pageBreakBefore: true,
-        spacing: { after: 160 },
-      })
-    );
-
-    // Canada Highlights
-    if (Array.isArray(canada?.bullets) && canada.bullets.length) {
-      children.push(
-        new Paragraph({
-          text: "Canada Highlights",
-          heading: HeadingLevel.HEADING_2,
-          spacing: { after: 100 },
-        })
-      );
-      for (const b of canada.bullets) {
-        children.push(
-          new Paragraph({
-            text: String(b),
-            style: "BodyLarge",
-            bullet: { level: 0 },
-            spacing: { after: 40 },
-          })
-        );
-      }
-    }
-    // Canada Chart (separate chart)
-    const caChart = await generateTrendChartImage(
-      canada.series.years,
-      canada.series.values,
-      `${industry} – Canada (5-Year Trend)`,
-      1000,
-      600
-    );
-    children.push(
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 160 },
-        children: [
-          new ImageRun({
-            data: caChart as any,
-            transformation: { width: 640, height: 384 },
-          } as any),
-        ],
-      })
-    );
-
-    // North America Highlights
-    if (Array.isArray(northAmerica?.bullets) && northAmerica.bullets.length) {
-      children.push(
-        new Paragraph({
-          text: "North America Highlights",
-          heading: HeadingLevel.HEADING_2,
-          spacing: { after: 100 },
-        })
-      );
-      for (const b of northAmerica.bullets) {
-        children.push(
-          new Paragraph({
-            text: String(b),
-            style: "BodyLarge",
-            bullet: { level: 0 },
-            spacing: { after: 40 },
-          })
-        );
-      }
-    }
-    // North America Chart (separate chart)
-    const naChart = await generateTrendChartImage(
-      northAmerica.series.years,
-      northAmerica.series.values,
-      `${industry} – North America (5-Year Trend)`,
-      1000,
-      600
-    );
-    children.push(
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 160 },
-        children: [
-          new ImageRun({
-            data: naChart as any,
-            transformation: { width: 640, height: 384 },
-          } as any),
-        ],
-      })
-    );
-
-    // References (combined unique by URL)
-    const combined = [
-      ...(Array.isArray(canada?.sources) ? canada.sources : []),
-      ...(Array.isArray(northAmerica?.sources) ? northAmerica.sources : []),
-    ];
-    const seen = new Set<string>();
-    const uniqueRefs = combined.filter((s) => {
-      const key = (s?.url || "").trim().toLowerCase();
-      if (!key || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-    if (uniqueRefs.length) {
-      children.push(
-        new Paragraph({
-          text: "References",
-          heading: HeadingLevel.HEADING_2,
-          spacing: { before: 80, after: 120 },
-        })
-      );
-      children.push(goldDivider());
-      for (const s of uniqueRefs) {
-        children.push(
-          new Paragraph({
-            text: `${s.title} — ${s.url}`,
-            style: "BodyLarge",
-            bullet: { level: 0 },
-            spacing: { after: 40 },
-          })
-        );
-      }
-    }
-  } catch {
-    // Non-fatal: continue without market page on error
-  }
+  // Market Overview via builder
+  children.push(...(await buildMarketOverview(reportData)));
 
   // Scope & Methodology
   children.push(
@@ -1807,369 +801,18 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
     })
   );
 
-  // Catalogue (Lots)
-  if (lots.length) {
-    children.push(
-      new Paragraph({
-        text: "Catalogue",
-        heading: HeadingLevel.HEADING_1,
-        pageBreakBefore: true,
-        spacing: { after: 160 },
-      })
-    );
-    children.push(goldDivider());
-  }
-  // Lots
-  for (const lot of lots) {
-    children.push(
-      new Paragraph({
-        text: `Lot ${lot?.lot_id || ""} — ${lot?.title || "Lot"}`,
-        heading: HeadingLevel.HEADING_2,
-        spacing: { after: 120 },
-      })
-    );
-    if (lot?.description)
-      children.push(
-        new Paragraph({
-          text: String(lot.description),
-          spacing: { after: 160 },
-        })
-      );
-    const badges: string[] = [];
-    if (lot?.condition) badges.push(`Condition: ${lot.condition}`);
-    if (lot?.estimated_value) badges.push(`Est. Value: ${lot.estimated_value}`);
-    if (lot?.items?.length) badges.push(`Items: ${lot.items.length}`);
-    if (badges.length)
-      children.push(
-        new Paragraph({ text: badges.join("  •  "), spacing: { after: 200 } })
-      );
-
-    // Lot images (prefer lot.image_urls, else lot.image_indexes -> root imageUrls)
-    const lotImgUrls: string[] = Array.isArray(lot?.image_urls)
-      ? lot.image_urls
-      : Array.isArray(lot?.image_indexes)
-        ? (lot.image_indexes as number[])
-            .map((idx: number) => rootImageUrls?.[idx])
-            .filter(Boolean)
-        : [];
-    // Images grid removed above the items table per requirements
-
-    // Items table
-    const items: any[] = Array.isArray(lot?.items) ? lot.items : [];
-    if (items.length) {
-      // Fixed layout: column widths sum to content width (6.5in)
-      const contentWidthTw = convertInchesToTwip(6.5);
-      const w = {
-        title: Math.round(contentWidthTw * 0.18),
-        sn: Math.round(contentWidthTw * 0.1),
-        desc: Math.round(contentWidthTw * 0.24),
-        details: Math.round(contentWidthTw * 0.18),
-        value: Math.round(contentWidthTw * 0.1),
-        image: Math.round(contentWidthTw * 0.2),
-      };
-      const cellMargins = { top: 80, bottom: 80, left: 100, right: 100 };
-
-      const header = new TableRow({
-        cantSplit: true,
-        children: [
-          new TableCell({
-            width: { size: w.title, type: WidthType.DXA },
-            margins: cellMargins,
-            verticalAlign: VerticalAlign.CENTER,
-            shading: { type: ShadingType.CLEAR, fill: "E5E7EB", color: "auto" },
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: "Title", bold: true })],
-              }),
-            ],
-          }),
-          new TableCell({
-            width: { size: w.sn, type: WidthType.DXA },
-            margins: cellMargins,
-            verticalAlign: VerticalAlign.CENTER,
-            shading: { type: ShadingType.CLEAR, fill: "E5E7EB", color: "auto" },
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: "SN/VIN", bold: true })],
-              }),
-            ],
-          }),
-          new TableCell({
-            width: { size: w.desc, type: WidthType.DXA },
-            margins: cellMargins,
-            verticalAlign: VerticalAlign.CENTER,
-            shading: { type: ShadingType.CLEAR, fill: "E5E7EB", color: "auto" },
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: "Description", bold: true })],
-              }),
-            ],
-          }),
-          new TableCell({
-            width: { size: w.details, type: WidthType.DXA },
-            margins: cellMargins,
-            verticalAlign: VerticalAlign.CENTER,
-            shading: { type: ShadingType.CLEAR, fill: "E5E7EB", color: "auto" },
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: "Condition", bold: true })],
-              }),
-            ],
-          }),
-          new TableCell({
-            width: { size: w.value, type: WidthType.DXA },
-            margins: cellMargins,
-            verticalAlign: VerticalAlign.CENTER,
-            shading: { type: ShadingType.CLEAR, fill: "E5E7EB", color: "auto" },
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [
-                  new TextRun({ text: "Est. Value (CAD)", bold: true }),
-                ],
-              }),
-            ],
-          }),
-          new TableCell({
-            width: { size: w.image, type: WidthType.DXA },
-            margins: cellMargins,
-            verticalAlign: VerticalAlign.CENTER,
-            shading: { type: ShadingType.CLEAR, fill: "E5E7EB", color: "auto" },
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: "Image", bold: true })],
-              }),
-            ],
-          }),
-        ],
-      });
-
-      const bodyRows: TableRow[] = [];
-      for (const item of items) {
-        // Resolve best image URL for item: image_local_index -> image_index -> image_url
-        let itemImgUrl: string | undefined;
-        if (
-          typeof item?.image_local_index === "number" &&
-          rootImageUrls?.[item.image_local_index]
-        ) {
-          itemImgUrl = rootImageUrls[item.image_local_index];
-        } else if (
-          typeof item?.image_index === "number" &&
-          rootImageUrls?.[item.image_index]
-        ) {
-          itemImgUrl = rootImageUrls[item.image_index];
-        } else if (typeof item?.image_url === "string") {
-          itemImgUrl = item.image_url;
-        }
-        const imgBuf = await fetchImageBuffer(itemImgUrl);
-        const zebra = bodyRows.length % 2 === 1; // apply to every 2nd row
-        bodyRows.push(
-          new TableRow({
-            cantSplit: true,
-            children: [
-              new TableCell({
-                width: { size: w.title, type: WidthType.DXA },
-                margins: cellMargins,
-                verticalAlign: VerticalAlign.CENTER,
-                shading: zebra
-                  ? { type: ShadingType.CLEAR, fill: "FAFAFA", color: "auto" }
-                  : undefined,
-                children: [new Paragraph(String(item?.title || ""))],
-              }),
-              new TableCell({
-                width: { size: w.sn, type: WidthType.DXA },
-                margins: cellMargins,
-                verticalAlign: VerticalAlign.CENTER,
-                shading: zebra
-                  ? { type: ShadingType.CLEAR, fill: "FAFAFA", color: "auto" }
-                  : undefined,
-                children: [
-                  new Paragraph({
-                    alignment: AlignmentType.CENTER,
-                    text: item?.sn_vin ? String(item.sn_vin) : "not found",
-                  }),
-                ],
-              }),
-              new TableCell({
-                width: { size: w.desc, type: WidthType.DXA },
-                margins: cellMargins,
-                verticalAlign: VerticalAlign.CENTER,
-                shading: zebra
-                  ? { type: ShadingType.CLEAR, fill: "FAFAFA", color: "auto" }
-                  : undefined,
-                children: [new Paragraph(String(item?.description || "—"))],
-              }),
-              new TableCell({
-                width: { size: w.details, type: WidthType.DXA },
-                margins: cellMargins,
-                verticalAlign: VerticalAlign.CENTER,
-                shading: zebra
-                  ? { type: ShadingType.CLEAR, fill: "FAFAFA", color: "auto" }
-                  : undefined,
-                children: [
-                  new Paragraph(
-                    String(item?.condition ?? item?.details ?? "—")
-                  ),
-                ],
-              }),
-              new TableCell({
-                width: { size: w.value, type: WidthType.DXA },
-                margins: cellMargins,
-                verticalAlign: VerticalAlign.CENTER,
-                shading: zebra
-                  ? { type: ShadingType.CLEAR, fill: "FAFAFA", color: "auto" }
-                  : undefined,
-                children: [
-                  new Paragraph({
-                    alignment: AlignmentType.RIGHT,
-                    text: String(item?.estimated_value || "—"),
-                  }),
-                ],
-              }),
-              new TableCell({
-                width: { size: w.image, type: WidthType.DXA },
-                margins: cellMargins,
-                verticalAlign: VerticalAlign.CENTER,
-                shading: zebra
-                  ? { type: ShadingType.CLEAR, fill: "FAFAFA", color: "auto" }
-                  : undefined,
-                children: imgBuf
-                  ? [
-                      new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        children: [
-                          new ImageRun({
-                            data: imgBuf as any,
-                            transformation: { width: 96, height: 72 },
-                          } as any),
-                        ],
-                      }),
-                    ]
-                  : [
-                      new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        children: [
-                          new TextRun({
-                            text: "No image",
-                            italics: true,
-                            color: "6B7280",
-                          }),
-                        ],
-                      }),
-                    ],
-              }),
-            ],
-          })
-        );
-      }
-      // breathing space before table
-      children.push(
-        new Paragraph({ text: "", spacing: { before: 160, after: 120 } })
-      );
-      children.push(
-        new Table({
-          width: { size: contentWidthTw, type: WidthType.DXA },
-          layout: TableLayoutType.FIXED,
-          alignment: AlignmentType.LEFT,
-          columnWidths: [w.title, w.sn, w.desc, w.details, w.value, w.image],
-          borders: {
-            top: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
-            bottom: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
-            left: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
-            right: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
-            insideHorizontal: {
-              style: BorderStyle.SINGLE,
-              size: 1,
-              color: "F3F4F6",
-            },
-            insideVertical: {
-              style: BorderStyle.SINGLE,
-              size: 1,
-              color: "F3F4F6",
-            },
-          },
-          rows: [header, ...bodyRows],
-        })
-      );
-    }
-  }
-
-  // Appendix – Photo Gallery
-  try {
-    const gallery = rootImageUrls.slice(0, Math.min(12, rootImageUrls.length));
-    const buffers = await Promise.all(gallery.map((u) => fetchImageBuffer(u)));
-    const valid = buffers.filter((b): b is Buffer => !!b);
-    if (valid.length) {
-      children.push(
-        new Paragraph({
-          text: "Appendix – Photo Gallery",
-          heading: HeadingLevel.HEADING_1,
-          pageBreakBefore: true,
-          spacing: { after: 160 },
-        })
-      );
-      children.push(goldDivider());
-      const cellMargins = { top: 80, bottom: 80, left: 80, right: 80 };
-      const half = Math.round(contentWidthTw / 2);
-      const rows: TableRow[] = [];
-      for (let i = 0; i < valid.length; i += 2) {
-        const left = valid[i];
-        const right = valid[i + 1];
-        rows.push(
-          new TableRow({
-            children: [
-              new TableCell({
-                width: { size: half, type: WidthType.DXA },
-                margins: cellMargins,
-                children: [
-                  new Paragraph({
-                    alignment: AlignmentType.CENTER,
-                    children: [
-                      new ImageRun({
-                        data: left as any,
-                        transformation: { width: 288, height: 216 },
-                      } as any),
-                    ],
-                  }),
-                ],
-              }),
-              new TableCell({
-                width: { size: half, type: WidthType.DXA },
-                margins: cellMargins,
-                children: right
-                  ? [
-                      new Paragraph({
-                        alignment: AlignmentType.CENTER,
-                        children: [
-                          new ImageRun({
-                            data: right as any,
-                            transformation: { width: 288, height: 216 },
-                          } as any),
-                        ],
-                      }),
-                    ]
-                  : [new Paragraph({ text: "" })],
-              }),
-            ],
-          })
-        );
-      }
-      children.push(
-        new Table({
-          width: { size: contentWidthTw, type: WidthType.DXA },
-          columnWidths: [half, half],
-          rows,
-        })
-      );
-    }
-  } catch {
-    // ignore
-  }
+  // Catalogue (Lots) and Appendix via builders
+  const lotsChildren = await buildCatalogueLots(
+    reportData,
+    rootImageUrls,
+    contentWidthTw
+  );
+  children.push(...lotsChildren);
+  const appendixChildren = await buildAppendixPhotoGallery(
+    rootImageUrls,
+    contentWidthTw
+  );
+  children.push(...appendixChildren);
 
   // Finalize document with sections and pack
   const doc = new Document({
@@ -2179,6 +822,7 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
       "ClearValue",
     title:
       (reportData?.title as string) || `Asset Catalogue - ${lots.length} Lots`,
+    features: { updateFields: true },
     styles: {
       default: {
         document: {
@@ -2188,7 +832,7 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
             color: "111827", // gray-900
           },
           paragraph: {
-            spacing: { line: 276, before: 0, after: 120 }, // ~1.15 line height
+            spacing: { line: 276, before: 0, after: 80 }, // slightly tighter
           },
         },
       },
@@ -2208,7 +852,7 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
           next: "Normal",
           quickFormat: true,
           run: { size: 44, bold: true, color: "111827" }, // ~22pt
-          paragraph: { spacing: { before: 240, after: 140 } },
+          paragraph: { spacing: { before: 180, after: 100 } },
         },
         {
           id: "Heading2",
@@ -2217,7 +861,7 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
           next: "Normal",
           quickFormat: true,
           run: { size: 32, bold: true, color: "111827" }, // ~16pt
-          paragraph: { spacing: { before: 200, after: 100 } },
+          paragraph: { spacing: { before: 140, after: 80 } },
         },
         {
           id: "BodyLarge",
@@ -2226,7 +870,7 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
           next: "Normal",
           quickFormat: true,
           run: { size: 28, color: "111827" }, // ~14pt
-          paragraph: { spacing: { line: 276, after: 120 } },
+          paragraph: { spacing: { line: 276, after: 80 } },
         },
         {
           id: "Title",
@@ -2236,13 +880,14 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
           quickFormat: true,
           run: { size: 52, bold: true, color: "111827" }, // ~26pt
           paragraph: {
-            spacing: { before: 200, after: 160 },
+            spacing: { before: 160, after: 120 },
             alignment: AlignmentType.CENTER,
           },
         },
       ],
     },
     sections: [
+      // Cover (no header/footer)
       {
         properties: {
           page: {
@@ -2254,9 +899,86 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
             },
           },
         },
+        headers: { default: new Header({ children: [] }) },
+        footers: { default: new Footer({ children: [] }) },
+        children: coverChildren,
+      },
+      // Table of Contents (no header/footer)
+      {
+        properties: {
+          page: {
+            margin: {
+              top: convertInchesToTwip(1),
+              right: convertInchesToTwip(1),
+              bottom: convertInchesToTwip(1),
+              left: convertInchesToTwip(1),
+            },
+          },
+        },
+        headers: { default: new Header({ children: [] }) },
+        footers: { default: new Footer({ children: [] }) },
+        children: tocChildren,
+      },
+      // Transmittal Letter (no header/footer)
+      {
+        properties: {
+          page: {
+            margin: {
+              top: convertInchesToTwip(1),
+              right: convertInchesToTwip(1),
+              bottom: convertInchesToTwip(1),
+              left: convertInchesToTwip(1),
+            },
+          },
+        },
+        headers: { default: new Header({ children: [] }) },
+        footers: { default: new Footer({ children: [] }) },
+        children: transmittalChildren,
+      },
+      // Certificate of Appraisal (no header/footer)
+      {
+        properties: {
+          page: {
+            margin: {
+              top: convertInchesToTwip(1),
+              right: convertInchesToTwip(1),
+              bottom: convertInchesToTwip(1),
+              left: convertInchesToTwip(1),
+            },
+          },
+        },
+        headers: { default: new Header({ children: [] }) },
+        footers: { default: new Footer({ children: [] }) },
+        children: certificateChildren as any,
+      },
+      // Main content (with header/footer). Restart page numbers at 1.
+      {
+        properties: {
+          page: {
+            margin: {
+              top: convertInchesToTwip(1),
+              right: convertInchesToTwip(1),
+              bottom: convertInchesToTwip(1),
+              left: convertInchesToTwip(1),
+            },
+            pageNumbers: { start: 1 },
+          },
+        },
         headers: {
           default: new Header({ children: [headerTable] }),
-          first: new Header({ children: [] }),
+        },
+        footers: {
+          default: new Footer({
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                  new TextRun({ text: "Page " }),
+                  PageNumber.CURRENT as any,
+                ],
+              }),
+            ],
+          }),
         },
         children,
       },

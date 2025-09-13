@@ -2,6 +2,10 @@ import puppeteer from "puppeteer";
 import handlebars from "handlebars";
 import fs from "fs/promises";
 import path from "path";
+import {
+  fetchCanadaAndNorthAmericaIndicators,
+  generateTrendChartImage,
+} from "./marketIntelService.js";
 
 // Helpers
 handlebars.registerHelper("formatDate", function (dateString) {
@@ -34,8 +38,63 @@ export async function generateAssetPdfFromReport(reportData: any): Promise<Buffe
 
     const sanitizedData = JSON.parse(JSON.stringify(reportData));
 
+    // Prepare Market Overview data (bullets, sources, and chart images)
+    let market: any = null;
+    try {
+      const industry = String(reportData?.industry || "Construction Equipment");
+      const { canada, northAmerica } =
+        await fetchCanadaAndNorthAmericaIndicators(industry);
+
+      const caChart = await generateTrendChartImage(
+        canada.series.years,
+        canada.series.values,
+        `${industry} – Canada (5-Year Trend)`,
+        1000,
+        600
+      );
+      const naChart = await generateTrendChartImage(
+        northAmerica.series.years,
+        northAmerica.series.values,
+        `${industry} – North America (5-Year Trend)`,
+        1000,
+        600
+      );
+
+      const caChartUrl = `data:image/png;base64,${Buffer.from(caChart).toString(
+        "base64"
+      )}`;
+      const naChartUrl = `data:image/png;base64,${Buffer.from(naChart).toString(
+        "base64"
+      )}`;
+
+      // Unique sources by URL
+      const combined = [
+        ...(Array.isArray(canada?.sources) ? canada.sources : []),
+        ...(Array.isArray(northAmerica?.sources) ? northAmerica.sources : []),
+      ];
+      const seen = new Set<string>();
+      const uniqueRefs = combined.filter((s: any) => {
+        const key = (s?.url || "").trim().toLowerCase();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      market = {
+        canada: { bullets: canada?.bullets || [], chart: caChartUrl },
+        northAmerica: {
+          bullets: northAmerica?.bullets || [],
+          chart: naChartUrl,
+        },
+        sources: uniqueRefs,
+      };
+    } catch {
+      market = null; // non-fatal
+    }
+
     const dataForPdf = {
       logo_url: logoUrl,
+      market,
       ...sanitizedData,
     };
 
@@ -48,10 +107,33 @@ export async function generateAssetPdfFromReport(reportData: any): Promise<Buffe
     const page = await browser.newPage();
     await page.setContent(finalHtml, { waitUntil: "networkidle0", timeout: 120000 });
 
+    // Header/Footer templates for consistent branding and page numbers
+    const headerTemplate = `
+      <style>
+        .pdf-header { font-size:8px; color:#6B7280; width:100%; padding: 4px 20px; }
+        .pdf-header .right { float:right; }
+        .pdf-header img { vertical-align:middle; height:16px; margin-right:8px; }
+      </style>
+      <div class="pdf-header">
+        <span><img src="${logoUrl}" /> P.O. Box 3081 Regina, SK S4P 3G7 · www.McDougallBay.com · (306)757-1747 · johnwwilliams24@gmail.com</span>
+      </div>`;
+
+    const footerTemplate = `
+      <style>
+        .pdf-footer { font-size:8px; color:#6B7280; width:100%; padding: 4px 20px; }
+        .pdf-footer .page { float:right; }
+      </style>
+      <div class="pdf-footer">
+        <span class="page"><span class="pageNumber"></span> / <span class="totalPages"></span></span>
+      </div>`;
+
     const pdfBuffer = await page.pdf({
       format: "A4",
       printBackground: true,
-      margin: { top: "20px", right: "20px", bottom: "20px", left: "20px" },
+      displayHeaderFooter: true,
+      headerTemplate,
+      footerTemplate,
+      margin: { top: "60px", right: "20px", bottom: "60px", left: "20px" },
     });
 
     await browser.close();

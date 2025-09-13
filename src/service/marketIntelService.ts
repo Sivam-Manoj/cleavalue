@@ -150,6 +150,51 @@ export async function generateTrendChartImage(
   return Buffer.from(resp.data);
 }
 
+/**
+ * Generate a bar chart image Buffer using QuickChart.
+ * Used for North America highlights.
+ */
+export async function generateBarChartImage(
+  years: number[],
+  values: number[],
+  title: string,
+  width = 1000,
+  height = 600
+): Promise<Buffer> {
+  const config = {
+    type: "bar",
+    data: {
+      labels: years,
+      datasets: [
+        {
+          label: "Value (CAD Billions)",
+          data: values,
+          backgroundColor: "#D4AF37",
+          borderColor: "#B68F2C",
+          borderWidth: 1,
+        },
+      ],
+    },
+    options: {
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: title },
+      },
+      scales: {
+        y: { title: { display: true, text: "Value (CAD Billions)" }, beginAtZero: true },
+        x: { title: { display: true, text: "Year" } },
+      },
+    },
+  };
+
+  const url = `https://quickchart.io/chart?width=${width}&height=${height}&backgroundColor=white&devicePixelRatio=2&c=${encodeURIComponent(
+    JSON.stringify(config)
+  )}`;
+
+  const resp = await axios.get<ArrayBuffer>(url, { responseType: "arraybuffer", timeout: 15000 });
+  return Buffer.from(resp.data);
+}
+
 export async function fetchCanadaAndNorthAmericaIndicators(
   industry: string
 ): Promise<{ canada: MarketIndicators; northAmerica: MarketIndicators }> {
