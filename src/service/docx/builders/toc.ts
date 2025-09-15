@@ -18,7 +18,10 @@ export function buildTOC(reportData: any): Array<Paragraph | Table> {
   entries.push({ label: "Certificate of Appraisal" });
   entries.push({ label: "Report Summary" });
   if (Array.isArray(reportData?.lots) && reportData.lots.length) {
-    entries.push({ label: "Catalogue" });
+    const gm = String(reportData?.grouping_mode || "");
+    if (gm === "catalogue") entries.push({ label: "Catalogue" });
+    else if (gm === "per_item") entries.push({ label: "Analyzed Items" });
+    else entries.push({ label: "Lots" });
   }
   entries.push({ label: "Market Overview" });
   entries.push({ label: "References" });
@@ -91,3 +94,4 @@ export function buildTOC(reportData: any): Array<Paragraph | Table> {
     table,
   ];
 }
+ 

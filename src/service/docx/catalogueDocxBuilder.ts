@@ -48,7 +48,7 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
   }
 
   // Header table via builder
-  const headerTable = buildHeaderTable(logoBuffer, contentWidthTw);
+  const headerTable = buildHeaderTable(logoBuffer, contentWidthTw, (reportData as any)?.user_email);
 
   const children: Array<Paragraph | Table | TableOfContents> = [];
   const reportDate = formatDateUS(
@@ -56,7 +56,7 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
   );
   // Build non-header sections separately (do not include in main children)
   const coverChildren: Array<Paragraph | Table | TableOfContents> = [
-    buildCover(reportData, logoBuffer, contentWidthTw),
+    buildCover(reportData, logoBuffer, contentWidthTw, "Asset Catalogue"),
   ];
   const tocChildren = buildTOC(reportData);
   const transmittalChildren = buildTransmittalLetter(reportData, reportDate);

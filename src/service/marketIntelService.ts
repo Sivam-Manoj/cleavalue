@@ -7,13 +7,73 @@ export type MarketIndicators = {
   series: { years: number[]; values: number[] };
 };
 
+function extractKeywordsFromLots(reportData: any): string[] {
+  try {
+    const lots: any[] = Array.isArray(reportData?.lots) ? reportData.lots : [];
+    const texts: string[] = [];
+    for (const lot of lots) {
+      if (typeof lot?.title === "string") texts.push(lot.title);
+      if (typeof lot?.description === "string") texts.push(lot.description);
+      if (Array.isArray(lot?.tags)) {
+        for (const t of lot.tags) if (typeof t === "string") texts.push(t);
+      }
+      if (Array.isArray(lot?.items)) {
+        for (const it of lot.items) {
+          if (typeof it?.title === "string") texts.push(it.title);
+          if (typeof it?.description === "string") texts.push(it.description);
+          if (typeof it?.details === "string") texts.push(it.details);
+        }
+      }
+    }
+    const blob = texts.join(" ").toLowerCase();
+    const tokens = blob
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((w) => w && w.length >= 3);
+    const counts = new Map<string, number>();
+    for (const tk of tokens) counts.set(tk, (counts.get(tk) || 0) + 1);
+    const top = Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 40)
+      .map(([w]) => w);
+    return top;
+  } catch {
+    return [];
+  }
+}
+
+function deriveIndustryFromReport(reportData: any): { industry: string; keywords: string[] } {
+  const explicit = (reportData?.industry && String(reportData.industry)) || "";
+  const kws = extractKeywordsFromLots(reportData);
+  const has = (list: string[]) => list.some((w) => kws.includes(w));
+
+  // Category heuristics
+  if (has(["salvage", "wrecked", "writeoff", "damage"])) {
+    return { industry: "Salvage Vehicles", keywords: kws };
+  }
+  if (has(["car", "cars", "truck", "trucks", "vehicle", "vehicles", "suv", "sedan", "motorcycle", "van"])) {
+    return { industry: "Vehicles", keywords: kws };
+  }
+  if (has(["acre", "realtor", "property", "building", "sq", "residential", "commercial", "land"])) {
+    return { industry: "Real Estate", keywords: kws };
+  }
+  if (has(["excavator", "loader", "bulldozer", "dozer", "tractor", "backhoe", "skidsteer", "grader", "forklift"])) {
+    return { industry: "Heavy Equipment", keywords: kws };
+  }
+  if (explicit) {
+    return { industry: explicit, keywords: kws };
+  }
+  return { industry: "General Assets", keywords: kws };
+}
+
 /**
  * Fetch market indicators using OpenAI Responses API with web_search_preview.
  * Falls back to safe, sample values when unavailable or on any errors.
  */
 export async function fetchMarketIndicators(
   industry: string,
-  region?: string
+  region?: string,
+  contextKeywords: string[] = []
 ): Promise<MarketIndicators> {
   const fallback: MarketIndicators = {
     bullets: [
@@ -42,7 +102,10 @@ Rules:
 - Output JSON ONLY with the exact keys and structure above — no prose before or after.
 - "values" represent an approximate market size or appraised value proxy in CAD billions with one decimal place.
 - Sources must be reputable pages relevant to the query.
-Query focus: ${industry} market ${region ? `in ${region}` : "(global or relevant region)"}.`;
+Query focus: ${industry} market ${region ? `in ${region}` : "(global or relevant region)"}.
+Context terms from the appraisal results (use to refine the search and make insights specific): ${contextKeywords
+      .slice(0, 20)
+      .join(", ")}.`;
 
     const response = await openai.responses.create({
       model: "gpt-4.1",
@@ -123,9 +186,9 @@ export async function generateTrendChartImage(
           label: "Value (CAD Billions)",
           data: values,
           fill: false,
-          borderColor: "#D4AF37",
+          borderColor: "#E11D48",
           borderWidth: 3,
-          pointBackgroundColor: "#D4AF37",
+          pointBackgroundColor: "#E11D48",
           pointRadius: 3,
         },
       ],
@@ -169,8 +232,8 @@ export async function generateBarChartImage(
         {
           label: "Value (CAD Billions)",
           data: values,
-          backgroundColor: "#D4AF37",
-          borderColor: "#B68F2C",
+          backgroundColor: "#065F46",
+          borderColor: "#064E3B",
           borderWidth: 1,
         },
       ],
@@ -196,11 +259,12 @@ export async function generateBarChartImage(
 }
 
 export async function fetchCanadaAndNorthAmericaIndicators(
-  industry: string
-): Promise<{ canada: MarketIndicators; northAmerica: MarketIndicators }> {
+  reportData: any
+): Promise<{ industry: string; canada: MarketIndicators; northAmerica: MarketIndicators }> {
+  const { industry, keywords } = deriveIndustryFromReport(reportData);
   const [canada, northAmerica] = await Promise.all([
-    fetchMarketIndicators(industry, "Canada"),
-    fetchMarketIndicators(industry, "North America"),
+    fetchMarketIndicators(industry, "Canada", keywords),
+    fetchMarketIndicators(industry, "North America", keywords),
   ]);
-  return { canada, northAmerica };
+  return { industry, canada, northAmerica };
 }

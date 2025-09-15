@@ -411,6 +411,7 @@ export async function runAssetReportJob({
         const buf = await generateAssetDocxFromReport({
           ...reportObject,
           inspector_name: user?.name || "",
+          user_email: user?.email || "",
         });
         const t1 = Date.now();
         console.log(

@@ -155,7 +155,7 @@ async function deduplicateAssetLotsAI(
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: "gpt-4.1-nano",
       messages: [
         { role: "system", content: system },
         {
@@ -275,7 +275,7 @@ export async function analyzeAssetImages(
       ];
 
       const response = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-4.1-nano",
         messages,
         response_format: { type: "json_object" },
       });
@@ -331,7 +331,7 @@ export async function analyzeAssetImages(
         ];
 
         const resp = await openai.chat.completions.create({
-          model: "gpt-5",
+          model: "gpt-4.1-nano",
           messages,
           response_format: { type: "json_object" },
         });

@@ -17,9 +17,8 @@ export async function buildMarketOverview(
 ): Promise<Paragraph[]> {
   const children: Paragraph[] = [];
   try {
-    const industry = String(reportData?.industry || "Construction Equipment");
-    const { canada, northAmerica } =
-      await fetchCanadaAndNorthAmericaIndicators(industry);
+    const { industry, canada, northAmerica } =
+      await fetchCanadaAndNorthAmericaIndicators(reportData);
 
     children.push(
       new Paragraph({

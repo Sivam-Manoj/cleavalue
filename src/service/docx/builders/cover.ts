@@ -20,7 +20,8 @@ import { formatDateUS, goldDivider } from "./utils.js";
 export function buildCover(
   reportData: any,
   logoBuffer: Buffer | null,
-  contentWidthTw: number
+  contentWidthTw: number,
+  titleText: string = "Asset Report"
 ): Table {
   const preparedFor =
     (reportData?.client_name as string) ||
@@ -44,7 +45,7 @@ export function buildCover(
   }
   coverTop.push(
     new Paragraph({
-      text: "Asset Catalogue",
+      text: titleText,
       heading: HeadingLevel.TITLE,
       alignment: AlignmentType.CENTER,
       spacing: { after: 120 },

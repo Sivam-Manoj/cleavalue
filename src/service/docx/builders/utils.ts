@@ -47,7 +47,7 @@ export async function fetchImageBuffer(url?: string | null): Promise<Buffer | nu
 
 export function goldDivider(): Paragraph {
   return new Paragraph({
-    border: { bottom: { style: BorderStyle.SINGLE, size: 16, color: "D4AF37" } },
+    border: { bottom: { style: BorderStyle.SINGLE, size: 16, color: "E11D48" } },
     spacing: { before: 80, after: 100 },
   });
 }
