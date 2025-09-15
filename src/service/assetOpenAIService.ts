@@ -275,7 +275,7 @@ export async function analyzeAssetImages(
       ];
 
       const response = await openai.chat.completions.create({
-        model: "gpt-4.1-nano",
+        model: "gpt-5",
         messages,
         response_format: { type: "json_object" },
       });
@@ -331,7 +331,7 @@ export async function analyzeAssetImages(
         ];
 
         const resp = await openai.chat.completions.create({
-          model: "gpt-4.1-nano",
+          model: "gpt-5",
           messages,
           response_format: { type: "json_object" },
         });
