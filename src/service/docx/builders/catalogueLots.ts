@@ -43,10 +43,10 @@ export async function buildCatalogueLots(
         spacing: { after: 120 },
       })
     );
-    if (lot?.description)
-      children.push(
-        new Paragraph({ text: String(lot.description), spacing: { after: 160 } })
-      );
+    // if (lot?.description)
+    //   children.push(
+    //     new Paragraph({ text: String(lot.description), spacing: { after: 160 } })
+    //   );
 
     const badges: string[] = [];
     if (lot?.condition) badges.push(`Condition: ${lot.condition}`);

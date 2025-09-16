@@ -37,7 +37,10 @@ export async function generatePerItemDocx(reportData: any): Promise<Buffer> {
   return generateStandardDocx(reportData, "per_item");
 }
 
-async function generateStandardDocx(reportData: any, mode: "asset" | "per_item"): Promise<Buffer> {
+async function generateStandardDocx(
+  reportData: any,
+  mode: "asset" | "per_item"
+): Promise<Buffer> {
   const lots: any[] = Array.isArray(reportData?.lots) ? reportData.lots : [];
   const rootImageUrls: string[] = Array.isArray(reportData?.imageUrls)
     ? reportData.imageUrls
@@ -54,7 +57,11 @@ async function generateStandardDocx(reportData: any, mode: "asset" | "per_item")
   }
 
   // Header table via builder
-  const headerTable = buildHeaderTable(logoBuffer, contentWidthTw, (reportData as any)?.user_email);
+  const headerTable = buildHeaderTable(
+    logoBuffer,
+    contentWidthTw,
+    (reportData as any)?.user_email
+  );
 
   const children: Array<Paragraph | Table | TableOfContents> = [];
   const reportDate = formatDateUS(
@@ -75,9 +82,12 @@ async function generateStandardDocx(reportData: any, mode: "asset" | "per_item")
     buildKeyValueTable([
       {
         label: "Grouping Mode",
-        value: String(reportData?.grouping_mode || (mode === "per_item" ? "per_item" : "asset")),
+        value: "Schedule A",
       },
-      { label: mode === "per_item" ? "Total Items" : "Total Lots", value: String(lots.length) },
+      {
+        label: mode === "per_item" ? "Total Items" : "Total Lots",
+        value: String(lots.length),
+      },
       {
         label: "Total Images",
         value: String(
@@ -123,21 +133,37 @@ async function generateStandardDocx(reportData: any, mode: "asset" | "per_item")
   children.push(
     buildKeyValueTable([
       { label: "Client Name", value: String(reportData?.client_name || "") },
-      { label: "Effective Date", value: formatDateUS(reportData?.effective_date) || reportDate || "" },
-      { label: "Appraisal Purpose", value: String(reportData?.appraisal_purpose || "") },
+      {
+        label: "Effective Date",
+        value: formatDateUS(reportData?.effective_date) || reportDate || "",
+      },
+      {
+        label: "Appraisal Purpose",
+        value: String(reportData?.appraisal_purpose || ""),
+      },
       { label: "Owner Name", value: String(reportData?.owner_name || "") },
       { label: "Appraiser", value: String(reportData?.appraiser || "") },
-      { label: "Appraisal Company", value: String(reportData?.appraisal_company || "") },
+      {
+        label: "Appraisal Company",
+        value: String(reportData?.appraisal_company || ""),
+      },
       { label: "Industry", value: String(reportData?.industry || "") },
-      { label: "Inspection Date", value: formatDateUS(reportData?.inspection_date) || "" },
+      {
+        label: "Inspection Date",
+        value: formatDateUS(reportData?.inspection_date) || "",
+      },
     ])
   );
 
   // Results section (lots grid or per-item table)
   if (mode === "per_item") {
-    children.push(...(await buildPerItemTable(reportData, rootImageUrls, contentWidthTw)));
+    children.push(
+      ...(await buildPerItemTable(reportData, rootImageUrls, contentWidthTw))
+    );
   } else {
-    children.push(...(await buildAssetLots(reportData, rootImageUrls, contentWidthTw)));
+    children.push(
+      ...(await buildAssetLots(reportData, rootImageUrls, contentWidthTw))
+    );
   }
 
   // Market Overview + References
@@ -157,7 +183,8 @@ async function generateStandardDocx(reportData: any, mode: "asset" | "per_item")
       (reportData?.inspector_name as string) ||
       "ClearValue",
     title:
-      (reportData?.title as string) || `Asset Report - ${lots.length} ${mode === "per_item" ? "Items" : "Lots"}`,
+      (reportData?.title as string) ||
+      `Asset Report - ${lots.length} ${mode === "per_item" ? "Items" : "Lots"}`,
     features: { updateFields: true },
     styles: {
       default: {
@@ -239,7 +266,9 @@ async function generateStandardDocx(reportData: any, mode: "asset" | "per_item")
         },
         headers: { default: new Header({ children: [] }) },
         footers: { default: new Footer({ children: [] }) },
-        children: [buildCover(reportData, logoBuffer, contentWidthTw, "Asset Report")],
+        children: [
+          buildCover(reportData, logoBuffer, contentWidthTw, "Asset Report"),
+        ],
       },
       // Table of Contents (no header/footer)
       {
@@ -287,7 +316,11 @@ async function generateStandardDocx(reportData: any, mode: "asset" | "per_item")
         },
         headers: { default: new Header({ children: [] }) },
         footers: { default: new Footer({ children: [] }) },
-        children: buildCertificateOfAppraisal(reportData, contentWidthTw, reportDate) as any,
+        children: buildCertificateOfAppraisal(
+          reportData,
+          contentWidthTw,
+          reportDate
+        ) as any,
       },
       // Main content (with header/footer). Restart page numbers at 1.
       {

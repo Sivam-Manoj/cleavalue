@@ -48,7 +48,11 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
   }
 
   // Header table via builder
-  const headerTable = buildHeaderTable(logoBuffer, contentWidthTw, (reportData as any)?.user_email);
+  const headerTable = buildHeaderTable(
+    logoBuffer,
+    contentWidthTw,
+    (reportData as any)?.user_email
+  );
 
   const children: Array<Paragraph | Table | TableOfContents> = [];
   const reportDate = formatDateUS(
@@ -80,7 +84,7 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
     buildKeyValueTable([
       {
         label: "Grouping Mode",
-        value: String(reportData?.grouping_mode || "catalogue"),
+        value: "Schedule A",
       },
       { label: "Total Lots", value: String(lots.length) },
       {
@@ -207,7 +211,7 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
   children.push(
     new Paragraph({
       style: "BodyLarge",
-      text: "As set out in the attached Schedule, the assets appraised within this engagement include: Construction & Transportation Equipment.",
+      text: "As set out in the attached Schedule A, the assets appraised within this engagement include: Construction & Transportation Equipment.",
     })
   );
 
