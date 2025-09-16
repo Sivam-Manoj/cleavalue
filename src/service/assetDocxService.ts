@@ -1,5 +1,6 @@
 import { generateCatalogueDocx } from "./docx/catalogueDocxBuilder.js";
 import { generateAssetLotsDocx, generatePerItemDocx } from "./docx/assetStandardDocxBuilder.js";
+import { generateCombinedDocx } from "./docx/combinedDocxBuilder.js";
 
 export async function generateAssetDocxFromReport(reportData: any): Promise<Buffer> {
   try {
@@ -7,6 +8,9 @@ export async function generateAssetDocxFromReport(reportData: any): Promise<Buff
     const mode = String(reportData?.grouping_mode || "single_lot");
     if (mode === "catalogue") {
       return await generateCatalogueDocx(reportData);
+    }
+    if (mode === "combined") {
+      return await generateCombinedDocx(reportData);
     }
     if (mode === "per_item") {
       return await generatePerItemDocx(reportData);

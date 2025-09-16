@@ -17,8 +17,12 @@ export function buildTOC(reportData: any): Array<Paragraph | Table> {
   entries.push({ label: "Transmittal Letter" });
   entries.push({ label: "Certificate of Appraisal" });
   entries.push({ label: "Report Summary" });
-  if (Array.isArray(reportData?.lots) && reportData.lots.length) {
-    const gm = String(reportData?.grouping_mode || "");
+  const gm = String(reportData?.grouping_mode || "");
+  if (gm === "combined") {
+    entries.push({ label: "Per Item Results" });
+    entries.push({ label: "Per Photo Results" });
+    entries.push({ label: "Single Lot Results" });
+  } else if (Array.isArray(reportData?.lots) && reportData.lots.length) {
     if (gm === "catalogue") entries.push({ label: "Catalogue" });
     else if (gm === "per_item") entries.push({ label: "Analyzed Items" });
     else entries.push({ label: "Lots" });

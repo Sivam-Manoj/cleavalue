@@ -24,7 +24,8 @@ export type AssetGroupingMode =
   | "single_lot"
   | "per_item"
   | "per_photo"
-  | "catalogue";
+  | "catalogue"
+  | "combined";
 
 export type AssetJobInput = {
   user: { id: string; email: string; name?: string | null };
@@ -128,7 +129,8 @@ export async function runAssetReportJob({
     const groupingMode: AssetGroupingMode =
       details?.grouping_mode === "per_item" ||
       details?.grouping_mode === "per_photo" ||
-      details?.grouping_mode === "catalogue"
+      details?.grouping_mode === "catalogue" ||
+      details?.grouping_mode === "combined"
         ? details.grouping_mode
         : "single_lot";
 
@@ -312,6 +314,57 @@ export async function runAssetReportJob({
         base = end;
       }
       endStep("ai_analysis");
+    } else if (groupingMode === "combined") {
+      // Combined mode: run per_item once, then derive per_photo and single_lot views from the SAME items
+      const urlsForAI = imageUrls.slice(0, 50); // cap for cost/perf
+      if (urlsForAI.length > 0) {
+        try {
+          startStep("ai_analysis", "AI analysis of images (combined -> per_item primary)");
+          const perItemRes = await analyzeAssetImages(urlsForAI, "per_item");
+          endStep("ai_analysis");
+          analysis = perItemRes;
+          // Normalize items to include a canonical image_index if available (first index)
+          const perItemLots: any[] = (perItemRes?.lots || []).map((lot: any) => {
+            const firstIdx = Array.isArray(lot?.image_indexes) && lot.image_indexes.length
+              ? lot.image_indexes[0]
+              : undefined;
+            return {
+              ...lot,
+              image_index: Number.isFinite(firstIdx) ? firstIdx : undefined,
+            };
+          });
+
+          // Derive per_photo: one row per original image index, mapping to the first per_item lot referencing that image index
+          const perPhotoLots: any[] = [];
+          for (let i = 0; i < imageUrls.length; i++) {
+            const match = perItemLots.find((l: any) =>
+              Array.isArray(l?.image_indexes) && l.image_indexes.includes(i)
+            );
+            if (match) {
+              perPhotoLots.push({
+                ...match,
+                image_index: i,
+              });
+            } else {
+              // optional: include placeholders for images without detected items
+              // per requirements, we can skip unmatched to keep table concise
+            }
+          }
+
+          // Set primary lots to per_item for totals and downstream display
+          lots = perItemLots;
+
+          // Attach a combined payload that builders can use
+          (analysis as any).combined = {
+            per_item: perItemLots,
+            per_photo: perPhotoLots,
+            single_lot: perItemLots, // single-lot view as consolidated items
+          };
+        } catch (e) {
+          console.error("Error during combined AI analysis:", e);
+          if (progressId) endStep("ai_analysis");
+        }
+      }
     } else {
       // Existing behavior for single_lot, per_item, per_photo (limit to 10 for AI)
       const urlsForAI = imageUrls.slice(0, 10);
@@ -412,6 +465,9 @@ export async function runAssetReportJob({
           ...reportObject,
           inspector_name: user?.name || "",
           user_email: user?.email || "",
+          ...(groupingMode === "combined" && analysis?.combined
+            ? { grouping_mode: "combined", combined: (analysis as any).combined }
+            : {}),
         });
         const t1 = Date.now();
         console.log(

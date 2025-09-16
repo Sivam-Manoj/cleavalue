@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document } from "mongoose";
 
-export type AssetGroupingMode = "single_lot" | "per_item" | "per_photo" | "catalogue";
+export type AssetGroupingMode = "single_lot" | "per_item" | "per_photo" | "catalogue" | "combined";
 
 export interface ICatalogueItem {
   title: string;
@@ -89,7 +89,7 @@ const AssetReportSchema: Schema<IAssetReport> = new Schema(
     },
     grouping_mode: {
       type: String,
-      enum: ["single_lot", "per_item", "per_photo", "catalogue"],
+      enum: ["single_lot", "per_item", "per_photo", "catalogue", "combined"],
       required: true,
     },
     imageUrls: [{ type: String, required: true }],

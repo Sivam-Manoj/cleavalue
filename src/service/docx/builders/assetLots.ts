@@ -17,7 +17,8 @@ import { fetchImageBuffer, goldDivider } from "./utils.js";
 export async function buildAssetLots(
   reportData: any,
   rootImageUrls: string[],
-  contentWidthTw: number
+  contentWidthTw: number,
+  headingLabel: string = "Lots"
 ): Promise<Array<Paragraph | Table>> {
   const children: Array<Paragraph | Table> = [];
   const lots: any[] = Array.isArray(reportData?.lots) ? reportData.lots : [];
@@ -27,7 +28,7 @@ export async function buildAssetLots(
   // Section header
   children.push(
     new Paragraph({
-      text: "Lots",
+      text: headingLabel,
       heading: HeadingLevel.HEADING_1,
       pageBreakBefore: true,
       spacing: { after: 160 },

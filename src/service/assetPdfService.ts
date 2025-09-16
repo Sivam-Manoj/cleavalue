@@ -5,6 +5,7 @@ import path from "path";
 import {
   fetchCanadaAndNorthAmericaIndicators,
   generateTrendChartImage,
+  generateBarChartImage,
 } from "./marketIntelService.js";
 
 // Helpers
@@ -41,9 +42,8 @@ export async function generateAssetPdfFromReport(reportData: any): Promise<Buffe
     // Prepare Market Overview data (bullets, sources, and chart images)
     let market: any = null;
     try {
-      const industry = String(reportData?.industry || "Construction Equipment");
-      const { canada, northAmerica } =
-        await fetchCanadaAndNorthAmericaIndicators(industry);
+      const { industry, canada, northAmerica } =
+        await fetchCanadaAndNorthAmericaIndicators(reportData);
 
       const caChart = await generateTrendChartImage(
         canada.series.years,
@@ -52,7 +52,7 @@ export async function generateAssetPdfFromReport(reportData: any): Promise<Buffe
         1000,
         600
       );
-      const naChart = await generateTrendChartImage(
+      const naChart = await generateBarChartImage(
         northAmerica.series.years,
         northAmerica.series.values,
         `${industry} – North America (5-Year Trend)`,
@@ -115,7 +115,9 @@ export async function generateAssetPdfFromReport(reportData: any): Promise<Buffe
         .pdf-header img { vertical-align:middle; height:16px; margin-right:8px; }
       </style>
       <div class="pdf-header">
-        <span><img src="${logoUrl}" /> P.O. Box 3081 Regina, SK S4P 3G7 · www.McDougallBay.com · (306)757-1747 · johnwwilliams24@gmail.com</span>
+        <span><img src="${logoUrl}" /> P.O. Box 3081 Regina, SK S4P 3G7 · www.McDougallBay.com · (306)757-1747${
+          reportData?.user_email ? ` · ${reportData.user_email}` : ""
+        }</span>
       </div>`;
 
     const footerTemplate = `

@@ -17,7 +17,8 @@ import { fetchImageBuffer } from "./utils.js";
 export async function buildPerItemTable(
   reportData: any,
   rootImageUrls: string[],
-  contentWidthTw: number
+  contentWidthTw: number,
+  headingLabel: string = "Analyzed Items"
 ): Promise<Array<Paragraph | Table>> {
   const children: Array<Paragraph | Table> = [];
   const items: any[] = Array.isArray(reportData?.lots) ? reportData.lots : [];
@@ -25,7 +26,7 @@ export async function buildPerItemTable(
   if (items.length) {
     children.push(
       new Paragraph({
-        text: "Analyzed Items",
+        text: headingLabel,
         heading: HeadingLevel.HEADING_1,
         pageBreakBefore: true,
         spacing: { after: 160 },
