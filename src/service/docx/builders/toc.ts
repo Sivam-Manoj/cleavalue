@@ -19,9 +19,12 @@ export function buildTOC(reportData: any): Array<Paragraph | Table> {
   entries.push({ label: "Report Summary" });
   const gm = String(reportData?.grouping_mode || "");
   if (gm === "combined") {
-    entries.push({ label: "Per Item Results" });
-    entries.push({ label: "Per Photo Results" });
-    entries.push({ label: "Single Lot Results" });
+    const modes: string[] = Array.isArray(reportData?.combined_modes)
+      ? reportData.combined_modes
+      : ["per_item", "per_photo", "single_lot"];
+    if (modes.includes("per_item")) entries.push({ label: "Per Item Results" });
+    if (modes.includes("per_photo")) entries.push({ label: "Per Photo Results" });
+    if (modes.includes("single_lot")) entries.push({ label: "Single Lot Results" });
   } else if (Array.isArray(reportData?.lots) && reportData.lots.length) {
     if (gm === "catalogue") entries.push({ label: "Catalogue" });
     else if (gm === "per_item") entries.push({ label: "Analyzed Items" });

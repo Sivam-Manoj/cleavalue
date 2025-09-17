@@ -45,6 +45,9 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
   const rootImageUrls: string[] = Array.isArray(reportData?.imageUrls)
     ? reportData.imageUrls
     : [];
+  const modes: string[] = Array.isArray(reportData?.combined_modes)
+    ? reportData.combined_modes
+    : ["per_item", "per_photo", "single_lot"];
   const contentWidthTw = convertInchesToTwip(6.5);
 
   // Load logo from public
@@ -79,8 +82,22 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
   children.push(goldDivider());
   children.push(
     buildKeyValueTable([
-      { label: "Mode", value: "Combined (Single Lot + Per Item + Per Photo)" },
-      { label: "Total Items", value: String(perItemLots.length) },
+      {
+        label: "Mode",
+        value:
+          "Combined (" +
+          [
+            modes.includes("single_lot") ? "Single Lot" : null,
+            modes.includes("per_item") ? "Per Item" : null,
+            modes.includes("per_photo") ? "Per Photo" : null,
+          ]
+            .filter(Boolean)
+            .join(" + ") +
+          ")",
+      },
+      { label: "Per Item Rows", value: String(perItemLots.length) },
+      { label: "Per Photo Rows", value: String(perPhotoLots.length) },
+      { label: "Single Lot Rows", value: String(singleLotLots.length) },
       {
         label: "Total Images",
         value: String(rootImageUrls.length),
@@ -136,33 +153,39 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
 
   // Results sections
   const perItemReport = { ...reportData, lots: perItemLots };
-  children.push(
-    ...(await buildPerItemTable(
-      perItemReport,
-      rootImageUrls,
-      contentWidthTw,
-      "Per Item Results"
-    ))
-  );
+  if (modes.includes("per_item")) {
+    children.push(
+      ...(await buildPerItemTable(
+        perItemReport,
+        rootImageUrls,
+        contentWidthTw,
+        "Per Item Results"
+      ))
+    );
+  }
 
-  children.push(
-    ...(await buildPerPhotoTable(
-      perPhotoLots,
-      rootImageUrls,
-      contentWidthTw,
-      "Per Photo Results"
-    ))
-  );
+  if (modes.includes("per_photo")) {
+    children.push(
+      ...(await buildPerPhotoTable(
+        perPhotoLots,
+        rootImageUrls,
+        contentWidthTw,
+        "Per Photo Results"
+      ))
+    );
+  }
 
   const singleLotReport = { ...reportData, lots: singleLotLots };
-  children.push(
-    ...(await buildAssetLots(
-      singleLotReport,
-      rootImageUrls,
-      contentWidthTw,
-      "Single Lot Results"
-    ))
-  );
+  if (modes.includes("single_lot")) {
+    children.push(
+      ...(await buildAssetLots(
+        singleLotReport,
+        rootImageUrls,
+        contentWidthTw,
+        "Single Lot Results"
+      ))
+    );
+  }
 
   // Market Overview + References
   // Reuse builder that consumes reportData

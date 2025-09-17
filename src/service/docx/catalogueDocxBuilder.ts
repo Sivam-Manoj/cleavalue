@@ -247,8 +247,6 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
     })
   );
 
-  // (Removed placeholder Market Overview section; a full Market Overview with charts is added later)
-
   // Observations and Comments
   children.push(
     new Paragraph({

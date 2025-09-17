@@ -351,8 +351,27 @@ export async function runAssetReportJob({
             }
           }
 
-          // Set primary lots to per_item for totals and downstream display
-          lots = perItemLots;
+          // Respect requested combined modes from details
+          const rawModes = Array.isArray(details?.combined_modes)
+            ? (details.combined_modes as any[])
+            : ["single_lot", "per_item", "per_photo"];
+          const selectedModes: ("single_lot" | "per_item" | "per_photo")[] = Array.from(
+            new Set(
+              rawModes
+                .map((m) => String(m))
+                .filter((m) => m === "single_lot" || m === "per_item" || m === "per_photo")
+            )
+          ) as any;
+          // Choose primary lots for totals depending on selection
+          if (selectedModes.includes("per_item")) {
+            lots = perItemLots;
+          } else if (selectedModes.includes("single_lot")) {
+            lots = perItemLots; // single_lot view is consolidated items
+          } else if (selectedModes.includes("per_photo")) {
+            lots = perPhotoLots;
+          } else {
+            lots = perItemLots;
+          }
 
           // Attach a combined payload that builders can use
           (analysis as any).combined = {
@@ -360,6 +379,7 @@ export async function runAssetReportJob({
             per_photo: perPhotoLots,
             single_lot: perItemLots, // single-lot view as consolidated items
           };
+          (analysis as any).combined_modes = selectedModes;
         } catch (e) {
           console.error("Error during combined AI analysis:", e);
           if (progressId) endStep("ai_analysis");
@@ -466,7 +486,14 @@ export async function runAssetReportJob({
           inspector_name: user?.name || "",
           user_email: user?.email || "",
           ...(groupingMode === "combined" && analysis?.combined
-            ? { grouping_mode: "combined", combined: (analysis as any).combined }
+            ? {
+                grouping_mode: "combined",
+                combined: (analysis as any).combined,
+                combined_modes:
+                  Array.isArray((analysis as any).combined_modes)
+                    ? (analysis as any).combined_modes
+                    : undefined,
+              }
             : {}),
         });
         const t1 = Date.now();
