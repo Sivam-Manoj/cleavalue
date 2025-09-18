@@ -25,7 +25,8 @@ export type AssetGroupingMode =
   | "per_item"
   | "per_photo"
   | "catalogue"
-  | "combined";
+  | "combined"
+  | "mixed";
 
 export type AssetJobInput = {
   user: { id: string; email: string; name?: string | null };
@@ -130,7 +131,8 @@ export async function runAssetReportJob({
       details?.grouping_mode === "per_item" ||
       details?.grouping_mode === "per_photo" ||
       details?.grouping_mode === "catalogue" ||
-      details?.grouping_mode === "combined"
+      details?.grouping_mode === "combined" ||
+      details?.grouping_mode === "mixed"
         ? details.grouping_mode
         : "single_lot";
 
@@ -314,6 +316,130 @@ export async function runAssetReportJob({
         base = end;
       }
       endStep("ai_analysis");
+    } else if (groupingMode === "mixed") {
+      // Mixed mode: multiple lots with specified sub-mode each
+      type MixedMap = { count: number; cover_index?: number; mode: "single_lot" | "per_item" | "per_photo" };
+      const rawLots: any[] = Array.isArray(details?.mixed_lots)
+        ? details.mixed_lots
+        : [];
+      const mappings: MixedMap[] = rawLots
+        .map((x: any) => {
+          const m = String(x?.mode || "").trim();
+          const mode = m === "per_item" || m === "per_photo" || m === "single_lot" ? (m as any) : undefined;
+          return {
+            count: Math.max(0, parseInt(String(x?.count ?? 0), 10) || 0),
+            cover_index:
+              typeof x?.cover_index === "number"
+                ? x.cover_index
+                : typeof x?.coverIndex === "number"
+                  ? x.coverIndex
+                  : 0,
+            mode,
+          } as MixedMap;
+        })
+        .filter((m: MixedMap) => Number.isFinite(m.count) && m.count > 0 && !!m.mode);
+
+      // Ensure mappings do not exceed available total images
+      const totalImages = imageUrls.length;
+      let useMappings: MixedMap[] = [...mappings];
+      let sum = useMappings.reduce((s, m) => s + m.count, 0);
+      let overflow = Math.max(0, sum - totalImages);
+      while (overflow > 0 && useMappings.length) {
+        const last = useMappings[useMappings.length - 1];
+        const reduceBy = Math.min(overflow, last.count);
+        last.count -= reduceBy;
+        overflow -= reduceBy;
+        if (last.count <= 0) useMappings.pop();
+      }
+
+      if (useMappings.length > 0) startStep("ai_analysis", "AI analysis of images (mixed)");
+      let base = 0;
+      let lotCounter = 0;
+      for (let lotIdx = 0; lotIdx < useMappings.length; lotIdx++) {
+        const { count, cover_index, mode: subMode } = useMappings[lotIdx];
+        const end = Math.min(imageUrls.length, base + Math.max(0, count));
+
+        // For AI cost/perf: analyze up to 20 images per lot (the client UI enforces 20 max per lot)
+        const aiEnd = Math.min(end, base + Math.max(0, Math.min(20, count)));
+        const aiLocalIdxs = Array.from({ length: Math.max(0, aiEnd - base) }, (_, i) => base + i);
+        const subUrls = aiLocalIdxs.map((i) => imageUrls[i]);
+
+        if (subUrls.length === 0 || !subMode) {
+          base = end;
+          continue;
+        }
+
+        try {
+          const aiRes = await analyzeAssetImages(subUrls, subMode);
+          if (!analysis) analysis = { mixed: [] };
+          if (!Array.isArray(analysis.mixed)) analysis.mixed = [];
+          analysis.mixed.push({ mode: subMode, result: aiRes });
+
+          const lotResults = Array.isArray(aiRes?.lots) ? aiRes.lots : [];
+          for (const lot of lotResults as any[]) {
+            // Map local image_indexes (0..sub-1) to global indexes via aiLocalIdxs
+            const localIdxs: number[] = Array.isArray(lot?.image_indexes)
+              ? Array.from(
+                  new Set<number>(
+                    (lot.image_indexes as any[])
+                      .map((n: any) => parseInt(String(n), 10))
+                      .filter((n: number) => Number.isFinite(n) && n >= 0 && n < aiLocalIdxs.length)
+                  )
+                )
+              : [];
+            const mappedIdxs: number[] = localIdxs.map((li) => aiLocalIdxs[li]);
+
+            // Also include inferred global index from direct image_url when present
+            const directUrl: string | undefined =
+              typeof lot?.image_url === "string" && lot.image_url ? lot.image_url : undefined;
+            if (directUrl) {
+              const gi = imageUrls.indexOf(directUrl);
+              if (gi >= 0) mappedIdxs.push(gi);
+            }
+            const idxs = Array.from(new Set(mappedIdxs)).filter(
+              (n) => Number.isFinite(n) && n >= 0 && n < imageUrls.length
+            );
+            const urlsFromIdx = idxs.map((i) => imageUrls[i]).filter(Boolean);
+
+            // Determine cover image within this segment
+            const coverLocal = Math.max(0, Math.min(Math.max(0, count) - 1, typeof cover_index === "number" ? cover_index : 0));
+            const coverGlobal = base + coverLocal;
+            const coverUrl = imageUrls[coverGlobal];
+
+            const urlsSet = new Set<string>([...urlsFromIdx, ...(coverUrl ? [coverUrl] : [])]);
+            const urls = Array.from(urlsSet);
+
+            lotCounter += 1;
+            const uniqueLotId = `lot-${String(lotCounter).padStart(3, "0")}`;
+
+            lots.push({
+              ...lot,
+              lot_id: uniqueLotId,
+              image_url: coverUrl || lot?.image_url || urls[0] || undefined,
+              image_indexes: idxs,
+              image_urls: urls,
+              // For traceability, include sub-mode tag
+              tags: Array.isArray(lot?.tags)
+                ? Array.from(new Set([...(lot.tags as any[]).map(String), `mode:${subMode}`]))
+                : [`mode:${subMode}`],
+              mixed_group_index: lotIdx + 1,
+              sub_mode: subMode,
+            });
+          }
+        } catch (e) {
+          console.error(`AI analysis failed for mixed lot #${lotIdx + 1} (${subMode}):`, e);
+        }
+
+        // Partial progress update within AI phase
+        if (progressId) {
+          const partial = (lotIdx + 1) / useMappings.length;
+          const current = serverAccum + partial * SERVER_WEIGHTS.ai_analysis;
+          setServerProg01(current);
+        }
+
+        base = end;
+      }
+      if (useMappings.length > 0) endStep("ai_analysis");
     } else if (groupingMode === "combined") {
       // Combined mode: run per_item once, then derive per_photo and single_lot views from the SAME items
       const urlsForAI = imageUrls.slice(0, 50); // cap for cost/perf
@@ -358,7 +484,10 @@ export async function runAssetReportJob({
           const selectedModes: ("single_lot" | "per_item" | "per_photo")[] = Array.from(
             new Set(
               rawModes
-                .map((m) => String(m))
+                .map((m) => {
+                  const s = String(m);
+                  return s === "per_lot" ? "per_photo" : s;
+                })
                 .filter((m) => m === "single_lot" || m === "per_item" || m === "per_photo")
             )
           ) as any;

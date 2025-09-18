@@ -67,6 +67,37 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
         lot?.estimated_value ?? "",
       ]);
     }
+  } else if (grouping === "mixed") {
+    // Mixed: flatten all lots; include Mode column derived from tags 'mode:<subMode>' when available
+    headers = [
+      "Lot ID",
+      "Title",
+      "Serial No/Label",
+      "Description",
+      "Details",
+      "Condition",
+      "Est. Value (CAD)",
+      "Mode",
+    ];
+    const getModeFromTags = (lot: any): string => {
+      const tags: string[] = Array.isArray(lot?.tags) ? lot.tags.map(String) : [];
+      const modeTag = tags.find((t) => t?.startsWith?.("mode:"));
+      if (!modeTag) return "";
+      const m = modeTag.split(":", 2)[1] || "";
+      return m.replace(/_/g, " ");
+    };
+    for (const lot of lots) {
+      rows.push([
+        lot?.lot_id ?? "",
+        lot?.title ?? "",
+        lot?.serial_no_or_label ?? "",
+        lot?.description ?? "",
+        lot?.details ?? "",
+        lot?.condition ?? "",
+        lot?.estimated_value ?? "",
+        getModeFromTags(lot),
+      ]);
+    }
   } else {
     // single_lot or per_photo (flatten lots similarly)
     headers = [

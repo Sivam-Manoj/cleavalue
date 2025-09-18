@@ -24,7 +24,7 @@ export async function generateAssetPdfFromReport(reportData: any): Promise<Buffe
       process.cwd(),
       reportData?.grouping_mode === "per_item"
         ? "src/templates/asset_per_item.html"
-        : reportData?.grouping_mode === "catalogue"
+        : reportData?.grouping_mode === "catalogue" || reportData?.grouping_mode === "mixed"
         ? "src/templates/catalogue.html"
         : "src/templates/asset.html"
     );

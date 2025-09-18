@@ -23,8 +23,9 @@ export function buildTOC(reportData: any): Array<Paragraph | Table> {
       ? reportData.combined_modes
       : ["per_item", "per_photo", "single_lot"];
     if (modes.includes("per_item")) entries.push({ label: "Per Item Results" });
-    if (modes.includes("per_photo")) entries.push({ label: "Per Photo Results" });
-    if (modes.includes("single_lot")) entries.push({ label: "Single Lot Results" });
+    if (modes.includes("per_photo")) entries.push({ label: "Per Lot Results" });
+    if (modes.includes("single_lot"))
+      entries.push({ label: "Single Lot Results" });
   } else if (Array.isArray(reportData?.lots) && reportData.lots.length) {
     if (gm === "catalogue") entries.push({ label: "Catalogue" });
     else if (gm === "per_item") entries.push({ label: "Analyzed Items" });
@@ -101,4 +102,3 @@ export function buildTOC(reportData: any): Array<Paragraph | Table> {
     table,
   ];
 }
- 

@@ -1,6 +1,7 @@
 import { generateCatalogueDocx } from "./docx/catalogueDocxBuilder.js";
 import { generateAssetLotsDocx, generatePerItemDocx } from "./docx/assetStandardDocxBuilder.js";
 import { generateCombinedDocx } from "./docx/combinedDocxBuilder.js";
+import { generateMixedDocx } from "./docx/mixedDocxBuilder.js";
 
 export async function generateAssetDocxFromReport(reportData: any): Promise<Buffer> {
   try {
@@ -11,6 +12,10 @@ export async function generateAssetDocxFromReport(reportData: any): Promise<Buff
     }
     if (mode === "combined") {
       return await generateCombinedDocx(reportData);
+    }
+    if (mode === "mixed") {
+      // Mixed: render a table per lot group using sub-mode specific layouts
+      return await generateMixedDocx(reportData);
     }
     if (mode === "per_item") {
       return await generatePerItemDocx(reportData);

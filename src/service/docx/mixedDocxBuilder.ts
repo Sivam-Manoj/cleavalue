@@ -1,18 +1,18 @@
 import fs from "fs/promises";
 import path from "path";
 import {
-  Document,
-  Packer,
-  Paragraph,
-  HeadingLevel,
   AlignmentType,
-  TextRun,
+  Document,
+  Footer,
+  Header,
+  HeadingLevel,
+  PageNumber,
+  Paragraph,
+  Packer,
   Table,
   TableOfContents,
+  TextRun,
   convertInchesToTwip,
-  Header,
-  Footer,
-  PageNumber,
 } from "docx";
 import { buildHeaderTable } from "./builders/header.js";
 import { buildAppendixPhotoGallery } from "./builders/appendix.js";
@@ -20,34 +20,17 @@ import { buildCover } from "./builders/cover.js";
 import { buildTOC } from "./builders/toc.js";
 import { buildTransmittalLetter } from "./builders/transmittal.js";
 import { buildCertificateOfAppraisal } from "./builders/certificate.js";
+import { buildMarketOverview } from "./builders/marketOverview.js";
+import { buildAssetLots } from "./builders/assetLots.js";
 import { buildPerItemTable } from "./builders/perItemTable.js";
 import { buildPerPhotoTable } from "./builders/perPhotoTable.js";
-import { buildAssetLots } from "./builders/assetLots.js";
-import {
-  formatDateUS,
-  goldDivider,
-  buildKeyValueTable,
-} from "./builders/utils.js";
+import { buildKeyValueTable, formatDateUS, goldDivider } from "./builders/utils.js";
 
-export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
-  const perItemLots: any[] = Array.isArray(reportData?.combined?.per_item)
-    ? reportData.combined.per_item
-    : Array.isArray(reportData?.lots)
-    ? reportData.lots
-    : [];
-  const perPhotoLots: any[] = Array.isArray(reportData?.combined?.per_photo)
-    ? reportData.combined.per_photo
-    : [];
-  const singleLotLots: any[] = Array.isArray(reportData?.combined?.single_lot)
-    ? reportData.combined.single_lot
-    : perItemLots;
-
+export async function generateMixedDocx(reportData: any): Promise<Buffer> {
+  const lots: any[] = Array.isArray(reportData?.lots) ? reportData.lots : [];
   const rootImageUrls: string[] = Array.isArray(reportData?.imageUrls)
     ? reportData.imageUrls
     : [];
-  const modes: string[] = Array.isArray(reportData?.combined_modes)
-    ? reportData.combined_modes
-    : ["per_item", "per_photo", "single_lot"];
   const contentWidthTw = convertInchesToTwip(6.5);
 
   // Load logo from public
@@ -59,6 +42,7 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
     logoBuffer = null;
   }
 
+  // Header table via builder
   const headerTable = buildHeaderTable(
     logoBuffer,
     contentWidthTw,
@@ -82,25 +66,13 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
   children.push(goldDivider());
   children.push(
     buildKeyValueTable([
-      {
-        label: "Mode",
-        value:
-          "Combined (" +
-          [
-            modes.includes("single_lot") ? "Single Lot" : null,
-            modes.includes("per_item") ? "Per Item" : null,
-            modes.includes("per_photo") ? "Per Lot" : null,
-          ]
-            .filter(Boolean)
-            .join(" + ") +
-          ")",
-      },
-      { label: "Per Item Rows", value: String(perItemLots.length) },
-      { label: "Per Lot Rows", value: String(perPhotoLots.length) },
-      { label: "Single Lot Rows", value: String(singleLotLots.length) },
+      { label: "Grouping Mode", value: "Mixed" },
+      { label: "Total Lots", value: String(lots.length) },
       {
         label: "Total Images",
-        value: String(rootImageUrls.length),
+        value: String(
+          Array.isArray(reportData?.imageUrls) ? reportData.imageUrls.length : 0
+        ),
       },
     ])
   );
@@ -141,7 +113,10 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
   children.push(
     buildKeyValueTable([
       { label: "Client Name", value: String(reportData?.client_name || "") },
-      { label: "Effective Date", value: formatDateUS(reportData?.effective_date) || reportDate || "" },
+      {
+        label: "Effective Date",
+        value: formatDateUS(reportData?.effective_date) || reportDate || "",
+      },
       { label: "Appraisal Purpose", value: String(reportData?.appraisal_purpose || "") },
       { label: "Owner Name", value: String(reportData?.owner_name || "") },
       { label: "Appraiser", value: String(reportData?.appraiser || "") },
@@ -151,47 +126,34 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
     ])
   );
 
-  // Results sections
-  const perItemReport = { ...reportData, lots: perItemLots };
-  if (modes.includes("per_item")) {
-    children.push(
-      ...(await buildPerItemTable(
-        perItemReport,
-        rootImageUrls,
-        contentWidthTw,
-        "Per Item Results"
-      ))
-    );
+  // Results: table per mixed lot group, using sub-mode specific layout
+  // Group lots by mixed_group_index
+  const groupMap = new Map<number, any[]>();
+  for (const lot of lots) {
+    const gi = Number(lot?.mixed_group_index) || 0;
+    if (!groupMap.has(gi)) groupMap.set(gi, []);
+    groupMap.get(gi)!.push(lot);
   }
+  const groupIds = Array.from(groupMap.keys()).filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b);
+  const useGroupIds = groupIds.length ? groupIds : [0];
 
-  if (modes.includes("per_photo")) {
-    children.push(
-      ...(await buildPerPhotoTable(
-        perPhotoLots,
-        rootImageUrls,
-        contentWidthTw,
-        "Per Lot Results"
-      ))
-    );
-  }
+  for (const gid of useGroupIds) {
+    const items = groupMap.get(gid) || lots;
+    const subMode: string = String(items[0]?.sub_mode || (items[0]?.tags || []).find?.((t: string) => typeof t === "string" && t.startsWith("mode:"))?.split?.(":")?.[1] || "single_lot");
+    const label = `Lot ${gid || 1} — ${subMode === "per_item" ? "Per Item" : subMode === "per_photo" ? "Per Photo" : "Single Lot"}`;
 
-  const singleLotReport = { ...reportData, lots: singleLotLots };
-  if (modes.includes("single_lot")) {
-    children.push(
-      ...(await buildAssetLots(
-        singleLotReport,
-        rootImageUrls,
-        contentWidthTw,
-        "Single Lot Results"
-      ))
-    );
+    if (subMode === "per_item") {
+      const pseudo = { lots: items };
+      children.push(...(await buildPerItemTable(pseudo, rootImageUrls, contentWidthTw, label)));
+    } else if (subMode === "per_photo") {
+      children.push(...(await buildPerPhotoTable(items, rootImageUrls, contentWidthTw, label)));
+    } else {
+      const pseudo = { lots: items };
+      children.push(...(await buildAssetLots(pseudo, rootImageUrls, contentWidthTw, label)));
+    }
   }
 
   // Market Overview + References
-  // Reuse builder that consumes reportData
-  // Note: market builder already tolerates errors
-  // and derives industry context from the report contents
-  const { buildMarketOverview } = await import("./builders/marketOverview.js");
   children.push(...(await buildMarketOverview(reportData)));
 
   // Appendix
@@ -201,25 +163,21 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
   );
   children.push(...appendixChildren);
 
+  // Finalize document with sections and pack
   const doc = new Document({
     creator:
       (reportData?.appraiser as string) ||
       (reportData?.inspector_name as string) ||
       "ClearValue",
     title:
-      (reportData?.title as string) || `Asset Report - Combined (${perItemLots.length} Items)`,
+      (reportData?.title as string) ||
+      `Asset Report - ${lots.length} Lots (Mixed)`,
     features: { updateFields: true },
     styles: {
       default: {
         document: {
-          run: {
-            font: "Calibri",
-            size: 26,
-            color: "111827",
-          },
-          paragraph: {
-            spacing: { line: 276, before: 0, after: 80 },
-          },
+          run: { font: "Calibri", size: 26, color: "111827" },
+          paragraph: { spacing: { line: 276, before: 0, after: 80 } },
         },
       },
       paragraphStyles: [
@@ -256,10 +214,7 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
           next: "Normal",
           quickFormat: true,
           run: { size: 52, bold: true, color: "111827" },
-          paragraph: {
-            spacing: { before: 160, after: 120 },
-            alignment: AlignmentType.CENTER,
-          },
+          paragraph: { spacing: { before: 160, after: 120 }, alignment: AlignmentType.CENTER },
         },
         {
           id: "BodyLarge",
@@ -268,9 +223,7 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
           next: "Normal",
           quickFormat: true,
           run: { size: 26, color: "111827" },
-          paragraph: {
-            spacing: { line: 276, before: 0, after: 80 },
-          },
+          paragraph: { spacing: { line: 276, before: 0, after: 80 } },
         },
       ],
     },
@@ -278,14 +231,7 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
       // Cover (no header/footer)
       {
         properties: {
-          page: {
-            margin: {
-              top: convertInchesToTwip(1),
-              right: convertInchesToTwip(1),
-              bottom: convertInchesToTwip(1),
-              left: convertInchesToTwip(1),
-            },
-          },
+          page: { margin: { top: convertInchesToTwip(1), right: convertInchesToTwip(1), bottom: convertInchesToTwip(1), left: convertInchesToTwip(1) } },
         },
         headers: { default: new Header({ children: [] }) },
         footers: { default: new Footer({ children: [] }) },
@@ -294,30 +240,16 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
       // Table of Contents (no header/footer)
       {
         properties: {
-          page: {
-            margin: {
-              top: convertInchesToTwip(1),
-              right: convertInchesToTwip(1),
-              bottom: convertInchesToTwip(1),
-              left: convertInchesToTwip(1),
-            },
-          },
+          page: { margin: { top: convertInchesToTwip(1), right: convertInchesToTwip(1), bottom: convertInchesToTwip(1), left: convertInchesToTwip(1) } },
         },
         headers: { default: new Header({ children: [] }) },
         footers: { default: new Footer({ children: [] }) },
-        children: buildTOC({ ...reportData, grouping_mode: "combined" }),
+        children: buildTOC({ ...reportData, grouping_mode: "mixed" }),
       },
       // Transmittal Letter (no header/footer)
       {
         properties: {
-          page: {
-            margin: {
-              top: convertInchesToTwip(1),
-              right: convertInchesToTwip(1),
-              bottom: convertInchesToTwip(1),
-              left: convertInchesToTwip(1),
-            },
-          },
+          page: { margin: { top: convertInchesToTwip(1), right: convertInchesToTwip(1), bottom: convertInchesToTwip(1), left: convertInchesToTwip(1) } },
         },
         headers: { default: new Header({ children: [] }) },
         footers: { default: new Footer({ children: [] }) },
@@ -326,14 +258,7 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
       // Certificate of Appraisal (no header/footer)
       {
         properties: {
-          page: {
-            margin: {
-              top: convertInchesToTwip(1),
-              right: convertInchesToTwip(1),
-              bottom: convertInchesToTwip(1),
-              left: convertInchesToTwip(1),
-            },
-          },
+          page: { margin: { top: convertInchesToTwip(1), right: convertInchesToTwip(1), bottom: convertInchesToTwip(1), left: convertInchesToTwip(1) } },
         },
         headers: { default: new Header({ children: [] }) },
         footers: { default: new Footer({ children: [] }) },
@@ -352,18 +277,13 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
             pageNumbers: { start: 1 },
           },
         },
-        headers: {
-          default: new Header({ children: [headerTable] }),
-        },
+        headers: { default: new Header({ children: [headerTable] }) },
         footers: {
           default: new Footer({
             children: [
               new Paragraph({
                 alignment: AlignmentType.CENTER,
-                children: [
-                  new TextRun({ text: "Page " }),
-                  PageNumber.CURRENT as any,
-                ],
+                children: [new TextRun({ text: "Page " }), PageNumber.CURRENT as any],
               }),
             ],
           }),
