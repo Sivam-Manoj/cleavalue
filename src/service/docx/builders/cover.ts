@@ -16,6 +16,7 @@ import {
   HeightRule,
 } from "docx";
 import { formatDateUS, goldDivider } from "./utils.js";
+import { getLang, t } from "./i18n.js";
 
 export function buildCover(
   reportData: any,
@@ -23,6 +24,8 @@ export function buildCover(
   contentWidthTw: number,
   titleText: string = "Asset Report"
 ): Table {
+  const lang = getLang(reportData);
+  const tr = t(lang);
   const preparedFor =
     (reportData?.client_name as string) ||
     (reportData?.inspector_name as string) ||
@@ -45,7 +48,7 @@ export function buildCover(
   }
   coverTop.push(
     new Paragraph({
-      text: titleText,
+      text: titleText || tr.assetReport,
       heading: HeadingLevel.TITLE,
       alignment: AlignmentType.CENTER,
       spacing: { after: 120 },
@@ -53,7 +56,17 @@ export function buildCover(
   );
   coverTop.push(
     new Paragraph({
-      text: `${(Array.isArray(reportData?.lots) ? reportData.lots.length : 0)} Lots (${reportData?.grouping_mode || "catalogue"})`,
+      text: (() => {
+        const lotsCount = Array.isArray(reportData?.lots) ? reportData.lots.length : 0;
+        const gm = String(reportData?.grouping_mode || "catalogue");
+        const gmLabel = gm === "single_lot" ? tr.singleLot
+          : gm === "per_item" ? tr.perItem
+          : gm === "per_photo" ? tr.perPhoto
+          : gm === "catalogue" ? tr.assetCatalogue
+          : gm === "combined" ? tr.combined
+          : tr.mixed;
+        return `${lotsCount} ${tr.lotsWord} (${gmLabel})`;
+      })(),
       alignment: AlignmentType.CENTER,
       spacing: { after: 120 },
     })
@@ -77,7 +90,7 @@ export function buildCover(
           new TableCell({
             margins: { top: 80, bottom: 80, left: 120, right: 120 },
             shading: { type: ShadingType.CLEAR, fill: "F9FAFB", color: "auto" },
-            children: [new Paragraph({ children: [new TextRun({ text: "Prepared For", bold: true })] })],
+            children: [new Paragraph({ children: [new TextRun({ text: tr.preparedFor, bold: true })] })],
           }),
           new TableCell({
             margins: { top: 80, bottom: 80, left: 120, right: 120 },
@@ -90,7 +103,7 @@ export function buildCover(
           new TableCell({
             margins: { top: 80, bottom: 80, left: 120, right: 120 },
             shading: { type: ShadingType.CLEAR, fill: "F9FAFB", color: "auto" },
-            children: [new Paragraph({ children: [new TextRun({ text: "Report Date", bold: true })] })],
+            children: [new Paragraph({ children: [new TextRun({ text: tr.reportDate, bold: true })] })],
           }),
           new TableCell({
             margins: { top: 80, bottom: 80, left: 120, right: 120 },

@@ -9,8 +9,13 @@ export type AssetGroupingModeUtil =
  * The prompt enforces strict JSON output and consistent field semantics.
  */
 export function getAssetSystemPrompt(
-  groupingMode: AssetGroupingModeUtil
+  groupingMode: AssetGroupingModeUtil,
+  language?: 'en' | 'fr' | 'es'
 ): string {
+  const lang = ((): 'en' | 'fr' | 'es' => {
+    const l = String(language || '').toLowerCase();
+    return (l === 'fr' || l === 'es') ? (l as any) : 'en';
+  })();
   const commonOutputRules = `
 You are an expert inventory/loss appraisal assistant. Analyze provided images and produce coherent "lots".
 
@@ -37,10 +42,18 @@ Output Rules:
 - Titles must be concise yet descriptive and unique across lots; for same-type items, append a differentiator like "(#1)", "(#2)".
 - 'image_indexes' must reference the provided images by 0-based index. Sort indexes ascending and do not repeat an index within a lot.
 
+Localization Rules:
+- Selected output language code: ${lang}
+- IMPORTANT: Only localize JSON values (e.g., title, description, condition, details, summary). DO NOT translate JSON field names (keys) — keys must remain English.
+- Include a top-level field "language": "${lang}" in the returned JSON to indicate the language used for values.
+
 VIN and Serial Handling:
 - Keep all serial numbers and VINs OUTSIDE of the description. Use 'serial_no_or_label' (per_item, per_photo, single_lot) or 'sn_vin' (catalogue items).
 - When a VIN is visible, label it EXACTLY as: "VIN: <VIN>" (17 characters, no I/O/Q). If characters are missing (partial VIN), you may use '*' placeholders for unknown characters.
-- If a VIN is not visible or unknown: per_item/per_photo/single_lot -> use null in 'serial_no_or_label'; catalogue items -> set 'sn_vin' to the literal text "not found".
+- If a VIN is not visible or unknown: per_item/per_photo/single_lot -> use null in 'serial_no_or_label'; catalogue items -> set 'sn_vin' to the localized phrase for "not found" in the selected language:
+  - en: "not found"
+  - fr: "introuvable"
+  - es: "no encontrado"
 `;
 
   const exampleDefault = `

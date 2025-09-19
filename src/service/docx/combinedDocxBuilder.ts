@@ -28,6 +28,7 @@ import {
   goldDivider,
   buildKeyValueTable,
 } from "./builders/utils.js";
+import { getLang, t } from "./builders/i18n.js";
 
 export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
   const perItemLots: any[] = Array.isArray(reportData?.combined?.per_item)
@@ -69,11 +70,13 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
   const reportDate = formatDateUS(
     reportData?.createdAt || new Date().toISOString()
   );
+  const lang = getLang(reportData);
+  const tr = t(lang);
 
   // Report Summary
   children.push(
     new Paragraph({
-      text: "Report Summary",
+      text: tr.reportSummary,
       heading: HeadingLevel.HEADING_1,
       pageBreakBefore: true,
       spacing: { after: 160 },
@@ -83,23 +86,23 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
   children.push(
     buildKeyValueTable([
       {
-        label: "Mode",
+        label: tr.mode,
         value:
           "Combined (" +
           [
-            modes.includes("single_lot") ? "Single Lot" : null,
-            modes.includes("per_item") ? "Per Item" : null,
-            modes.includes("per_photo") ? "Per Lot" : null,
+            modes.includes("single_lot") ? tr.singleLot : null,
+            modes.includes("per_item") ? tr.perItem : null,
+            modes.includes("per_photo") ? tr.perPhoto : null,
           ]
             .filter(Boolean)
             .join(" + ") +
           ")",
       },
-      { label: "Per Item Rows", value: String(perItemLots.length) },
-      { label: "Per Lot Rows", value: String(perPhotoLots.length) },
-      { label: "Single Lot Rows", value: String(singleLotLots.length) },
+      { label: tr.perItemRows, value: String(perItemLots.length) },
+      { label: tr.perPhotoRows, value: String(perPhotoLots.length) },
+      { label: tr.singleLotRows, value: String(singleLotLots.length) },
       {
-        label: "Total Images",
+        label: tr.totalImages,
         value: String(rootImageUrls.length),
       },
     ])
@@ -113,7 +116,7 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
     undefined;
   children.push(
     new Paragraph({
-      text: "Summary of Value Conclusions",
+      text: tr.summaryOfValue,
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 200, after: 80 },
     })
@@ -123,8 +126,8 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
     new Paragraph({
       style: "BodyLarge",
       text: totalAppraised
-        ? `Based upon our analysis and methodology, we estimate the reported assets have a value of ${totalAppraised}.`
-        : `Based upon our analysis and methodology, please refer to the detailed sections for value information.`,
+        ? tr.valueBody(String(totalAppraised))
+        : tr.noValueBody,
       spacing: { after: 160 },
     })
   );
@@ -132,7 +135,7 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
   // Report Details
   children.push(
     new Paragraph({
-      text: "Report Details",
+      text: tr.reportDetails,
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 120, after: 80 },
     })
@@ -140,14 +143,15 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
   children.push(goldDivider());
   children.push(
     buildKeyValueTable([
-      { label: "Client Name", value: String(reportData?.client_name || "") },
-      { label: "Effective Date", value: formatDateUS(reportData?.effective_date) || reportDate || "" },
-      { label: "Appraisal Purpose", value: String(reportData?.appraisal_purpose || "") },
-      { label: "Owner Name", value: String(reportData?.owner_name || "") },
-      { label: "Appraiser", value: String(reportData?.appraiser || "") },
-      { label: "Appraisal Company", value: String(reportData?.appraisal_company || "") },
-      { label: "Industry", value: String(reportData?.industry || "") },
-      { label: "Inspection Date", value: formatDateUS(reportData?.inspection_date) || "" },
+      { label: tr.clientName, value: String(reportData?.client_name || "") },
+      { label: tr.effectiveDate, value: formatDateUS(reportData?.effective_date) || reportDate || "" },
+      { label: tr.appraisalPurpose, value: String(reportData?.appraisal_purpose || "") },
+      { label: tr.ownerName, value: String(reportData?.owner_name || "") },
+      { label: tr.appraiser, value: String(reportData?.appraiser || "") },
+      { label: tr.appraisalCompany, value: String(reportData?.appraisal_company || "") },
+      { label: tr.industry, value: String(reportData?.industry || "") },
+      { label: tr.inspectionDate, value: formatDateUS(reportData?.inspection_date) || "" },
+      ...(reportData?.contract_no ? [{ label: tr.contractNo, value: String(reportData.contract_no) }] : []),
     ])
   );
 
@@ -159,7 +163,7 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
         perItemReport,
         rootImageUrls,
         contentWidthTw,
-        "Per Item Results"
+        tr.perItemResults
       ))
     );
   }
@@ -170,7 +174,7 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
         perPhotoLots,
         rootImageUrls,
         contentWidthTw,
-        "Per Lot Results"
+        tr.perPhotoResults
       ))
     );
   }
@@ -182,7 +186,7 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
         singleLotReport,
         rootImageUrls,
         contentWidthTw,
-        "Single Lot Results"
+        tr.singleLotResults
       ))
     );
   }
@@ -196,6 +200,7 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
 
   // Appendix
   const appendixChildren = await buildAppendixPhotoGallery(
+    reportData,
     rootImageUrls,
     contentWidthTw
   );
@@ -289,7 +294,7 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
         },
         headers: { default: new Header({ children: [] }) },
         footers: { default: new Footer({ children: [] }) },
-        children: [buildCover(reportData, logoBuffer, contentWidthTw, "Asset Report")],
+        children: [buildCover(reportData, logoBuffer, contentWidthTw, tr.assetReport)],
       },
       // Table of Contents (no header/footer)
       {
@@ -361,7 +366,7 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 children: [
-                  new TextRun({ text: "Page " }),
+                  new TextRun({ text: tr.page }),
                   PageNumber.CURRENT as any,
                 ],
               }),

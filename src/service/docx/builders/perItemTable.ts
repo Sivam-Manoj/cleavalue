@@ -13,6 +13,7 @@ import {
   WidthType,
 } from "docx";
 import { fetchImageBuffer } from "./utils.js";
+import { getLang, t } from "./i18n.js";
 
 export async function buildPerItemTable(
   reportData: any,
@@ -22,11 +23,14 @@ export async function buildPerItemTable(
 ): Promise<Array<Paragraph | Table>> {
   const children: Array<Paragraph | Table> = [];
   const items: any[] = Array.isArray(reportData?.lots) ? reportData.lots : [];
+  const lang = getLang(reportData);
+  const tr = t(lang);
+  const heading = !headingLabel || headingLabel === "Analyzed Items" ? tr.perItemResults : headingLabel;
 
   if (items.length) {
     children.push(
       new Paragraph({
-        text: headingLabel,
+        text: heading,
         heading: HeadingLevel.HEADING_1,
         pageBreakBefore: true,
         spacing: { after: 160 },
@@ -54,7 +58,7 @@ export async function buildPerItemTable(
         verticalAlign: VerticalAlign.CENTER,
         shading: { type: "clear" as any, fill: "E5E7EB", color: "auto" },
         children: [
-          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Lot ID", bold: true })] }),
+          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.lotId, bold: true })] }),
         ],
       }),
       new TableCell({
@@ -63,7 +67,7 @@ export async function buildPerItemTable(
         verticalAlign: VerticalAlign.CENTER,
         shading: { type: "clear" as any, fill: "E5E7EB", color: "auto" },
         children: [
-          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Title", bold: true })] }),
+          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.title, bold: true })] }),
         ],
       }),
       new TableCell({
@@ -72,7 +76,7 @@ export async function buildPerItemTable(
         verticalAlign: VerticalAlign.CENTER,
         shading: { type: "clear" as any, fill: "E5E7EB", color: "auto" },
         children: [
-          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Serial No/Label", bold: true })] }),
+          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.serialNoLabel, bold: true })] }),
         ],
       }),
       new TableCell({
@@ -81,7 +85,7 @@ export async function buildPerItemTable(
         verticalAlign: VerticalAlign.CENTER,
         shading: { type: "clear" as any, fill: "E5E7EB", color: "auto" },
         children: [
-          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Description", bold: true })] }),
+          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.description, bold: true })] }),
         ],
       }),
       new TableCell({
@@ -90,7 +94,7 @@ export async function buildPerItemTable(
         verticalAlign: VerticalAlign.CENTER,
         shading: { type: "clear" as any, fill: "E5E7EB", color: "auto" },
         children: [
-          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Details", bold: true })] }),
+          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.detailsCol, bold: true })] }),
         ],
       }),
       new TableCell({
@@ -99,7 +103,7 @@ export async function buildPerItemTable(
         verticalAlign: VerticalAlign.CENTER,
         shading: { type: "clear" as any, fill: "E5E7EB", color: "auto" },
         children: [
-          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Est. Value (CAD)", bold: true })] }),
+          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.estValueCad, bold: true })] }),
         ],
       }),
       new TableCell({
@@ -108,7 +112,7 @@ export async function buildPerItemTable(
         verticalAlign: VerticalAlign.CENTER,
         shading: { type: "clear" as any, fill: "E5E7EB", color: "auto" },
         children: [
-          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Image", bold: true })] }),
+          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.image, bold: true })] }),
         ],
       }),
     ],
@@ -160,18 +164,18 @@ export async function buildPerItemTable(
               const vd: any = (it as any)?.vinDecoded;
               if (vd) {
                 const parts: string[] = [];
-                if (vd?.vin) parts.push(`VIN: ${vd.vin}`);
-                if (vd?.year) parts.push(`Year: ${vd.year}`);
-                if (vd?.make) parts.push(`Make: ${vd.make}`);
-                if (vd?.model) parts.push(`Model: ${vd.model}`);
-                if (vd?.trim) parts.push(`Trim: ${vd.trim}`);
-                const eng = [vd?.engineCylinders ? `${vd.engineCylinders} cyl` : undefined, vd?.displacementL ? `${vd.displacementL}L` : undefined]
+                if (vd?.vin) parts.push(`${tr.vinLabel}: ${vd.vin}`);
+                if (vd?.year) parts.push(`${tr.yearLabel}: ${vd.year}`);
+                if (vd?.make) parts.push(`${tr.makeLabel}: ${vd.make}`);
+                if (vd?.model) parts.push(`${tr.modelLabel}: ${vd.model}`);
+                if (vd?.trim) parts.push(`${tr.trimLabel}: ${vd.trim}`);
+                const eng = [vd?.engineCylinders ? `${vd.engineCylinders} ${tr.cylAbbrev}` : undefined, vd?.displacementL ? `${vd.displacementL}${tr.litersAbbrev}` : undefined]
                   .filter(Boolean)
                   .join(" ");
-                if (eng) parts.push(`Engine: ${eng}`);
-                if (vd?.fuelType) parts.push(`Fuel: ${vd.fuelType}`);
-                if (vd?.driveType) parts.push(`Drive: ${vd.driveType}`);
-                if (vd?.transmission) parts.push(`Trans: ${vd.transmission}`);
+                if (eng) parts.push(`${tr.engineLabel}: ${eng}`);
+                if (vd?.fuelType) parts.push(`${tr.fuelLabel}: ${vd.fuelType}`);
+                if (vd?.driveType) parts.push(`${tr.driveLabel}: ${vd.driveType}`);
+                if (vd?.transmission) parts.push(`${tr.transLabel}: ${vd.transmission}`);
                 if (parts.length) {
                   out.push(
                     new Paragraph({
@@ -216,7 +220,7 @@ export async function buildPerItemTable(
                     children: [new ImageRun({ data: imgBuf as any, transformation: { width: 96, height: 72 } } as any)],
                   }),
                 ]
-              : [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "No image", italics: true, color: "6B7280" })] })],
+              : [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.noImage, italics: true, color: "6B7280" })] })],
           }),
         ],
       })

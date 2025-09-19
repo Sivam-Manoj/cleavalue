@@ -13,6 +13,7 @@ import {
   WidthType,
 } from "docx";
 import { fetchImageBuffer } from "./utils.js";
+import { getLang, t } from "./i18n.js";
 
 export async function buildPerPhotoTable(
   lots: any[],
@@ -22,11 +23,27 @@ export async function buildPerPhotoTable(
 ): Promise<Array<Paragraph | Table>> {
   const children: Array<Paragraph | Table> = [];
   const rows: TableRow[] = [];
+  const inferredLang = (() => {
+    const map: Record<string, 'en' | 'fr' | 'es'> = {
+      'Per Lot Results': 'en',
+      'Per Photo Results': 'en',
+      'Résultats par photo': 'fr',
+      'Résultats par lot': 'fr',
+      'Resultados por foto': 'es',
+      'Resultados por lote': 'es',
+    };
+    const byLabel = map[String(headingLabel || '')];
+    if (byLabel) return byLabel;
+    const firstLang = (Array.isArray(lots) && lots[0] && (lots[0] as any).language) || undefined;
+    return getLang({ language: firstLang });
+  })();
+  const tr = t(inferredLang as any);
+  const heading = headingLabel || tr.perPhotoResults;
 
   if (lots.length) {
     children.push(
       new Paragraph({
-        text: headingLabel,
+        text: heading,
         heading: HeadingLevel.HEADING_1,
         pageBreakBefore: true,
         spacing: { after: 160 },
@@ -51,31 +68,31 @@ export async function buildPerPhotoTable(
         width: { size: w.image, type: WidthType.DXA },
         margins: cellMargins,
         verticalAlign: VerticalAlign.CENTER,
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Image", bold: true })] })],
+        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.image, bold: true })] })],
       }),
       new TableCell({
         width: { size: w.title, type: WidthType.DXA },
         margins: cellMargins,
         verticalAlign: VerticalAlign.CENTER,
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Title", bold: true })] })],
+        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.title, bold: true })] })],
       }),
       new TableCell({
         width: { size: w.serial, type: WidthType.DXA },
         margins: cellMargins,
         verticalAlign: VerticalAlign.CENTER,
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Serial No/Label", bold: true })] })],
+        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.serialNoLabel, bold: true })] })],
       }),
       new TableCell({
         width: { size: w.desc, type: WidthType.DXA },
         margins: cellMargins,
         verticalAlign: VerticalAlign.CENTER,
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Description / Details", bold: true })] })],
+        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${tr.description} / ${tr.detailsCol}`, bold: true })] })],
       }),
       new TableCell({
         width: { size: w.value, type: WidthType.DXA },
         margins: cellMargins,
         verticalAlign: VerticalAlign.CENTER,
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Est. Value (CAD)", bold: true })] })],
+        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.estValueCad, bold: true })] })],
       }),
       new TableCell({
         width: { size: w.index, type: WidthType.DXA },
@@ -117,7 +134,7 @@ export async function buildPerPhotoTable(
                 alignment: AlignmentType.CENTER,
                 children: buf
                   ? [new ImageRun({ data: buf as any, transformation: { width: 96, height: 72 } } as any)]
-                  : [new TextRun({ text: "No image", italics: true, color: "6B7280" })],
+                  : [new TextRun({ text: tr.noImage, italics: true, color: "6B7280" })],
               }),
             ],
           }),
@@ -135,19 +152,19 @@ export async function buildPerPhotoTable(
               const vd: any = (rec as any)?.vinDecoded;
               if (vd) {
                 const parts: string[] = [];
-                if (vd?.vin) parts.push(`VIN: ${vd.vin}`);
-                if (vd?.year) parts.push(`Year: ${vd.year}`);
-                if (vd?.make) parts.push(`Make: ${vd.make}`);
-                if (vd?.model) parts.push(`Model: ${vd.model}`);
-                if (vd?.trim) parts.push(`Trim: ${vd.trim}`);
-                const eng = [vd?.engineCylinders ? `${vd.engineCylinders} cyl` : undefined, vd?.displacementL ? `${vd.displacementL}L` : undefined]
+                if (vd?.vin) parts.push(`${tr.vinLabel}: ${vd.vin}`);
+                if (vd?.year) parts.push(`${tr.yearLabel}: ${vd.year}`);
+                if (vd?.make) parts.push(`${tr.makeLabel}: ${vd.make}`);
+                if (vd?.model) parts.push(`${tr.modelLabel}: ${vd.model}`);
+                if (vd?.trim) parts.push(`${tr.trimLabel}: ${vd.trim}`);
+                const eng = [vd?.engineCylinders ? `${vd.engineCylinders} ${tr.cylAbbrev}` : undefined, vd?.displacementL ? `${vd.displacementL}${tr.litersAbbrev}` : undefined]
                   .filter(Boolean)
                   .join(" ");
-                if (eng) parts.push(`Engine: ${eng}`);
-                if (vd?.fuelType) parts.push(`Fuel: ${vd.fuelType}`);
-                if (vd?.driveType) parts.push(`Drive: ${vd.driveType}`);
-                if (vd?.transmission) parts.push(`Trans: ${vd.transmission}`);
-                if (parts.length) out.push(new Paragraph(parts.join(" • ")));
+                if (eng) parts.push(`${tr.engineLabel}: ${eng}`);
+                if (vd?.fuelType) parts.push(`${tr.fuelLabel}: ${vd.fuelType}`);
+                if (vd?.driveType) parts.push(`${tr.driveLabel}: ${vd.driveType}`);
+                if (vd?.transmission) parts.push(`${tr.transLabel}: ${vd.transmission}`);
+                if (parts.length) out.push(new Paragraph({ children: [new TextRun({ text: parts.join(" • "), color: "374151" })] }));
               }
               return out;
             })(),

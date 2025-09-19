@@ -1,5 +1,6 @@
 import { HeadingLevel, Paragraph, TextRun, AlignmentType } from "docx";
 import { goldDivider } from "./utils.js";
+import { getLang, t } from "./i18n.js";
 
 export function buildTransmittalLetter(
   reportData: any,
@@ -14,10 +15,12 @@ export function buildTransmittalLetter(
   const attentionName = String(
     (reportData as any)?.attention || (reportData as any)?.contact_name || "LLL"
   );
+  const lang = getLang(reportData);
+  const tr = t(lang);
 
   children.push(
     new Paragraph({
-      text: "TRANSMITTAL LETTER",
+      text: tr.transmittalLetter,
       heading: HeadingLevel.HEADING_1,
       pageBreakBefore: true,
       spacing: { after: 160 },
@@ -45,7 +48,7 @@ export function buildTransmittalLetter(
   children.push(
     new Paragraph({
       style: "BodyLarge",
-      children: [new TextRun({ text: `Attention: ${attentionName}` })],
+      children: [new TextRun({ text: `${tr.attention}: ${attentionName}` })],
       keepLines: true,
       keepNext: true,
       spacing: { after: 80 },
@@ -54,7 +57,7 @@ export function buildTransmittalLetter(
   children.push(
     new Paragraph({
       style: "BodyLarge",
-      children: [new TextRun({ text: `Re: ${clientName} – Asset Appraisal` })],
+      children: [new TextRun({ text: `${tr.rePrefix}: ${clientName} – ${tr.assetAppraisal}` })],
       keepLines: true,
       keepNext: true,
       spacing: { after: 140 },
@@ -63,7 +66,7 @@ export function buildTransmittalLetter(
   children.push(
     new Paragraph({
       style: "BodyLarge",
-      children: [new TextRun({ text: "Dear Sirs," })],
+      children: [new TextRun({ text: tr.dear })],
       keepLines: true,
       keepNext: true,
       spacing: { after: 100 },
@@ -74,9 +77,7 @@ export function buildTransmittalLetter(
       style: "BodyLarge",
       children: [
         new TextRun({
-          text:
-            `At your request, we have prepared an appraisal of certain equipment owned by ${clientName}, a copy of which is enclosed. ` +
-            `This appraisal report is intended for exclusive use by ${exclusiveUseBy} and is intended only for establishing values of the listed equipment.`,
+          text: tr.exclusiveUseSentence(clientName, exclusiveUseBy),
         }),
       ],
       keepLines: true,
@@ -89,7 +90,7 @@ export function buildTransmittalLetter(
       style: "BodyLarge",
       children: [
         new TextRun({
-          text: "The subject assets were appraised under the premise of Orderly Liquidation Value for internal consideration.",
+          text: tr.premiseSentence,
         }),
       ],
       keepLines: true,
@@ -102,7 +103,7 @@ export function buildTransmittalLetter(
       style: "BodyLarge",
       children: [
         new TextRun({
-          text: "The cost and market approaches to value have been considered for this appraisal and have either been utilized where necessary or deemed inappropriate for the value conclusions found therein.",
+          text: tr.approachesSentence,
         }),
       ],
       keepLines: true,
@@ -115,7 +116,7 @@ export function buildTransmittalLetter(
       style: "BodyLarge",
       children: [
         new TextRun({
-          text: `After a thorough analysis of the assets and information made available to us, it is our opinion that as of the Effective Date, these assets have an Orderly Liquidation Value in Canadian Funds as shown on the certificate that we have prepared.`,
+          text: tr.opinionSentence,
         }),
       ],
       keepLines: true,
@@ -128,7 +129,7 @@ export function buildTransmittalLetter(
       style: "BodyLarge",
       children: [
         new TextRun({
-          text: "We certify that neither we nor any of our employees have any present or future interest in the appraised property. The fee charged for this appraisal was not contingent on the values reported. As such, the results stated in this letter of transmittal cannot be fully understood without the accompanying report and this letter should not be separated from the report.",
+          text: tr.certifySentence,
         }),
       ],
       keepLines: true,
@@ -141,7 +142,7 @@ export function buildTransmittalLetter(
       style: "BodyLarge",
       children: [
         new TextRun({
-          text: "If you require any additional information, please feel free to contact me at your convenience.",
+          text: tr.contactSentence,
         }),
       ],
       keepLines: true,
@@ -152,7 +153,7 @@ export function buildTransmittalLetter(
   children.push(
     new Paragraph({
       style: "BodyLarge",
-      children: [new TextRun({ text: "Sincerely," })],
+      children: [new TextRun({ text: tr.sincerely })],
       keepLines: true,
       keepNext: true,
       spacing: { before: 60, after: 120 },

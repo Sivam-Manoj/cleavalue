@@ -16,6 +16,7 @@ export interface IPdfReport extends Document {
   approvalNote?: string;
   reviewedBy?: mongoose.Schema.Types.ObjectId | null;
   reviewedAt?: Date | null;
+  contract_no?: string;
 }
 
 const PdfReportSchema: Schema = new Schema(
@@ -47,6 +48,12 @@ const PdfReportSchema: Schema = new Schema(
     fairMarketValue: {
       type: String,
       required: true,
+    },
+    contract_no: {
+      type: String,
+      required: false,
+      default: '',
+      index: true,
     },
     user: {
       type: Schema.Types.ObjectId,

@@ -1,11 +1,15 @@
 import { AlignmentType, HeadingLevel, ImageRun, Paragraph, Table, TableCell, TableRow, WidthType } from "docx";
 import { goldDivider, fetchImageBuffer } from "./utils.js";
+import { getLang, t } from "./i18n.js";
 
 export async function buildAppendixPhotoGallery(
+  reportData: any,
   rootImageUrls: string[],
   contentWidthTw: number
 ): Promise<Array<Paragraph | Table>> {
   const children: Array<Paragraph | Table> = [];
+  const lang = getLang(reportData);
+  const tr = t(lang);
   const gallery = rootImageUrls.slice(0, Math.min(12, rootImageUrls.length));
   const buffers = await Promise.all(gallery.map((u) => fetchImageBuffer(u)));
   const valid = buffers.filter((b): b is Buffer => !!b);
@@ -13,7 +17,7 @@ export async function buildAppendixPhotoGallery(
 
   children.push(
     new Paragraph({
-      text: "Appendix – Photo Gallery",
+      text: tr.appendixPhotos,
       heading: HeadingLevel.HEADING_1,
       pageBreakBefore: true,
       spacing: { after: 160 },

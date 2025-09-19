@@ -27,6 +27,69 @@ import { buildPerPhotoTable } from "./builders/perPhotoTable.js";
 import { buildKeyValueTable, formatDateUS, goldDivider } from "./builders/utils.js";
 
 export async function generateMixedDocx(reportData: any): Promise<Buffer> {
+  const lang: 'en' | 'fr' | 'es' = ((): any => {
+    const l = String((reportData as any)?.language || '').toLowerCase();
+    return (l === 'fr' || l === 'es') ? l : 'en';
+  })();
+  const t = {
+    en: {
+      assetReport: 'Asset Report',
+      reportSummary: 'Report Summary',
+      groupingMode: 'Grouping Mode',
+      totalLots: 'Total Lots',
+      totalImages: 'Total Images',
+      summaryOfValue: 'Summary of Value Conclusions',
+      valueBody: (v: string) => `Based upon our analysis and methodology, we estimate the reported assets have a value of ${v}.`,
+      noValueBody: 'Based upon our analysis and methodology, please refer to the detailed sections for value information.',
+      reportDetails: 'Report Details',
+      lotWord: 'Lot',
+      perItem: 'Per Item',
+      perPhoto: 'Per Photo',
+      singleLot: 'Single Lot',
+      lotsWord: 'Lots',
+      mixed: 'Mixed',
+      page: 'Page ',
+      contractNo: 'Contract No',
+    },
+    fr: {
+      assetReport: "Rapport d'actifs",
+      reportSummary: 'Résumé du rapport',
+      groupingMode: 'Mode de regroupement',
+      totalLots: 'Total des lots',
+      totalImages: "Nombre d'images",
+      summaryOfValue: 'Résumé des conclusions de valeur',
+      valueBody: (v: string) => `D’après notre analyse et notre méthodologie, nous estimons que la valeur des actifs évalués est de ${v}.`,
+      noValueBody: 'D’après notre analyse et notre méthodologie, veuillez vous référer aux sections détaillées pour les informations de valeur.',
+      reportDetails: 'Détails du rapport',
+      lotWord: 'Lot',
+      perItem: 'Par article',
+      perPhoto: 'Par photo',
+      singleLot: 'Lot unique',
+      lotsWord: 'Lots',
+      mixed: 'Mixte',
+      page: 'Page ',
+      contractNo: 'Numéro de contrat',
+    },
+    es: {
+      assetReport: 'Informe de activos',
+      reportSummary: 'Resumen del informe',
+      groupingMode: 'Modo de agrupación',
+      totalLots: 'Total de lotes',
+      totalImages: 'Total de imágenes',
+      summaryOfValue: 'Resumen de conclusiones de valor',
+      valueBody: (v: string) => `Según nuestro análisis y metodología, estimamos que el valor de los activos reportados es de ${v}.`,
+      noValueBody: 'Según nuestro análisis y metodología, consulte las secciones detalladas para la información de valor.',
+      reportDetails: 'Detalles del informe',
+      lotWord: 'Lote',
+      perItem: 'Por artículo',
+      perPhoto: 'Por foto',
+      singleLot: 'Lote único',
+      lotsWord: 'Lotes',
+      mixed: 'Mixto',
+      page: 'Página ',
+      contractNo: 'Número de contrato',
+    },
+  }[lang];
   const lots: any[] = Array.isArray(reportData?.lots) ? reportData.lots : [];
   const rootImageUrls: string[] = Array.isArray(reportData?.imageUrls)
     ? reportData.imageUrls
@@ -57,7 +120,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
   // Report Summary
   children.push(
     new Paragraph({
-      text: "Report Summary",
+      text: t.reportSummary,
       heading: HeadingLevel.HEADING_1,
       pageBreakBefore: true,
       spacing: { after: 160 },
@@ -66,10 +129,10 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
   children.push(goldDivider());
   children.push(
     buildKeyValueTable([
-      { label: "Grouping Mode", value: "Mixed" },
-      { label: "Total Lots", value: String(lots.length) },
+      { label: t.groupingMode, value: t.mixed },
+      { label: t.totalLots, value: String(lots.length) },
       {
-        label: "Total Images",
+        label: t.totalImages,
         value: String(
           Array.isArray(reportData?.imageUrls) ? reportData.imageUrls.length : 0
         ),
@@ -85,7 +148,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
     undefined;
   children.push(
     new Paragraph({
-      text: "Summary of Value Conclusions",
+      text: t.summaryOfValue,
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 200, after: 80 },
     })
@@ -94,9 +157,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
   children.push(
     new Paragraph({
       style: "BodyLarge",
-      text: totalAppraised
-        ? `Based upon our analysis and methodology, we estimate the reported assets have a value of ${totalAppraised}.`
-        : `Based upon our analysis and methodology, please refer to the detailed sections for value information.`,
+      text: totalAppraised ? t.valueBody(totalAppraised) : t.noValueBody,
       spacing: { after: 160 },
     })
   );
@@ -104,27 +165,28 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
   // Report Details
   children.push(
     new Paragraph({
-      text: "Report Details",
+      text: t.reportDetails,
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 120, after: 80 },
     })
   );
   children.push(goldDivider());
-  children.push(
-    buildKeyValueTable([
-      { label: "Client Name", value: String(reportData?.client_name || "") },
-      {
-        label: "Effective Date",
-        value: formatDateUS(reportData?.effective_date) || reportDate || "",
-      },
-      { label: "Appraisal Purpose", value: String(reportData?.appraisal_purpose || "") },
-      { label: "Owner Name", value: String(reportData?.owner_name || "") },
-      { label: "Appraiser", value: String(reportData?.appraiser || "") },
-      { label: "Appraisal Company", value: String(reportData?.appraisal_company || "") },
-      { label: "Industry", value: String(reportData?.industry || "") },
-      { label: "Inspection Date", value: formatDateUS(reportData?.inspection_date) || "" },
-    ])
-  );
+  {
+    const kvs: { label: string; value: string }[] = [
+      { label: lang === 'fr' ? 'Nom du client' : lang === 'es' ? 'Nombre del cliente' : 'Client Name', value: String(reportData?.client_name || '') },
+      { label: lang === 'fr' ? 'Date d’effet' : lang === 'es' ? 'Fecha de vigencia' : 'Effective Date', value: formatDateUS(reportData?.effective_date) || reportDate || '' },
+      { label: lang === 'fr' ? "Objet de l’évaluation" : lang === 'es' ? 'Propósito de la tasación' : 'Appraisal Purpose', value: String(reportData?.appraisal_purpose || '') },
+      { label: lang === 'fr' ? 'Nom du propriétaire' : lang === 'es' ? 'Nombre del propietario' : 'Owner Name', value: String(reportData?.owner_name || '') },
+      { label: lang === 'fr' ? 'Évaluateur' : lang === 'es' ? 'Tasador' : 'Appraiser', value: String(reportData?.appraiser || '') },
+      { label: lang === 'fr' ? "Société d’évaluation" : lang === 'es' ? 'Empresa de tasación' : 'Appraisal Company', value: String(reportData?.appraisal_company || '') },
+      { label: lang === 'fr' ? 'Secteur' : lang === 'es' ? 'Industria' : 'Industry', value: String(reportData?.industry || '') },
+      { label: lang === 'fr' ? 'Date d’inspection' : lang === 'es' ? 'Fecha de inspección' : 'Inspection Date', value: formatDateUS(reportData?.inspection_date) || '' },
+    ];
+    if (reportData?.contract_no) {
+      kvs.splice(1, 0, { label: t.contractNo, value: String(reportData.contract_no) });
+    }
+    children.push(buildKeyValueTable(kvs));
+  }
 
   // Results: table per mixed lot group, using sub-mode specific layout
   // Group lots by mixed_group_index
@@ -140,7 +202,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
   for (const gid of useGroupIds) {
     const items = groupMap.get(gid) || lots;
     const subMode: string = String(items[0]?.sub_mode || (items[0]?.tags || []).find?.((t: string) => typeof t === "string" && t.startsWith("mode:"))?.split?.(":")?.[1] || "single_lot");
-    const label = `Lot ${gid || 1} — ${subMode === "per_item" ? "Per Item" : subMode === "per_photo" ? "Per Photo" : "Single Lot"}`;
+    const label = `${t.lotWord} ${gid || 1} — ${subMode === 'per_item' ? t.perItem : subMode === 'per_photo' ? t.perPhoto : t.singleLot}`;
 
     if (subMode === "per_item") {
       const pseudo = { lots: items };
@@ -158,6 +220,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
 
   // Appendix
   const appendixChildren = await buildAppendixPhotoGallery(
+    reportData,
     rootImageUrls,
     contentWidthTw
   );
@@ -171,7 +234,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
       "ClearValue",
     title:
       (reportData?.title as string) ||
-      `Asset Report - ${lots.length} Lots (Mixed)`,
+      `${t.assetReport} - ${lots.length} ${t.lotsWord} (${t.mixed})`,
     features: { updateFields: true },
     styles: {
       default: {
@@ -235,7 +298,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
         },
         headers: { default: new Header({ children: [] }) },
         footers: { default: new Footer({ children: [] }) },
-        children: [buildCover(reportData, logoBuffer, contentWidthTw, "Asset Report")],
+        children: [buildCover(reportData, logoBuffer, contentWidthTw, t.assetReport)],
       },
       // Table of Contents (no header/footer)
       {
@@ -283,7 +346,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
             children: [
               new Paragraph({
                 alignment: AlignmentType.CENTER,
-                children: [new TextRun({ text: "Page " }), PageNumber.CURRENT as any],
+                children: [new TextRun({ text: t.page }), PageNumber.CURRENT as any],
               }),
             ],
           }),

@@ -10,32 +10,34 @@ import {
   WidthType,
 } from "docx";
 import { goldDivider } from "./utils.js";
+import { getLang, t } from "./i18n.js";
 
 export function buildTOC(reportData: any): Array<Paragraph | Table> {
+  const lang = getLang(reportData);
+  const tr = t(lang);
   const entries: { label: string }[] = [];
   // Order should mirror sections in catalogueDocxBuilder
-  entries.push({ label: "Transmittal Letter" });
-  entries.push({ label: "Certificate of Appraisal" });
-  entries.push({ label: "Report Summary" });
+  entries.push({ label: tr.transmittalLetter });
+  entries.push({ label: tr.certificateOfAppraisal });
+  entries.push({ label: tr.reportSummary });
   const gm = String(reportData?.grouping_mode || "");
   if (gm === "combined") {
     const modes: string[] = Array.isArray(reportData?.combined_modes)
       ? reportData.combined_modes
       : ["per_item", "per_photo", "single_lot"];
-    if (modes.includes("per_item")) entries.push({ label: "Per Item Results" });
-    if (modes.includes("per_photo")) entries.push({ label: "Per Lot Results" });
-    if (modes.includes("single_lot"))
-      entries.push({ label: "Single Lot Results" });
+    if (modes.includes("per_item")) entries.push({ label: tr.perItemResults });
+    if (modes.includes("per_photo")) entries.push({ label: tr.perPhotoResults });
+    if (modes.includes("single_lot")) entries.push({ label: tr.singleLotResults });
   } else if (Array.isArray(reportData?.lots) && reportData.lots.length) {
-    if (gm === "catalogue") entries.push({ label: "Catalogue" });
-    else if (gm === "per_item") entries.push({ label: "Analyzed Items" });
-    else entries.push({ label: "Lots" });
+    if (gm === "catalogue") entries.push({ label: tr.assetCatalogue });
+    else if (gm === "per_item") entries.push({ label: tr.perItemResults });
+    else entries.push({ label: tr.lotsWord });
   }
-  entries.push({ label: "Market Overview" });
-  entries.push({ label: "References" });
+  entries.push({ label: tr.marketOverview });
+  entries.push({ label: tr.references });
   const hasImages =
     Array.isArray(reportData?.imageUrls) && reportData.imageUrls.length > 0;
-  if (hasImages) entries.push({ label: "Appendix: Photo Gallery" });
+  if (hasImages) entries.push({ label: tr.appendixPhotos });
 
   const headerRow = new TableRow({
     cantSplit: true,
@@ -43,7 +45,7 @@ export function buildTOC(reportData: any): Array<Paragraph | Table> {
       new TableCell({
         children: [
           new Paragraph({
-            children: [new TextRun({ text: "Section", bold: true })],
+            children: [new TextRun({ text: tr.section, bold: true })],
           }),
         ],
       }),
@@ -51,7 +53,7 @@ export function buildTOC(reportData: any): Array<Paragraph | Table> {
         children: [
           new Paragraph({
             alignment: AlignmentType.RIGHT,
-            children: [new TextRun({ text: "Page", bold: true })],
+            children: [new TextRun({ text: tr.page.trim(), bold: true })],
           }),
         ],
       }),
@@ -93,7 +95,7 @@ export function buildTOC(reportData: any): Array<Paragraph | Table> {
 
   return [
     new Paragraph({
-      text: "Table of Contents",
+      text: tr.tableOfContents,
       heading: HeadingLevel.HEADING_1,
       pageBreakBefore: true,
       spacing: { after: 120 },

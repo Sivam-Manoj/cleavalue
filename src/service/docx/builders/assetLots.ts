@@ -13,6 +13,7 @@ import {
   BorderStyle,
 } from "docx";
 import { fetchImageBuffer, goldDivider } from "./utils.js";
+import { getLang, t } from "./i18n.js";
 
 export async function buildAssetLots(
   reportData: any,
@@ -22,13 +23,16 @@ export async function buildAssetLots(
 ): Promise<Array<Paragraph | Table>> {
   const children: Array<Paragraph | Table> = [];
   const lots: any[] = Array.isArray(reportData?.lots) ? reportData.lots : [];
+  const lang = getLang(reportData);
+  const tr = t(lang);
+  const heading = !headingLabel || headingLabel === "Lots" ? tr.lotsWord : headingLabel;
 
   if (!lots.length) return children;
 
   // Section header
   children.push(
     new Paragraph({
-      text: headingLabel,
+      text: heading,
       heading: HeadingLevel.HEADING_1,
       pageBreakBefore: true,
       spacing: { after: 160 },
@@ -43,7 +47,7 @@ export async function buildAssetLots(
   for (const lot of lots) {
     // Lot title
     const titlePieces: TextRun[] = [];
-    titlePieces.push(new TextRun({ text: `Lot ${String(lot?.lot_id || "").trim()}`, bold: true }));
+    titlePieces.push(new TextRun({ text: `${tr.lotWord} ${String(lot?.lot_id || "").trim()}`, bold: true }));
     if (lot?.title) {
       titlePieces.push(new TextRun({ text: " — ", color: "6B7280" }));
       titlePieces.push(new TextRun({ text: String(lot.title), bold: true }));
@@ -52,9 +56,9 @@ export async function buildAssetLots(
 
     // Badges line
     const badges: string[] = [];
-    if (lot?.condition) badges.push(`Condition: ${lot.condition}`);
-    if (lot?.estimated_value) badges.push(`Est. Value: ${lot.estimated_value}`);
-    if (Array.isArray(lot?.items)) badges.push(`Items: ${lot.items.length}`);
+    if (lot?.condition) badges.push(`${tr.condition}: ${lot.condition}`);
+    if (lot?.estimated_value) badges.push(`${tr.estValueCad}: ${lot.estimated_value}`);
+    if (Array.isArray(lot?.items)) badges.push(`${tr.itemsWord}: ${lot.items.length}`);
     if (badges.length) children.push(new Paragraph({ text: badges.join("  •  "), spacing: { after: 80 } }));
 
     // Description
@@ -64,20 +68,20 @@ export async function buildAssetLots(
     const vd: any = (lot as any)?.vinDecoded;
     if (vd) {
       const parts: string[] = [];
-      if (vd?.vin) parts.push(`VIN: ${vd.vin}`);
+      if (vd?.vin) parts.push(`${tr.vinLabel}: ${vd.vin}`);
       const ymmt: string[] = [];
-      if (vd?.year) ymmt.push(String(vd.year));
-      if (vd?.make) ymmt.push(String(vd.make));
-      if (vd?.model) ymmt.push(String(vd.model));
-      if (vd?.trim) ymmt.push(String(vd.trim));
+      if (vd?.year) ymmt.push(`${tr.yearLabel}: ${String(vd.year)}`);
+      if (vd?.make) ymmt.push(`${tr.makeLabel}: ${String(vd.make)}`);
+      if (vd?.model) ymmt.push(`${tr.modelLabel}: ${String(vd.model)}`);
+      if (vd?.trim) ymmt.push(`${tr.trimLabel}: ${String(vd.trim)}`);
       if (ymmt.length) parts.push(ymmt.join(" "));
-      const eng = [vd?.engineCylinders ? `${vd.engineCylinders} cyl` : undefined, vd?.displacementL ? `${vd.displacementL}L` : undefined]
+      const eng = [vd?.engineCylinders ? `${vd.engineCylinders} ${tr.cylAbbrev}` : undefined, vd?.displacementL ? `${vd.displacementL}${tr.litersAbbrev}` : undefined]
         .filter(Boolean)
         .join(" ");
-      if (eng) parts.push(`Engine: ${eng}`);
-      if (vd?.fuelType) parts.push(`Fuel: ${vd.fuelType}`);
-      if (vd?.driveType) parts.push(`Drive: ${vd.driveType}`);
-      if (vd?.transmission) parts.push(`Trans: ${vd.transmission}`);
+      if (eng) parts.push(`${tr.engineLabel}: ${eng}`);
+      if (vd?.fuelType) parts.push(`${tr.fuelLabel}: ${vd.fuelType}`);
+      if (vd?.driveType) parts.push(`${tr.driveLabel}: ${vd.driveType}`);
+      if (vd?.transmission) parts.push(`${tr.transLabel}: ${vd.transmission}`);
       if (parts.length) {
         children.push(new Paragraph({ text: parts.join(" • "), spacing: { after: 80 } }));
       }

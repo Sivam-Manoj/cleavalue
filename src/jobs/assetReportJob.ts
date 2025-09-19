@@ -138,6 +138,10 @@ export async function runAssetReportJob({
         : "single_lot";
 
     const imageUrls: string[] = [];
+    const selectedLanguage: 'en' | 'fr' | 'es' = ((): any => {
+      const l = String(details?.language || '').toLowerCase();
+      return (l === 'fr' || l === 'es') ? l : 'en';
+    })();
     if (images?.length) {
       startStep("r2_upload", "Uploading images to storage");
       const total = images.length;
@@ -217,7 +221,7 @@ export async function runAssetReportJob({
         }
 
         try {
-          const aiRes = await analyzeAssetImages(subUrls, "catalogue");
+          const aiRes = await analyzeAssetImages(subUrls, "catalogue", selectedLanguage);
           if (!analysis) analysis = { per_lot: [] };
           analysis.per_lot.push(aiRes);
 
@@ -371,7 +375,7 @@ export async function runAssetReportJob({
         }
 
         try {
-          const aiRes = await analyzeAssetImages(subUrls, subMode);
+          const aiRes = await analyzeAssetImages(subUrls, subMode, selectedLanguage);
           if (!analysis) analysis = { mixed: [] };
           if (!Array.isArray(analysis.mixed)) analysis.mixed = [];
           analysis.mixed.push({ mode: subMode, result: aiRes });
@@ -447,7 +451,7 @@ export async function runAssetReportJob({
       if (urlsForAI.length > 0) {
         try {
           startStep("ai_analysis", "AI analysis of images (combined -> per_item primary)");
-          const perItemRes = await analyzeAssetImages(urlsForAI, "per_item");
+          const perItemRes = await analyzeAssetImages(urlsForAI, "per_item", selectedLanguage);
           endStep("ai_analysis");
           analysis = perItemRes;
           // Normalize items to include a canonical image_index if available (first index)
@@ -521,7 +525,7 @@ export async function runAssetReportJob({
       if (urlsForAI.length > 0) {
         try {
           startStep("ai_analysis", "AI analysis of images");
-          analysis = await analyzeAssetImages(urlsForAI, groupingMode);
+          analysis = await analyzeAssetImages(urlsForAI, groupingMode, selectedLanguage);
           endStep("ai_analysis");
         } catch (e) {
           console.error("Error during asset AI analysis:", e);
@@ -597,6 +601,8 @@ export async function runAssetReportJob({
       appraisal_company: details?.appraisal_company,
       industry: details?.industry,
       inspection_date: parseDate(details?.inspection_date),
+      contract_no: details?.contract_no,
+      language: selectedLanguage,
     });
 
     await withStep("save_report", "Persisting report to database", async () => {
@@ -630,6 +636,10 @@ export async function runAssetReportJob({
           ...reportObject,
           inspector_name: user?.name || "",
           user_email: user?.email || "",
+          language: ((): 'en' | 'fr' | 'es' => {
+            const l = String((reportObject as any)?.language || details?.language || '').toLowerCase();
+            return (l === 'fr' || l === 'es') ? (l as any) : 'en';
+          })(),
           ...(groupingMode === "combined" && analysis?.combined
             ? {
                 grouping_mode: "combined",
@@ -655,6 +665,7 @@ export async function runAssetReportJob({
         const buf = await generateAssetXlsxFromReport({
           ...reportObject,
           inspector_name: user?.name || "",
+          language: (reportObject as any)?.language || details?.language || 'en',
         });
         const t1 = Date.now();
         console.log(
@@ -793,6 +804,7 @@ export async function runAssetReportJob({
       reportModel: "AssetReport",
       address: `Asset Report (${lots.length} lots)`,
       fairMarketValue,
+      contract_no: (reportObject as any)?.contract_no || details?.contract_no || '',
     });
     const docxRec = new PdfReport({
       filename: docxFilename,
@@ -804,6 +816,7 @@ export async function runAssetReportJob({
       reportModel: "AssetReport",
       address: `Asset Report (${lots.length} lots)`,
       fairMarketValue,
+      contract_no: (reportObject as any)?.contract_no || details?.contract_no || '',
     });
     const xlsxRec = new PdfReport({
       filename: xlsxFilename,
@@ -815,6 +828,7 @@ export async function runAssetReportJob({
       reportModel: "AssetReport",
       address: `Asset Report (${lots.length} lots)`,
       fairMarketValue,
+      contract_no: (reportObject as any)?.contract_no || details?.contract_no || '',
     });
     const imagesRec = new PdfReport({
       filename: imagesZipFilename,
@@ -827,6 +841,7 @@ export async function runAssetReportJob({
       reportModel: "AssetReport",
       address: `Asset Report (${lots.length} lots) - Images`,
       fairMarketValue,
+      contract_no: (reportObject as any)?.contract_no || details?.contract_no || '',
     });
     await Promise.all([
       withStep(

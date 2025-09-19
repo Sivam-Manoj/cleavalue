@@ -11,18 +11,21 @@ import {
   generateTrendChartImage,
   generateBarChartImage,
 } from "../../marketIntelService.js";
+import { getLang, t } from "./i18n.js";
 
 export async function buildMarketOverview(
   reportData: any
 ): Promise<Paragraph[]> {
   const children: Paragraph[] = [];
+  const lang = getLang(reportData);
+  const tr = t(lang);
   try {
     const { industry, canada, northAmerica } =
       await fetchCanadaAndNorthAmericaIndicators(reportData);
 
     children.push(
       new Paragraph({
-        text: "Market Overview",
+        text: tr.marketOverview,
         heading: HeadingLevel.HEADING_1,
         pageBreakBefore: true,
         spacing: { after: 160 },
@@ -33,7 +36,7 @@ export async function buildMarketOverview(
     if (Array.isArray(canada?.bullets) && canada.bullets.length) {
       children.push(
         new Paragraph({
-          text: "Canada Highlights",
+          text: tr.canadaHighlights,
           heading: HeadingLevel.HEADING_2,
           spacing: { after: 100 },
         })
@@ -74,7 +77,7 @@ export async function buildMarketOverview(
     if (Array.isArray(northAmerica?.bullets) && northAmerica.bullets.length) {
       children.push(
         new Paragraph({
-          text: "North America Highlights",
+          text: tr.northAmericaHighlights,
           heading: HeadingLevel.HEADING_2,
           spacing: { after: 100 },
         })
@@ -125,7 +128,7 @@ export async function buildMarketOverview(
     if (uniqueRefs.length) {
       children.push(
         new Paragraph({
-          text: "References",
+          text: tr.references,
           heading: HeadingLevel.HEADING_2,
           spacing: { before: 80, after: 120 },
         })

@@ -28,6 +28,7 @@ import {
   goldDivider,
   buildKeyValueTable,
 } from "./builders/utils.js";
+import { getLang, t } from "./builders/i18n.js";
 
 // utils moved to ./builders/utils
 
@@ -58,9 +59,11 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
   const reportDate = formatDateUS(
     reportData?.createdAt || new Date().toISOString()
   );
+  const lang = getLang(reportData);
+  const tr = t(lang);
   // Build non-header sections separately (do not include in main children)
   const coverChildren: Array<Paragraph | Table | TableOfContents> = [
-    buildCover(reportData, logoBuffer, contentWidthTw, "Asset Catalogue"),
+    buildCover(reportData, logoBuffer, contentWidthTw, tr.assetCatalogue),
   ];
   const tocChildren = buildTOC(reportData);
   const transmittalChildren = buildTransmittalLetter(reportData, reportDate);
@@ -73,7 +76,7 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
   // Report Summary
   children.push(
     new Paragraph({
-      text: "Report Summary",
+      text: tr.reportSummary,
       heading: HeadingLevel.HEADING_1,
       pageBreakBefore: true,
       spacing: { after: 160 },
@@ -83,12 +86,12 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
   children.push(
     buildKeyValueTable([
       {
-        label: "Grouping Mode",
+        label: tr.groupingMode,
         value: "Schedule A",
       },
-      { label: "Total Lots", value: String(lots.length) },
+      { label: tr.totalLots, value: String(lots.length) },
       {
-        label: "Total Images",
+        label: tr.totalImages,
         value: String(
           Array.isArray(reportData?.imageUrls) ? reportData.imageUrls.length : 0
         ),
@@ -106,7 +109,7 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
   // Report Details
   children.push(
     new Paragraph({
-      text: "Report Details",
+      text: tr.reportDetails,
       heading: HeadingLevel.HEADING_1,
       pageBreakBefore: true,
       spacing: { after: 160 },
@@ -115,20 +118,21 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
   children.push(goldDivider());
   children.push(
     buildKeyValueTable([
-      { label: "Client Name", value: reportData?.client_name },
+      { label: tr.clientName, value: reportData?.client_name },
       {
-        label: "Effective Date",
+        label: tr.effectiveDate,
         value: formatDateUS(reportData?.effective_date),
       },
-      { label: "Appraisal Purpose", value: reportData?.appraisal_purpose },
-      { label: "Owner Name", value: reportData?.owner_name },
-      { label: "Appraiser", value: reportData?.appraiser },
-      { label: "Appraisal Company", value: reportData?.appraisal_company },
-      { label: "Industry", value: reportData?.industry },
+      { label: tr.appraisalPurpose, value: reportData?.appraisal_purpose },
+      { label: tr.ownerName, value: reportData?.owner_name },
+      { label: tr.appraiser, value: reportData?.appraiser },
+      { label: tr.appraisalCompany, value: reportData?.appraisal_company },
+      { label: tr.industry, value: reportData?.industry },
       {
-        label: "Inspection Date",
+        label: tr.inspectionDate,
         value: formatDateUS(reportData?.inspection_date),
       },
+      ...(reportData?.contract_no ? [{ label: tr.contractNo, value: String(reportData.contract_no) }] : []),
     ])
   );
 
@@ -174,7 +178,7 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
     undefined;
   children.push(
     new Paragraph({
-      text: "Summary of Value Conclusions",
+      text: tr.summaryOfValue,
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 200, after: 80 },
     })
@@ -811,6 +815,7 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
   );
   children.push(...lotsChildren);
   const appendixChildren = await buildAppendixPhotoGallery(
+    reportData,
     rootImageUrls,
     contentWidthTw
   );
@@ -975,7 +980,7 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 children: [
-                  new TextRun({ text: "Page " }),
+                  new TextRun({ text: tr.page }),
                   PageNumber.CURRENT as any,
                 ],
               }),

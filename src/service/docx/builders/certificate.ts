@@ -12,6 +12,7 @@ import {
   ShadingType,
 } from "docx";
 import { goldDivider, formatDateUS } from "./utils.js";
+import { getLang, t } from "./i18n.js";
 
 export function buildCertificateOfAppraisal(
   reportData: any,
@@ -19,9 +20,11 @@ export function buildCertificateOfAppraisal(
   reportDate: string
 ): Array<Paragraph | Table> {
   const children: Array<Paragraph | Table> = [];
+  const lang = getLang(reportData);
+  const tr = t(lang);
 
   children.push(
-    new Paragraph({ text: "Certificate of Appraisal", heading: HeadingLevel.HEADING_1, pageBreakBefore: true, spacing: { after: 160 } })
+    new Paragraph({ text: tr.certificateOfAppraisal, heading: HeadingLevel.HEADING_1, pageBreakBefore: true, spacing: { after: 160 } })
   );
   children.push(goldDivider());
 
@@ -52,7 +55,7 @@ export function buildCertificateOfAppraisal(
         children: [
           new TableCell({
             margins: { top: 60, bottom: 60, left: 100, right: 100 },
-            children: [new Paragraph({ children: [new TextRun({ text: "Client", bold: true })] })],
+            children: [new Paragraph({ children: [new TextRun({ text: tr.client, bold: true })] })],
           }),
           new TableCell({
             margins: { top: 60, bottom: 60, left: 100, right: 100 },
@@ -64,7 +67,7 @@ export function buildCertificateOfAppraisal(
         children: [
           new TableCell({
             margins: { top: 60, bottom: 60, left: 100, right: 100 },
-            children: [new Paragraph({ children: [new TextRun({ text: "Effective Date", bold: true })] })],
+            children: [new Paragraph({ children: [new TextRun({ text: tr.effectiveDate, bold: true })] })],
           }),
           new TableCell({
             margins: { top: 60, bottom: 60, left: 100, right: 100 },
@@ -76,7 +79,7 @@ export function buildCertificateOfAppraisal(
         children: [
           new TableCell({
             margins: { top: 60, bottom: 60, left: 100, right: 100 },
-            children: [new Paragraph({ children: [new TextRun({ text: "Purpose", bold: true })] })],
+            children: [new Paragraph({ children: [new TextRun({ text: tr.purpose, bold: true })] })],
           }),
           new TableCell({
             margins: { top: 60, bottom: 60, left: 100, right: 100 },
@@ -88,7 +91,7 @@ export function buildCertificateOfAppraisal(
         children: [
           new TableCell({
             margins: { top: 60, bottom: 60, left: 100, right: 100 },
-            children: [new Paragraph({ children: [new TextRun({ text: "Prepared By", bold: true })] })],
+            children: [new Paragraph({ children: [new TextRun({ text: tr.preparedBy, bold: true })] })],
           }),
           new TableCell({
             margins: { top: 60, bottom: 60, left: 100, right: 100 },
@@ -118,14 +121,14 @@ export function buildCertificateOfAppraisal(
             margins: { top: 80, bottom: 20, left: 100, right: 100 },
             children: [
               new Paragraph({ border: { top: { style: BorderStyle.SINGLE, size: 4, color: "A3A3A3" } }, spacing: { before: 120, after: 60 } }),
-              new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Appraiser Signature", color: "6B7280" })] }),
+              new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.appraiserSignature, color: "6B7280" })] }),
             ],
           }),
           new TableCell({
             margins: { top: 80, bottom: 20, left: 100, right: 100 },
             children: [
               new Paragraph({ border: { top: { style: BorderStyle.SINGLE, size: 4, color: "A3A3A3" } }, spacing: { before: 120, after: 60 } }),
-              new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `Date: ${reportDate}`, color: "6B7280" })] }),
+              new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${tr.dateLabel}${reportDate}`, color: "6B7280" })] }),
             ],
           }),
         ],
@@ -156,14 +159,14 @@ export function buildCertificateOfAppraisal(
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
                   spacing: { after: 120 },
-                  children: [new TextRun({ text: "CERTIFICATE OF APPRAISAL", bold: true, size: 44 })],
+                  children: [new TextRun({ text: tr.certificateTitle, bold: true, size: 44 })],
                 }),
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
                   spacing: { after: 200 },
                   children: [
                     new TextRun({
-                      text: "This is to certify that the assets described herein have been appraised in accordance with accepted professional standards.",
+                      text: tr.certificateBody,
                       color: "374151",
                     }),
                   ],
@@ -171,7 +174,7 @@ export function buildCertificateOfAppraisal(
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
                   spacing: { after: 200 },
-                  children: [new TextRun({ text: totalVal ? String(totalVal) : "Value: see details", bold: true, size: 36 })],
+                  children: [new TextRun({ text: totalVal ? String(totalVal) : tr.valueSeeDetails, bold: true, size: 36 })],
                 }),
                 certDetails,
                 new Paragraph({ text: "", spacing: { before: 120, after: 60 } }),

@@ -38,6 +38,7 @@ export interface AssetLotAI {
 export interface AssetAnalysisResult {
   lots: AssetLotAI[];
   summary?: string;
+  language?: 'en' | 'fr' | 'es';
 }
 
 async function imageUrlToBase64WithMime(
@@ -236,13 +237,18 @@ async function deduplicateAssetLotsAI(
 
 export async function analyzeAssetImages(
   imageUrls: string[],
-  groupingMode: AssetGroupingMode
+  groupingMode: AssetGroupingMode,
+  language?: 'en' | 'fr' | 'es'
 ): Promise<AssetAnalysisResult> {
   if (!Array.isArray(imageUrls) || imageUrls.length === 0) {
     throw new Error("No image URLs provided for analysis.");
   }
 
-  const systemPrompt = getAssetSystemPrompt(groupingMode);
+  const lang: 'en' | 'fr' | 'es' = ((): any => {
+    const l = String(language || '').toLowerCase();
+    return (l === 'fr' || l === 'es') ? l : 'en';
+  })();
+  const systemPrompt = getAssetSystemPrompt(groupingMode as any, lang);
 
   // Special handling: per_item should analyze each image individually and include image_url
   if (groupingMode === "per_item") {
@@ -305,7 +311,7 @@ export async function analyzeAssetImages(
     // If nothing was extracted in per_item pass, fallback to a per_photo-style analysis (one lot per image)
     if (combinedLots.length === 0) {
       try {
-        const fallbackPrompt = getAssetSystemPrompt("per_photo");
+        const fallbackPrompt = getAssetSystemPrompt("per_photo", lang);
         const imgs = await Promise.all(imageUrls.map(imageUrlToBase64WithMime));
         const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
           { role: "system", content: fallbackPrompt },
@@ -342,6 +348,7 @@ export async function analyzeAssetImages(
           return {
             lots: fallbackLots,
             summary: `${fallbackLots.length} items identified via fallback per_photo analysis of ${imageUrls.length} images.`,
+            language: parsed.language || lang,
           };
         }
       } catch (e) {
@@ -351,6 +358,7 @@ export async function analyzeAssetImages(
       return {
         lots: [],
         summary: `0 items identified (per_item), fallback failed.`,
+        language: lang,
       };
     }
 
@@ -361,6 +369,7 @@ export async function analyzeAssetImages(
     return {
       lots: finalLots,
       summary: `${finalLots.length} unique items identified from ${imageUrls.length} images (per_item, deduped).`,
+      language: lang,
     };
   }
 
@@ -401,7 +410,8 @@ export async function analyzeAssetImages(
 
   try {
     console.log("content", content);
-    return JSON.parse(content) as AssetAnalysisResult;
+    const parsed = JSON.parse(content) as AssetAnalysisResult;
+    return { ...parsed, language: parsed.language || lang };
   } catch (err) {
     console.error("Invalid JSON from model:", content);
     throw new Error("Failed to parse JSON from AI response.");

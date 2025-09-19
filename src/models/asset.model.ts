@@ -51,6 +51,8 @@ export interface IAssetReport extends Document {
   appraisal_company?: string;
   industry?: string;
   inspection_date?: Date;
+  contract_no?: string;
+  language?: 'en' | 'fr' | 'es';
 }
 
 const CatalogueItemSchema: Schema<ICatalogueItem> = new Schema(
@@ -116,6 +118,8 @@ const AssetReportSchema: Schema<IAssetReport> = new Schema(
     appraisal_company: { type: String },
     industry: { type: String },
     inspection_date: { type: Date },
+    contract_no: { type: String },
+    language: { type: String, enum: ['en', 'fr', 'es'], default: 'en' },
     analysis: { type: Schema.Types.Mixed },
   },
   { timestamps: true }
