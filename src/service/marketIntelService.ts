@@ -73,13 +73,38 @@ function deriveIndustryFromReport(reportData: any): { industry: string; keywords
 export async function fetchMarketIndicators(
   industry: string,
   region?: string,
-  contextKeywords: string[] = []
+  contextKeywords: string[] = [],
+  language?: 'en' | 'fr' | 'es'
 ): Promise<MarketIndicators> {
+  const lang: 'en' | 'fr' | 'es' = ((): any => {
+    const l = String(language || '').toLowerCase();
+    return (l === 'fr' || l === 'es') ? l : 'en';
+  })();
+  const i18n = {
+    en: {
+      sample1: (ind: string, reg?: string) => `Sample insight: ${ind} demand has shown steady growth over 5 years in ${reg || 'target region'}.`,
+      sample2: `Auction activity and secondary market pricing remain supportive of appraised values.`,
+      sample3: `Capital expenditure cycles and infrastructure investments underpin medium‑term stability.`,
+      notFound: 'not found',
+    },
+    fr: {
+      sample1: (ind: string, reg?: string) => `Aperçu : la demande pour ${ind} a affiché une croissance régulière sur 5 ans ${reg ? `au(x) ${reg}` : 'dans la région cible'}.`,
+      sample2: `L’activité des enchères et les prix du marché secondaire soutiennent les valeurs estimées.`,
+      sample3: `Les cycles de dépenses en capital et les investissements dans les infrastructures soutiennent la stabilité à moyen terme.`,
+      notFound: 'introuvable',
+    },
+    es: {
+      sample1: (ind: string, reg?: string) => `Dato de muestra: la demanda de ${ind} ha mostrado un crecimiento constante en 5 años en ${reg || 'la región objetivo'}.`,
+      sample2: `La actividad de subastas y los precios del mercado secundario respaldan los valores tasados.`,
+      sample3: `Los ciclos de gasto de capital y las inversiones en infraestructura respaldan la estabilidad a medio plazo.`,
+      notFound: 'no encontrado',
+    },
+  } as const;
   const fallback: MarketIndicators = {
     bullets: [
-      `Sample insight: ${industry} demand has shown steady growth over 5 years in ${region || "target region"}.`,
-      "Auction activity and secondary market pricing remain supportive of appraised values.",
-      "Capital expenditure cycles and infrastructure investments underpin medium‑term stability.",
+      i18n[lang].sample1(industry, region),
+      i18n[lang].sample2,
+      i18n[lang].sample3,
     ],
     sources: [
       { title: "Industry overview (sample)", url: "https://www.ritchiebros.com/market-trends" },
@@ -102,6 +127,7 @@ Rules:
 - Output JSON ONLY with the exact keys and structure above — no prose before or after.
 - "values" represent an approximate market size or appraised value proxy in CAD billions with one decimal place.
 - Sources must be reputable pages relevant to the query.
+- IMPORTANT: Bullet strings must be written in the following language: ${lang}. Keep JSON keys in English.
 Query focus: ${industry} market ${region ? `in ${region}` : "(global or relevant region)"}.
 Context terms from the appraisal results (use to refine the search and make insights specific): ${contextKeywords
       .slice(0, 20)
@@ -175,15 +201,25 @@ export async function generateTrendChartImage(
   values: number[],
   title: string,
   width = 1000,
-  height = 600
+  height = 600,
+  lang?: 'en' | 'fr' | 'es'
 ): Promise<Buffer> {
+  const l = ((): 'en' | 'fr' | 'es' => {
+    const s = String(lang || '').toLowerCase();
+    return (s === 'fr' || s === 'es') ? (s as any) : 'en';
+  })();
+  const labels = {
+    en: { y: 'Value (CAD Billions)', x: 'Year' },
+    fr: { y: 'Valeur (milliards CAD)', x: 'Année' },
+    es: { y: 'Valor (miles de millones CAD)', x: 'Año' },
+  } as const;
   const config = {
     type: "line",
     data: {
       labels: years,
       datasets: [
         {
-          label: "Value (CAD Billions)",
+          label: labels[l].y,
           data: values,
           fill: false,
           borderColor: "#E11D48",
@@ -199,8 +235,8 @@ export async function generateTrendChartImage(
         title: { display: true, text: title },
       },
       scales: {
-        y: { title: { display: true, text: "Value (CAD Billions)" } },
-        x: { title: { display: true, text: "Year" } },
+        y: { title: { display: true, text: labels[l].y } },
+        x: { title: { display: true, text: labels[l].x } },
       },
     },
   };
@@ -222,15 +258,25 @@ export async function generateBarChartImage(
   values: number[],
   title: string,
   width = 1000,
-  height = 600
+  height = 600,
+  lang?: 'en' | 'fr' | 'es'
 ): Promise<Buffer> {
+  const l = ((): 'en' | 'fr' | 'es' => {
+    const s = String(lang || '').toLowerCase();
+    return (s === 'fr' || s === 'es') ? (s as any) : 'en';
+  })();
+  const labels = {
+    en: { y: 'Value (CAD Billions)', x: 'Year' },
+    fr: { y: 'Valeur (milliards CAD)', x: 'Année' },
+    es: { y: 'Valor (miles de millones CAD)', x: 'Año' },
+  } as const;
   const config = {
     type: "bar",
     data: {
       labels: years,
       datasets: [
         {
-          label: "Value (CAD Billions)",
+          label: labels[l].y,
           data: values,
           backgroundColor: "#065F46",
           borderColor: "#064E3B",
@@ -244,8 +290,8 @@ export async function generateBarChartImage(
         title: { display: true, text: title },
       },
       scales: {
-        y: { title: { display: true, text: "Value (CAD Billions)" }, beginAtZero: true },
-        x: { title: { display: true, text: "Year" } },
+        y: { title: { display: true, text: labels[l].y }, beginAtZero: true },
+        x: { title: { display: true, text: labels[l].x } },
       },
     },
   };
@@ -262,9 +308,13 @@ export async function fetchCanadaAndNorthAmericaIndicators(
   reportData: any
 ): Promise<{ industry: string; canada: MarketIndicators; northAmerica: MarketIndicators }> {
   const { industry, keywords } = deriveIndustryFromReport(reportData);
+  const lang: 'en' | 'fr' | 'es' = ((): any => {
+    const l = String(reportData?.language || '').toLowerCase();
+    return (l === 'fr' || l === 'es') ? l : 'en';
+  })();
   const [canada, northAmerica] = await Promise.all([
-    fetchMarketIndicators(industry, "Canada", keywords),
-    fetchMarketIndicators(industry, "North America", keywords),
+    fetchMarketIndicators(industry, "Canada", keywords, lang),
+    fetchMarketIndicators(industry, "North America", keywords, lang),
   ]);
   return { industry, canada, northAmerica };
 }

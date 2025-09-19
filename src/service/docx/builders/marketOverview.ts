@@ -58,7 +58,8 @@ export async function buildMarketOverview(
       canada.series.values,
       `${industry} – Canada (5-Year Trend)`,
       1000,
-      600
+      600,
+      lang
     );
     children.push(
       new Paragraph({
@@ -99,7 +100,8 @@ export async function buildMarketOverview(
       northAmerica.series.values,
       `${industry} – North America (5-Year Trend)`,
       1000,
-      600
+      600,
+      lang
     );
     children.push(
       new Paragraph({
