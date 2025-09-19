@@ -153,7 +153,35 @@ export async function buildPerItemTable(
             margins: cellMargins,
             verticalAlign: VerticalAlign.CENTER,
             shading: zebra ? ({ type: "clear", fill: "FAFAFA", color: "auto" } as any) : undefined,
-            children: [new Paragraph(String(it?.serial_no_or_label || "—"))],
+            children: (() => {
+              const out: Paragraph[] = [];
+              const serialText = String(it?.serial_no_or_label || "—");
+              out.push(new Paragraph(serialText));
+              const vd: any = (it as any)?.vinDecoded;
+              if (vd) {
+                const parts: string[] = [];
+                if (vd?.vin) parts.push(`VIN: ${vd.vin}`);
+                if (vd?.year) parts.push(`Year: ${vd.year}`);
+                if (vd?.make) parts.push(`Make: ${vd.make}`);
+                if (vd?.model) parts.push(`Model: ${vd.model}`);
+                if (vd?.trim) parts.push(`Trim: ${vd.trim}`);
+                const eng = [vd?.engineCylinders ? `${vd.engineCylinders} cyl` : undefined, vd?.displacementL ? `${vd.displacementL}L` : undefined]
+                  .filter(Boolean)
+                  .join(" ");
+                if (eng) parts.push(`Engine: ${eng}`);
+                if (vd?.fuelType) parts.push(`Fuel: ${vd.fuelType}`);
+                if (vd?.driveType) parts.push(`Drive: ${vd.driveType}`);
+                if (vd?.transmission) parts.push(`Trans: ${vd.transmission}`);
+                if (parts.length) {
+                  out.push(
+                    new Paragraph({
+                      children: [new TextRun({ text: parts.join(" • "), color: "374151" })],
+                    })
+                  );
+                }
+              }
+              return out;
+            })(),
           }),
           new TableCell({
             width: { size: w.desc, type: WidthType.DXA },

@@ -60,6 +60,29 @@ export async function buildAssetLots(
     // Description
     if (lot?.description) children.push(new Paragraph({ text: String(lot.description), spacing: { after: 100 } }));
 
+    // Vehicle Details (structured) if VIN decoded data exists
+    const vd: any = (lot as any)?.vinDecoded;
+    if (vd) {
+      const parts: string[] = [];
+      if (vd?.vin) parts.push(`VIN: ${vd.vin}`);
+      const ymmt: string[] = [];
+      if (vd?.year) ymmt.push(String(vd.year));
+      if (vd?.make) ymmt.push(String(vd.make));
+      if (vd?.model) ymmt.push(String(vd.model));
+      if (vd?.trim) ymmt.push(String(vd.trim));
+      if (ymmt.length) parts.push(ymmt.join(" "));
+      const eng = [vd?.engineCylinders ? `${vd.engineCylinders} cyl` : undefined, vd?.displacementL ? `${vd.displacementL}L` : undefined]
+        .filter(Boolean)
+        .join(" ");
+      if (eng) parts.push(`Engine: ${eng}`);
+      if (vd?.fuelType) parts.push(`Fuel: ${vd.fuelType}`);
+      if (vd?.driveType) parts.push(`Drive: ${vd.driveType}`);
+      if (vd?.transmission) parts.push(`Trans: ${vd.transmission}`);
+      if (parts.length) {
+        children.push(new Paragraph({ text: parts.join(" • "), spacing: { after: 80 } }));
+      }
+    }
+
     // Build image grid from image_urls -> image_indexes -> image_url
     let urls: string[] = [];
     if (Array.isArray(lot?.image_urls) && lot.image_urls.length) {

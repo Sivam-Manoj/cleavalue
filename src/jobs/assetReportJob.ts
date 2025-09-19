@@ -19,6 +19,7 @@ import fs from "fs/promises";
 import path from "path";
 import { createWriteStream } from "fs";
 import archiver from "archiver";
+import { enrichLotsWithVin } from "../service/vehicleApiService.js";
 
 export type AssetGroupingMode =
   | "single_lot"
@@ -559,6 +560,21 @@ export async function runAssetReportJob({
         const urls = Array.from(urlsSet);
         return { ...lot, image_indexes: idxs, image_urls: urls };
       });
+    }
+
+    // VIN-based enrichment (uses NHTSA vPIC) — only if we have lots
+    if (Array.isArray(lots) && lots.length > 0) {
+      try {
+        lots = await withStep(
+          "vin_enrichment",
+          "Enriching lots with VIN data (vPIC)",
+          async () => {
+            return await enrichLotsWithVin(lots, groupingMode);
+          }
+        );
+      } catch (e) {
+        console.error("VIN enrichment failed:", e);
+      }
     }
 
     const parseDate = (val: any): Date | undefined => {

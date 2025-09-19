@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { extractVinFromText } from "../vehicleApiService.js";
 
 // Build a flat results table based on grouping mode and lot/item structures
 export async function generateAssetXlsxFromReport(reportData: any): Promise<Buffer> {
@@ -9,6 +10,46 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
   let headers: string[];
   const rows: any[][] = [];
 
+  const vinHeaders = [
+    "VIN",
+    "Year",
+    "Make",
+    "Model",
+    "Trim",
+    "Series",
+    "Body Class",
+    "Drive Type",
+    "Engine Cyl",
+    "Displacement (L)",
+    "Fuel",
+    "Transmission",
+  ];
+  const vinCols = (rec: any): any[] => {
+    const vd = (rec?.vinDecoded as any) || {};
+    const vin =
+      vd?.vin ||
+      extractVinFromText(rec?.sn_vin) ||
+      extractVinFromText(
+        [rec?.serial_no_or_label, rec?.details, rec?.description, rec?.title]
+          .filter(Boolean)
+          .join(" ")
+      ) || "";
+    return [
+      vin || "",
+      vd?.year ?? "",
+      vd?.make ?? "",
+      vd?.model ?? "",
+      vd?.trim ?? "",
+      vd?.series ?? "",
+      vd?.bodyClass ?? "",
+      vd?.driveType ?? "",
+      vd?.engineCylinders ?? "",
+      vd?.displacementL ?? "",
+      vd?.fuelType ?? "",
+      vd?.transmission ?? "",
+    ];
+  };
+
   if (grouping === "catalogue") {
     headers = [
       "Lot ID",
@@ -18,6 +59,7 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
       "Description",
       "Condition/Details",
       "Est. Value (CAD)",
+      ...vinHeaders,
     ];
     for (const lot of lots) {
       const lotId = lot?.lot_id ?? "";
@@ -33,6 +75,7 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
           lot?.description ?? "",
           lot?.condition ?? lot?.details ?? "",
           lot?.estimated_value ?? "",
+          ...vinCols(lot),
         ]);
         continue;
       }
@@ -45,6 +88,7 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
           it?.description ?? "",
           it?.condition ?? it?.details ?? "",
           it?.estimated_value ?? "",
+          ...vinCols(it),
         ]);
       }
     }
@@ -56,6 +100,7 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
       "Description",
       "Details",
       "Est. Value (CAD)",
+      ...vinHeaders,
     ];
     for (const lot of lots) {
       rows.push([
@@ -65,6 +110,7 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
         lot?.description ?? "",
         lot?.details ?? "",
         lot?.estimated_value ?? "",
+        ...vinCols(lot),
       ]);
     }
   } else if (grouping === "mixed") {
@@ -78,6 +124,7 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
       "Condition",
       "Est. Value (CAD)",
       "Mode",
+      ...vinHeaders,
     ];
     const getModeFromTags = (lot: any): string => {
       const tags: string[] = Array.isArray(lot?.tags) ? lot.tags.map(String) : [];
@@ -96,6 +143,7 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
         lot?.condition ?? "",
         lot?.estimated_value ?? "",
         getModeFromTags(lot),
+        ...vinCols(lot),
       ]);
     }
   } else {
@@ -108,6 +156,7 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
       "Details",
       "Condition",
       "Est. Value (CAD)",
+      ...vinHeaders,
     ];
     for (const lot of lots) {
       rows.push([
@@ -118,6 +167,7 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
         lot?.details ?? "",
         lot?.condition ?? "",
         lot?.estimated_value ?? "",
+        ...vinCols(lot),
       ]);
     }
   }

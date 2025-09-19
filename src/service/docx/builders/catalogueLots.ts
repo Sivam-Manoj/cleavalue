@@ -174,9 +174,29 @@ export async function buildCatalogueLots(
               margins: cellMargins,
               verticalAlign: VerticalAlign.CENTER,
               shading: zebra ? ({ type: "clear", fill: "FAFAFA", color: "auto" } as any) : undefined,
-              children: [
-                new Paragraph({ alignment: AlignmentType.CENTER, text: item?.sn_vin ? String(item.sn_vin) : "not found" }),
-              ],
+              children: (() => {
+                const out: Paragraph[] = [];
+                const top = new Paragraph({ alignment: AlignmentType.CENTER, text: item?.sn_vin ? String(item.sn_vin) : "not found" });
+                out.push(top);
+                const vd: any = (item as any)?.vinDecoded;
+                if (vd) {
+                  const parts: string[] = [];
+                  if (vd?.vin) parts.push(`VIN: ${vd.vin}`);
+                  if (vd?.year) parts.push(`Year: ${vd.year}`);
+                  if (vd?.make) parts.push(`Make: ${vd.make}`);
+                  if (vd?.model) parts.push(`Model: ${vd.model}`);
+                  if (vd?.trim) parts.push(`Trim: ${vd.trim}`);
+                  const eng = [vd?.engineCylinders ? `${vd.engineCylinders} cyl` : undefined, vd?.displacementL ? `${vd.displacementL}L` : undefined]
+                    .filter(Boolean)
+                    .join(" ");
+                  if (eng) parts.push(`Engine: ${eng}`);
+                  if (vd?.fuelType) parts.push(`Fuel: ${vd.fuelType}`);
+                  if (vd?.driveType) parts.push(`Drive: ${vd.driveType}`);
+                  if (vd?.transmission) parts.push(`Trans: ${vd.transmission}`);
+                  if (parts.length) out.push(new Paragraph(parts.join(" • ")));
+                }
+                return out;
+              })(),
             }),
             new TableCell({
               width: { size: w.desc, type: WidthType.DXA },

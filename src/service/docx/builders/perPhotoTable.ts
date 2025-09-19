@@ -129,7 +129,28 @@ export async function buildPerPhotoTable(
           new TableCell({
             width: { size: w.serial, type: WidthType.DXA },
             margins: cellMargins,
-            children: [new Paragraph(String(rec?.serial_no_or_label || "—"))],
+            children: (() => {
+              const out: Paragraph[] = [];
+              out.push(new Paragraph(String(rec?.serial_no_or_label || "—")));
+              const vd: any = (rec as any)?.vinDecoded;
+              if (vd) {
+                const parts: string[] = [];
+                if (vd?.vin) parts.push(`VIN: ${vd.vin}`);
+                if (vd?.year) parts.push(`Year: ${vd.year}`);
+                if (vd?.make) parts.push(`Make: ${vd.make}`);
+                if (vd?.model) parts.push(`Model: ${vd.model}`);
+                if (vd?.trim) parts.push(`Trim: ${vd.trim}`);
+                const eng = [vd?.engineCylinders ? `${vd.engineCylinders} cyl` : undefined, vd?.displacementL ? `${vd.displacementL}L` : undefined]
+                  .filter(Boolean)
+                  .join(" ");
+                if (eng) parts.push(`Engine: ${eng}`);
+                if (vd?.fuelType) parts.push(`Fuel: ${vd.fuelType}`);
+                if (vd?.driveType) parts.push(`Drive: ${vd.driveType}`);
+                if (vd?.transmission) parts.push(`Trans: ${vd.transmission}`);
+                if (parts.length) out.push(new Paragraph(parts.join(" • ")));
+              }
+              return out;
+            })(),
           }),
           new TableCell({
             width: { size: w.desc, type: WidthType.DXA },

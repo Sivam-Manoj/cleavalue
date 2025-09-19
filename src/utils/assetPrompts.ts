@@ -36,6 +36,11 @@ Output Rules:
 - 'estimated_value' must always be in Canadian dollars (CA$), even if estimated.
 - Titles must be concise yet descriptive and unique across lots; for same-type items, append a differentiator like "(#1)", "(#2)".
 - 'image_indexes' must reference the provided images by 0-based index. Sort indexes ascending and do not repeat an index within a lot.
+
+VIN and Serial Handling:
+- Keep all serial numbers and VINs OUTSIDE of the description. Use 'serial_no_or_label' (per_item, per_photo, single_lot) or 'sn_vin' (catalogue items).
+- When a VIN is visible, label it EXACTLY as: "VIN: <VIN>" (17 characters, no I/O/Q). If characters are missing (partial VIN), you may use '*' placeholders for unknown characters.
+- If a VIN is not visible or unknown: per_item/per_photo/single_lot -> use null in 'serial_no_or_label'; catalogue items -> set 'sn_vin' to the literal text "not found".
 `;
 
   const exampleDefault = `
@@ -382,7 +387,7 @@ Wheel Base:
   - Lot-level fields: lot_id, title, description, condition, estimated_value, tags?, image_indexes (0-based indexes of the images for this lot).
   - REQUIRED item fields (table row fields):
     - title: concise and specific. For vehicles, use: "YYYY Make Model Trim" (e.g., "2018 Honda Civic EX-L").
-    - sn_vin: string. If serial/VIN not visible or unknown, set to the literal text "not found".
+    - sn_vin: string. When a VIN is visible, label it EXACTLY as "VIN: <VIN>" (17 characters; use '*' for any unknown characters in a partial VIN). If VIN not visible or unknown, set to the literal text "not found".
     - description: short description of the item using the vehicle attribute order below — order by Section Order ascending and within each section keep the exact label order. Output only labels and values (no section headers).
     - condition: string describing the item's condition with clear explanation of how you determined it.
     - estimated_value: string in Canadian dollars, prefixed with CA$, e.g., "CA$12,500".
@@ -481,6 +486,7 @@ Grouping mode: per_photo
    - If the item is a VEHICLE, strictly follow the vehicle attribute order below — order by Section Order ascending and within each section keep the exact label order. Output only labels and values (no section headers):
    - ${vehicleAttributeFieldList}
    - For non-vehicle items, use the general attributes:
+ - Additional per_photo fields to include for each lot:\n   - serial_no_or_label: string | null — extract any visible serial/model numbers or label text. When a VIN is visible, include it labeled EXACTLY as "VIN: <VIN>" (use '*' for unknown characters in a partial VIN). Use null if nothing is visible.
 
 `;
 
@@ -497,7 +503,7 @@ Grouping mode: per_item ("everything you see")
    - ${vehicleAttributeFieldList}
    - For non-vehicle items, use the general attributes:
 - Additional per_item fields to include for each lot:
-  - serial_no_or_label: string | null — extract any visible serial/model numbers or label text; use null if not visible.
+  - serial_no_or_label: string | null — extract any visible serial/model numbers or label text. When a VIN is visible, include it labeled EXACTLY as "VIN: <VIN>" (17 characters; use '*' for any unknown characters in a partial VIN). Use null if not visible. For partial VINs, include the visible characters and '*' placeholders where unknown.
   - details: string — concise attributes like color, material, size/dimensions, capacity, or model/specs; also note inclusions or notable issues.
   - image_url: OPTIONAL — only include the exact URL if you know it (do NOT fabricate). 'image_indexes' are authoritative.
 - If MULTIPLE images are provided at once (rare), treat each image independently. Do NOT merge items across images. It's acceptable if duplicates appear across images; a separate deduplication step will remove duplicates later.
@@ -516,6 +522,7 @@ Grouping mode: single_lot
   - If the item is a VEHICLE, strictly follow the vehicle attribute order below — order by Section Order ascending and within each section keep the exact label order. Output only labels and values (no section headers):
   - ${vehicleAttributeFieldList}
   - For non-vehicle items, use the general attributes:
+ - Optional additional field at lot level:\n   - serial_no_or_label: string | null — if one or more serials/VINs are clearly visible for the primary subject(s), include them. When a VIN is visible, label it EXACTLY as "VIN: <VIN>" (use '*' for partial VINs). For multiple items, separate entries with "; ". Use null if nothing is visible.
   - Example numbered lines:
     1. 2002 Kenworth T800 T/A Truck Tractor, CAT C15 475 HP Diesel Engine, 18 Spd Trans, A/R Susp., WetKit, Sliding 5th Wheel, 16,000 lb Front, 46,000 lb Rear, Aluminum Wheels, Front Tires 385/65R22.5, Rear Tires 11R24.5, New CVI
     2. 2004 Kenworth T800 T/A Truck Tractor, CAT C15 Diesel Engine, 18 Spd Trans, 16,000 lb / 46,000 lb Front/Rears, A/R Susp., Alum Headache Rack, Sliding 5th Wheel, Aluminum Wheels, Front Tires 315/80R22.5, Rear 11R24.5, New CVI
