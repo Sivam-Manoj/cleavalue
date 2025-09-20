@@ -142,6 +142,10 @@ export async function runAssetReportJob({
       const l = String(details?.language || '').toLowerCase();
       return (l === 'fr' || l === 'es') ? l : 'en';
     })();
+    const selectedCurrency: string = ((): string => {
+      const c = String(details?.currency || '').toUpperCase();
+      return /^[A-Z]{3}$/.test(c) ? c : 'CAD';
+    })();
     if (images?.length) {
       startStep("r2_upload", "Uploading images to storage");
       const total = images.length;
@@ -221,7 +225,7 @@ export async function runAssetReportJob({
         }
 
         try {
-          const aiRes = await analyzeAssetImages(subUrls, "catalogue", selectedLanguage);
+          const aiRes = await analyzeAssetImages(subUrls, "catalogue", selectedLanguage, selectedCurrency);
           if (!analysis) analysis = { per_lot: [] };
           analysis.per_lot.push(aiRes);
 
@@ -375,7 +379,7 @@ export async function runAssetReportJob({
         }
 
         try {
-          const aiRes = await analyzeAssetImages(subUrls, subMode, selectedLanguage);
+          const aiRes = await analyzeAssetImages(subUrls, subMode, selectedLanguage, selectedCurrency);
           if (!analysis) analysis = { mixed: [] };
           if (!Array.isArray(analysis.mixed)) analysis.mixed = [];
           analysis.mixed.push({ mode: subMode, result: aiRes });
@@ -451,7 +455,7 @@ export async function runAssetReportJob({
       if (urlsForAI.length > 0) {
         try {
           startStep("ai_analysis", "AI analysis of images (combined -> per_item primary)");
-          const perItemRes = await analyzeAssetImages(urlsForAI, "per_item", selectedLanguage);
+          const perItemRes = await analyzeAssetImages(urlsForAI, "per_item", selectedLanguage, selectedCurrency);
           endStep("ai_analysis");
           analysis = perItemRes;
           // Normalize items to include a canonical image_index if available (first index)
@@ -525,7 +529,7 @@ export async function runAssetReportJob({
       if (urlsForAI.length > 0) {
         try {
           startStep("ai_analysis", "AI analysis of images");
-          analysis = await analyzeAssetImages(urlsForAI, groupingMode, selectedLanguage);
+          analysis = await analyzeAssetImages(urlsForAI, groupingMode, selectedLanguage, selectedCurrency);
           endStep("ai_analysis");
         } catch (e) {
           console.error("Error during asset AI analysis:", e);
@@ -603,6 +607,7 @@ export async function runAssetReportJob({
       inspection_date: parseDate(details?.inspection_date),
       contract_no: details?.contract_no,
       language: selectedLanguage,
+      currency: selectedCurrency,
     });
 
     await withStep("save_report", "Persisting report to database", async () => {
@@ -790,7 +795,7 @@ export async function runAssetReportJob({
     );
     const fairMarketValue =
       totalValue > 0
-        ? `CAD ${Math.round(totalValue).toLocaleString("en-CA")}`
+        ? `${selectedCurrency} ${Math.round(totalValue).toLocaleString("en-CA")}`
         : "N/A";
 
     // Create approval records (pending by default)

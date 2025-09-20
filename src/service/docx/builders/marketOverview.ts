@@ -19,6 +19,7 @@ export async function buildMarketOverview(
   const children: Paragraph[] = [];
   const lang = getLang(reportData);
   const tr = t(lang);
+  const ccy = String((reportData as any)?.currency || 'CAD');
   try {
     const { industry, canada, northAmerica } =
       await fetchCanadaAndNorthAmericaIndicators(reportData);
@@ -59,7 +60,8 @@ export async function buildMarketOverview(
       `${industry} – Canada (5-Year Trend)`,
       1000,
       600,
-      lang
+      lang,
+      ccy
     );
     children.push(
       new Paragraph({
@@ -101,7 +103,8 @@ export async function buildMarketOverview(
       `${industry} – North America (5-Year Trend)`,
       1000,
       600,
-      lang
+      lang,
+      ccy
     );
     children.push(
       new Paragraph({

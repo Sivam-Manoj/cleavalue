@@ -34,6 +34,9 @@ export interface IAssetLot {
   image_indexes: number[]; // 0-based indexes of images that belong to this lot
   image_urls?: string[]; // resolved URLs for the images in this lot
   items?: ICatalogueItem[]; // catalogue-specific nested items
+  // Mixed mode metadata (optional)
+  mixed_group_index?: number;
+  sub_mode?: 'single_lot' | 'per_item' | 'per_photo';
 }
 
 export interface IAssetReport extends Document {
@@ -53,6 +56,7 @@ export interface IAssetReport extends Document {
   inspection_date?: Date;
   contract_no?: string;
   language?: 'en' | 'fr' | 'es';
+  currency?: string; // ISO currency code, e.g., CAD, USD, INR
 }
 
 const CatalogueItemSchema: Schema<ICatalogueItem> = new Schema(
@@ -84,6 +88,8 @@ const AssetLotSchema: Schema<IAssetLot> = new Schema(
     image_indexes: [{ type: Number, required: true }],
     image_urls: [{ type: String }],
     items: { type: [CatalogueItemSchema], default: undefined },
+    mixed_group_index: { type: Number },
+    sub_mode: { type: String, enum: ['single_lot', 'per_item', 'per_photo'] },
   },
   { _id: false }
 );
@@ -120,6 +126,7 @@ const AssetReportSchema: Schema<IAssetReport> = new Schema(
     inspection_date: { type: Date },
     contract_no: { type: String },
     language: { type: String, enum: ['en', 'fr', 'es'], default: 'en' },
+    currency: { type: String, default: 'CAD' },
     analysis: { type: Schema.Types.Mixed },
   },
   { timestamps: true }

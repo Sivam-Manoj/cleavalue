@@ -10,11 +10,33 @@ export type AssetGroupingModeUtil =
  */
 export function getAssetSystemPrompt(
   groupingMode: AssetGroupingModeUtil,
-  language?: 'en' | 'fr' | 'es'
+  language?: 'en' | 'fr' | 'es',
+  currency?: string
 ): string {
   const lang = ((): 'en' | 'fr' | 'es' => {
     const l = String(language || '').toLowerCase();
     return (l === 'fr' || l === 'es') ? (l as any) : 'en';
+  })();
+  const ccy = ((): string => {
+    const c = String(currency || '').toUpperCase();
+    if (!c) return 'CAD';
+    return /^[A-Z]{3}$/.test(c) ? c : 'CAD';
+  })();
+  const ccyPrefix = ((): string => {
+    const map: Record<string, string> = {
+      CAD: 'CA$',
+      USD: 'US$',
+      EUR: '€',
+      GBP: '£',
+      INR: '₹',
+      AUD: 'AU$',
+      NZD: 'NZ$',
+      JPY: '¥',
+      CNY: '¥',
+      SGD: 'S$',
+      AED: 'AED ',
+    };
+    return map[ccy] || `${ccy} `;
   })();
   const commonOutputRules = `
 You are an expert inventory/loss appraisal assistant. Analyze provided images and produce coherent "lots".
@@ -29,16 +51,18 @@ Output Rules:
         "title": "short but specific title",
         "description": "summary of key details",
         "condition": "string describing the item's condition (e.g., 'Used - Good', 'New', 'Damaged')",
-        "estimated_value": "string in Canadian dollars, prefixed with CA$ (e.g., 'CA$150')",
+        "estimated_value": "string in ${ccy} with correct prefix (e.g., '${ccyPrefix}150' or '${ccy} 150')",
         "tags": ["optional", "keywords"],
         "image_indexes": [array of integers starting at 0]
       }
     ],
-    "summary": "string summarizing all lots"
+    "summary": "string summarizing all lots",
+    "language": "${lang}",
+    "currency": "${ccy}"
   }
 - All fields except 'tags' are REQUIRED for each lot.
 - 'tags', if included, must be an array of strings.
-- 'estimated_value' must always be in Canadian dollars (CA$), even if estimated.
+- 'estimated_value' must always be in ${ccy} (use proper prefix like '${ccyPrefix}' or leading code '${ccy} '), even if estimated.
 - Titles must be concise yet descriptive and unique across lots; for same-type items, append a differentiator like "(#1)", "(#2)".
 - 'image_indexes' must reference the provided images by 0-based index. Sort indexes ascending and do not repeat an index within a lot.
 
@@ -65,7 +89,7 @@ Example Output (default modes):
       "title": "Red Mountain Bike",
       "description": "Adult-sized red mountain bike with front suspension and minor scratches.",
       "condition": "Used - Good",
-      "estimated_value": "CA$150",
+      "estimated_value": "${ccyPrefix}150",
       "tags": ["bike", "red", "mountain"],
       "image_indexes": [0, 2]
     },
@@ -74,11 +98,13 @@ Example Output (default modes):
       "title": "Wooden Dining Table",
       "description": "4-seater oak dining table with light wear on edges.",
       "condition": "Used - Fair",
-      "estimated_value": "CA$150",
+      "estimated_value": "${ccyPrefix}150",
       "image_indexes": [1]
     }
   ],
-  "summary": "2 lots identified: a red mountain bike and a wooden dining table."
+  "summary": "2 lots identified: a red mountain bike and a wooden dining table.",
+  "language": "${lang}",
+  "currency": "${ccy}"
 }`;
 
   const vehicleAttributeFieldList = `
@@ -403,7 +429,7 @@ Wheel Base:
     - sn_vin: string. When a VIN is visible, label it EXACTLY as "VIN: <VIN>" (17 characters; use '*' for any unknown characters in a partial VIN). If VIN not visible or unknown, set to the literal text "not found".
     - description: short description of the item using the vehicle attribute order below — order by Section Order ascending and within each section keep the exact label order. Output only labels and values (no section headers).
     - condition: string describing the item's condition with clear explanation of how you determined it.
-    - estimated_value: string in Canadian dollars, prefixed with CA$, e.g., "CA$12,500".
+    - estimated_value: string in ${ccy}, e.g., "${ccyPrefix}12,500".
     - image_local_index: integer (0-based) referencing the SINGLE best image among the provided images for this catalogue segment that most clearly shows this item. Always include this. If unsure, pick the clearest view.
     - image_url: OPTIONAL direct URL for that image if and only if it is explicitly provided to you (do not fabricate). Base64 inputs will not have URLs.
   - OPTIONAL item fields:
@@ -429,7 +455,7 @@ Wheel Base:
         "title": "Vehicle Listings — Two Sedans",
         "description": "Two compact sedans with clean interiors; light exterior wear noted.",
         "condition": "Mixed — Used",
-        "estimated_value": "CA$23,500",
+        "estimated_value": "${ccyPrefix}23,500",
         "tags": ["vehicles", "sedans"],
         "image_indexes": [0,1,2,3],
         "items": [
@@ -439,7 +465,7 @@ Wheel Base:
             "description": "White exterior, black leather; clean interior.",
             "condition": "Used - Good",
             "details": "Mileage: 82,000 km; Transmission: Automatic; Drivetrain: FWD; Extras: winter tires included",
-            "estimated_value": "CA$12,500",
+            "estimated_value": "${ccyPrefix}12,500",
             "image_local_index": 1
           },
           {
@@ -448,13 +474,15 @@ Wheel Base:
             "description": "Silver exterior; minor scuffs on rear bumper.",
             "condition": "Used - Fair",
             "details": "Mileage: 95,500 km; Transmission: Automatic; Drivetrain: FWD",
-            "estimated_value": "CA$11,000",
+            "estimated_value": "${ccyPrefix}11,000",
             "image_local_index": 2
           }
         ]
       }
     ],
-    "summary": "Catalogue lot with 2 vehicles identified from 4 images."
+    "summary": "Catalogue lot with 2 vehicles identified from 4 images.",
+    "language": "${lang}",
+    "currency": "${ccy}"
   };
 `;
 
@@ -468,7 +496,7 @@ Wheel Base:
         "serial_no_or_label": "SN: 12345678",
         "description": "24MP DSLR camera body; light cosmetic wear.",
         "details": "Includes battery and strap; shutter count unknown.",
-        "estimated_value": "CA$520",
+        "estimated_value": "${ccyPrefix}520",
         "image_indexes": [0],
         "image_url": null
       },
@@ -478,12 +506,14 @@ Wheel Base:
         "serial_no_or_label": null,
         "description": "Zoom lens attached in the same frame; no visible damage.",
         "details": "Optical stabilization; standard zoom range.",
-        "estimated_value": "CA$180",
+        "estimated_value": "${ccyPrefix}180",
         "image_indexes": [0],
         "image_url": null
       }
     ],
-    "summary": "2 distinct items identified in a single image: camera body and lens."
+    "summary": "2 distinct items identified in a single image: camera body and lens.",
+    "language": "${lang}",
+    "currency": "${ccy}"
   };
 `;
 

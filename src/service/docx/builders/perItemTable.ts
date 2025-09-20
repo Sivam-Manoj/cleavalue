@@ -26,6 +26,7 @@ export async function buildPerItemTable(
   const lang = getLang(reportData);
   const tr = t(lang);
   const heading = !headingLabel || headingLabel === "Analyzed Items" ? tr.perItemResults : headingLabel;
+  const ccy = String((reportData as any)?.currency || 'CAD');
 
   if (items.length) {
     children.push(
@@ -41,16 +42,17 @@ export async function buildPerItemTable(
   const w = {
     lot: Math.round(contentWidthTw * 0.12),
     title: Math.round(contentWidthTw * 0.2),
-    sn: Math.round(contentWidthTw * 0.16),
-    desc: Math.round(contentWidthTw * 0.22),
-    details: Math.round(contentWidthTw * 0.16),
-    value: Math.round(contentWidthTw * 0.08),
+    sn: Math.round(contentWidthTw * 0.15),
+    desc: Math.round(contentWidthTw * 0.21),
+    details: Math.round(contentWidthTw * 0.14),
+    value: Math.round(contentWidthTw * 0.12),
     image: Math.round(contentWidthTw * 0.06),
   };
-  const cellMargins = { top: 80, bottom: 80, left: 100, right: 100 };
+  const cellMargins = { top: 80, bottom: 80, left: 60, right: 60 };
 
   const header = new TableRow({
     cantSplit: true,
+    tableHeader: true,
     children: [
       new TableCell({
         width: { size: w.lot, type: WidthType.DXA },
@@ -103,7 +105,7 @@ export async function buildPerItemTable(
         verticalAlign: VerticalAlign.CENTER,
         shading: { type: "clear" as any, fill: "E5E7EB", color: "auto" },
         children: [
-          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.estValueCad, bold: true })] }),
+          new Paragraph({ alignment: AlignmentType.CENTER, keepLines: true, children: [new TextRun({ text: (((tr as any).estValue ? (tr as any).estValue(ccy) : tr.estValueCad) as string).replace(/ /g, "\u00A0"), bold: true })] }),
         ],
       }),
       new TableCell({
@@ -206,7 +208,7 @@ export async function buildPerItemTable(
             margins: cellMargins,
             verticalAlign: VerticalAlign.CENTER,
             shading: zebra ? ({ type: "clear", fill: "FAFAFA", color: "auto" } as any) : undefined,
-            children: [new Paragraph({ alignment: AlignmentType.RIGHT, text: String(it?.estimated_value || "—") })],
+            children: [new Paragraph({ alignment: AlignmentType.RIGHT, keepLines: true, text: String(it?.estimated_value || "—").replace(/ /g, "\u00A0") })],
           }),
           new TableCell({
             width: { size: w.image, type: WidthType.DXA },

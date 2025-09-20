@@ -174,7 +174,8 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
         perPhotoLots,
         rootImageUrls,
         contentWidthTw,
-        tr.perPhotoResults
+        tr.perPhotoResults,
+        (reportData as any)?.currency
       ))
     );
   }

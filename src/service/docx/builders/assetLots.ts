@@ -26,6 +26,7 @@ export async function buildAssetLots(
   const lang = getLang(reportData);
   const tr = t(lang);
   const heading = !headingLabel || headingLabel === "Lots" ? tr.lotsWord : headingLabel;
+  const ccy = String((reportData as any)?.currency || 'CAD');
 
   if (!lots.length) return children;
 
@@ -57,7 +58,7 @@ export async function buildAssetLots(
     // Badges line
     const badges: string[] = [];
     if (lot?.condition) badges.push(`${tr.condition}: ${lot.condition}`);
-    if (lot?.estimated_value) badges.push(`${tr.estValueCad}: ${lot.estimated_value}`);
+    if (lot?.estimated_value) badges.push(`${(tr as any).estValue ? (tr as any).estValue(ccy) : tr.estValueCad}: ${lot.estimated_value}`);
     if (Array.isArray(lot?.items)) badges.push(`${tr.itemsWord}: ${lot.items.length}`);
     if (badges.length) children.push(new Paragraph({ text: badges.join("  •  "), spacing: { after: 80 } }));
 

@@ -25,6 +25,7 @@ export async function buildCatalogueLots(
   const lots: any[] = Array.isArray(reportData?.lots) ? reportData.lots : [];
   const lang = getLang(reportData);
   const tr = t(lang);
+  const ccy = String((reportData as any)?.currency || 'CAD');
 
   if (lots.length) {
     children.push(
@@ -53,7 +54,7 @@ export async function buildCatalogueLots(
 
     const badges: string[] = [];
     if (lot?.condition) badges.push(`${tr.condition}: ${lot.condition}`);
-    if (lot?.estimated_value) badges.push(`${tr.estValueCad}: ${lot.estimated_value}`);
+    if (lot?.estimated_value) badges.push(`${(tr as any).estValue ? (tr as any).estValue(ccy) : tr.estValueCad}: ${lot.estimated_value}`);
     if (lot?.items?.length) badges.push(`${tr.itemsWord}: ${lot.items.length}`);
     if (badges.length)
       children.push(new Paragraph({ text: badges.join("  •  "), spacing: { after: 200 } }));
@@ -130,7 +131,7 @@ export async function buildCatalogueLots(
           children: [
             new Paragraph({
               alignment: AlignmentType.CENTER,
-              children: [new TextRun({ text: tr.estValueCad, bold: true })],
+              children: [new TextRun({ text: (tr as any).estValue ? (tr as any).estValue(ccy) : tr.estValueCad, bold: true })],
             }),
           ],
         }),

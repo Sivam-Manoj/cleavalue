@@ -39,6 +39,7 @@ export interface AssetAnalysisResult {
   lots: AssetLotAI[];
   summary?: string;
   language?: 'en' | 'fr' | 'es';
+  currency?: string;
 }
 
 async function imageUrlToBase64WithMime(
@@ -156,7 +157,7 @@ async function deduplicateAssetLotsAI(
 
   try {
     const response = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || "gpt-5",
+      model: process.env.OPENAI_MODEL || "gpt-4.1-nano",
       messages: [
         { role: "system", content: system },
         {
@@ -238,7 +239,8 @@ async function deduplicateAssetLotsAI(
 export async function analyzeAssetImages(
   imageUrls: string[],
   groupingMode: AssetGroupingMode,
-  language?: 'en' | 'fr' | 'es'
+  language?: 'en' | 'fr' | 'es',
+  currency?: string
 ): Promise<AssetAnalysisResult> {
   if (!Array.isArray(imageUrls) || imageUrls.length === 0) {
     throw new Error("No image URLs provided for analysis.");
@@ -248,7 +250,11 @@ export async function analyzeAssetImages(
     const l = String(language || '').toLowerCase();
     return (l === 'fr' || l === 'es') ? l : 'en';
   })();
-  const systemPrompt = getAssetSystemPrompt(groupingMode as any, lang);
+  const ccy = ((): string => {
+    const c = String(currency || '').toUpperCase();
+    return /^[A-Z]{3}$/.test(c) ? c : (process.env.DEFAULT_CURRENCY || 'CAD');
+  })();
+  const systemPrompt = getAssetSystemPrompt(groupingMode as any, lang, ccy);
 
   // Special handling: per_item should analyze each image individually and include image_url
   if (groupingMode === "per_item") {
@@ -281,7 +287,7 @@ export async function analyzeAssetImages(
       ];
 
       const response = await openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || "gpt-5",
+        model: process.env.OPENAI_MODEL || "gpt-4.1-nano",
         messages,
         response_format: { type: "json_object" },
       });
@@ -311,7 +317,7 @@ export async function analyzeAssetImages(
     // If nothing was extracted in per_item pass, fallback to a per_photo-style analysis (one lot per image)
     if (combinedLots.length === 0) {
       try {
-        const fallbackPrompt = getAssetSystemPrompt("per_photo", lang);
+        const fallbackPrompt = getAssetSystemPrompt("per_photo", lang, ccy);
         const imgs = await Promise.all(imageUrls.map(imageUrlToBase64WithMime));
         const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
           { role: "system", content: fallbackPrompt },
@@ -337,7 +343,7 @@ export async function analyzeAssetImages(
         ];
 
         const resp = await openai.chat.completions.create({
-          model: process.env.OPENAI_MODEL || "gpt-5",
+          model: process.env.OPENAI_MODEL || "gpt-4.1-nano",
           messages,
           response_format: { type: "json_object" },
         });
@@ -349,6 +355,7 @@ export async function analyzeAssetImages(
             lots: fallbackLots,
             summary: `${fallbackLots.length} items identified via fallback per_photo analysis of ${imageUrls.length} images.`,
             language: parsed.language || lang,
+            currency: parsed.currency || ccy,
           };
         }
       } catch (e) {
@@ -359,6 +366,7 @@ export async function analyzeAssetImages(
         lots: [],
         summary: `0 items identified (per_item), fallback failed.`,
         language: lang,
+        currency: ccy,
       };
     }
 
@@ -370,6 +378,7 @@ export async function analyzeAssetImages(
       lots: finalLots,
       summary: `${finalLots.length} unique items identified from ${imageUrls.length} images (per_item, deduped).`,
       language: lang,
+      currency: ccy,
     };
   }
 
@@ -400,7 +409,7 @@ export async function analyzeAssetImages(
   ];
   console.log("messages", messages);
   const response = await openai.chat.completions.create({
-    model: process.env.OPENAI_MODEL || "gpt-5",
+    model: process.env.OPENAI_MODEL || "gpt-4.1-nano",
     messages,
     response_format: { type: "json_object" },
   });
@@ -411,7 +420,7 @@ export async function analyzeAssetImages(
   try {
     console.log("content", content);
     const parsed = JSON.parse(content) as AssetAnalysisResult;
-    return { ...parsed, language: parsed.language || lang };
+    return { ...parsed, language: parsed.language || lang, currency: parsed.currency || ccy };
   } catch (err) {
     console.error("Invalid JSON from model:", content);
     throw new Error("Failed to parse JSON from AI response.");

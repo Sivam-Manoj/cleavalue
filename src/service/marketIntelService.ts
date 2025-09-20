@@ -202,24 +202,30 @@ export async function generateTrendChartImage(
   title: string,
   width = 1000,
   height = 600,
-  lang?: 'en' | 'fr' | 'es'
+  lang?: 'en' | 'fr' | 'es',
+  currency?: string
 ): Promise<Buffer> {
   const l = ((): 'en' | 'fr' | 'es' => {
     const s = String(lang || '').toLowerCase();
     return (s === 'fr' || s === 'es') ? (s as any) : 'en';
   })();
+  const ccy = ((): string => {
+    const c = String(currency || '').toUpperCase();
+    return /^[A-Z]{3}$/.test(c) ? c : 'CAD';
+  })();
   const labels = {
-    en: { y: 'Value (CAD Billions)', x: 'Year' },
-    fr: { y: 'Valeur (milliards CAD)', x: 'Année' },
-    es: { y: 'Valor (miles de millones CAD)', x: 'Año' },
+    en: (cc: string) => ({ y: `Value (${cc} Billions)`, x: 'Year' }),
+    fr: (cc: string) => ({ y: `Valeur (milliards ${cc})`, x: 'Année' }),
+    es: (cc: string) => ({ y: `Valor (miles de millones ${cc})`, x: 'Año' }),
   } as const;
+  const lab = labels[l](ccy);
   const config = {
     type: "line",
     data: {
       labels: years,
       datasets: [
         {
-          label: labels[l].y,
+          label: lab.y,
           data: values,
           fill: false,
           borderColor: "#E11D48",
@@ -235,8 +241,8 @@ export async function generateTrendChartImage(
         title: { display: true, text: title },
       },
       scales: {
-        y: { title: { display: true, text: labels[l].y } },
-        x: { title: { display: true, text: labels[l].x } },
+        y: { title: { display: true, text: lab.y } },
+        x: { title: { display: true, text: lab.x } },
       },
     },
   };
@@ -245,8 +251,20 @@ export async function generateTrendChartImage(
     JSON.stringify(config)
   )}`;
 
-  const resp = await axios.get<ArrayBuffer>(url, { responseType: "arraybuffer", timeout: 15000 });
-  return Buffer.from(resp.data);
+  const maxAttempts = 3;
+  let lastErr: any = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const resp = await axios.get<ArrayBuffer>(url, { responseType: "arraybuffer", timeout: 15000, headers: { Accept: "image/png,image/*" } });
+      return Buffer.from(resp.data);
+    } catch (e) {
+      lastErr = e;
+      const delayMs = attempt === 1 ? 250 : attempt === 2 ? 750 : 0;
+      if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  console.warn("generateTrendChartImage: failed after retries", lastErr);
+  throw lastErr || new Error("QuickChart trend image fetch failed");
 }
 
 /**
@@ -259,24 +277,30 @@ export async function generateBarChartImage(
   title: string,
   width = 1000,
   height = 600,
-  lang?: 'en' | 'fr' | 'es'
+  lang?: 'en' | 'fr' | 'es',
+  currency?: string
 ): Promise<Buffer> {
   const l = ((): 'en' | 'fr' | 'es' => {
     const s = String(lang || '').toLowerCase();
     return (s === 'fr' || s === 'es') ? (s as any) : 'en';
   })();
+  const ccy = ((): string => {
+    const c = String(currency || '').toUpperCase();
+    return /^[A-Z]{3}$/.test(c) ? c : 'CAD';
+  })();
   const labels = {
-    en: { y: 'Value (CAD Billions)', x: 'Year' },
-    fr: { y: 'Valeur (milliards CAD)', x: 'Année' },
-    es: { y: 'Valor (miles de millones CAD)', x: 'Año' },
+    en: (cc: string) => ({ y: `Value (${cc} Billions)`, x: 'Year' }),
+    fr: (cc: string) => ({ y: `Valeur (milliards ${cc})`, x: 'Année' }),
+    es: (cc: string) => ({ y: `Valor (miles de millones ${cc})`, x: 'Año' }),
   } as const;
+  const lab = labels[l](ccy);
   const config = {
     type: "bar",
     data: {
       labels: years,
       datasets: [
         {
-          label: labels[l].y,
+          label: lab.y,
           data: values,
           backgroundColor: "#065F46",
           borderColor: "#064E3B",
@@ -290,8 +314,8 @@ export async function generateBarChartImage(
         title: { display: true, text: title },
       },
       scales: {
-        y: { title: { display: true, text: labels[l].y }, beginAtZero: true },
-        x: { title: { display: true, text: labels[l].x } },
+        y: { title: { display: true, text: lab.y }, beginAtZero: true },
+        x: { title: { display: true, text: lab.x } },
       },
     },
   };
@@ -300,8 +324,20 @@ export async function generateBarChartImage(
     JSON.stringify(config)
   )}`;
 
-  const resp = await axios.get<ArrayBuffer>(url, { responseType: "arraybuffer", timeout: 15000 });
-  return Buffer.from(resp.data);
+  const maxAttempts = 3;
+  let lastErr: any = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const resp = await axios.get<ArrayBuffer>(url, { responseType: "arraybuffer", timeout: 15000, headers: { Accept: "image/png,image/*" } });
+      return Buffer.from(resp.data);
+    } catch (e) {
+      lastErr = e;
+      const delayMs = attempt === 1 ? 250 : attempt === 2 ? 750 : 0;
+      if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  console.warn("generateBarChartImage: failed after retries", lastErr);
+  throw lastErr || new Error("QuickChart bar image fetch failed");
 }
 
 export async function fetchCanadaAndNorthAmericaIndicators(

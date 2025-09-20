@@ -38,8 +38,25 @@ export async function fetchImageBuffer(url?: string | null): Promise<Buffer | nu
   try {
     if (!url) return null;
     if (url.startsWith("data:")) return await dataUrlToBuffer(url);
-    const resp = await axios.get<ArrayBuffer>(url, { responseType: "arraybuffer" });
-    return Buffer.from(resp.data);
+    const maxAttempts = 3;
+    let lastErr: any = null;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const resp = await axios.get<ArrayBuffer>(url, {
+          responseType: "arraybuffer",
+          timeout: 15000,
+          headers: { Accept: "image/*" },
+        });
+        return Buffer.from(resp.data);
+      } catch (e) {
+        lastErr = e;
+        // Backoff before next retry
+        const delayMs = attempt === 1 ? 250 : attempt === 2 ? 750 : 0;
+        if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
+      }
+    }
+    console.warn("fetchImageBuffer: failed after retries", lastErr);
+    return null;
   } catch {
     return null;
   }
