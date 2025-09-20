@@ -683,12 +683,21 @@ export async function runAssetReportJob({
     const reportsDir = path.resolve(process.cwd(), "reports");
     await fs.mkdir(reportsDir, { recursive: true });
 
-    const ts = Date.now();
-    const pdfFilename = `asset-report-${newReport._id}-${ts}.pdf`;
-    const docxFilename = `asset-report-${newReport._id}-${ts}.docx`;
-    const xlsxFilename = `asset-report-${newReport._id}-${ts}.xlsx`;
-    const imagesFolderName = `asset-report-${newReport._id}-${ts}-images`;
-    const imagesZipFilename = `asset-report-${newReport._id}-${ts}-images.zip`;
+    // Build filename base: asset-mixed-<contract>-<YYYYMMDD-HHMMSS>-<uniq>
+    const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9._-]/g, "-");
+    const cnRaw = String((reportObject as any)?.contract_no || details?.contract_no || "nocn");
+    const cn = sanitize(cnRaw.trim() || "nocn");
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const dtStr = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+    const uniq = Math.random().toString(36).slice(2, 8);
+    const baseName = `asset-mixed-${cn}-${dtStr}-${uniq}`;
+
+    const pdfFilename = `${baseName}.pdf`;
+    const docxFilename = `${baseName}.docx`;
+    const xlsxFilename = `${baseName}.xlsx`;
+    const imagesFolderName = `${baseName}-images`;
+    const imagesZipFilename = `${baseName}-images.zip`;
 
     const pdfPath = path.join(reportsDir, pdfFilename);
     const docxPath = path.join(reportsDir, docxFilename);
