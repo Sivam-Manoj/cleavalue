@@ -17,6 +17,10 @@ handlebars.registerHelper("formatDate", function (dateString) {
     day: "numeric",
   });
 });
+// Equality helper for simple comparisons in templates
+handlebars.registerHelper("eq", function (a: any, b: any) {
+  return a === b;
+});
 
 export async function generateAssetPdfFromReport(reportData: any): Promise<Buffer> {
   try {
@@ -24,8 +28,10 @@ export async function generateAssetPdfFromReport(reportData: any): Promise<Buffe
       process.cwd(),
       reportData?.grouping_mode === "per_item"
         ? "src/templates/asset_per_item.html"
-        : reportData?.grouping_mode === "catalogue" || reportData?.grouping_mode === "mixed"
+        : reportData?.grouping_mode === "catalogue"
         ? "src/templates/catalogue.html"
+        : reportData?.grouping_mode === "mixed"
+        ? "src/templates/asset_mixed.html"
         : "src/templates/asset.html"
     );
     const htmlTemplate = await fs.readFile(templatePath, "utf-8");
@@ -38,6 +44,81 @@ export async function generateAssetPdfFromReport(reportData: any): Promise<Buffe
     const template = handlebars.compile(htmlTemplate);
 
     const sanitizedData = JSON.parse(JSON.stringify(reportData));
+
+    // i18n translations for templates
+    const lang: 'en' | 'fr' | 'es' = ((): any => {
+      const l = String((reportData as any)?.language || '').toLowerCase();
+      return (l === 'fr' || l === 'es') ? l : 'en';
+    })();
+    const translations = {
+      en: {
+        assetReport: 'Asset Report',
+        mixed: 'Mixed',
+        groupingMode: 'Grouping Mode',
+        totalLots: 'Total Lots',
+        totalImages: 'Total Images',
+        reportDetails: 'Report Details',
+        contractNo: 'Contract No',
+        perItem: 'Per Item',
+        perPhoto: 'Per Photo',
+        singleLot: 'Bundle',
+        lotWord: 'Lot',
+        lotsWord: 'Lots',
+        title: 'Title',
+        serialNoOrLabel: 'Serial / Label',
+        description: 'Description',
+        details: 'Details',
+        estimatedValue: 'Est. Value',
+        image: 'Image',
+        client: 'Client',
+        inspector: 'Inspector',
+      },
+      fr: {
+        assetReport: "Rapport d'actifs",
+        mixed: 'Mixte',
+        groupingMode: 'Mode de regroupement',
+        totalLots: 'Total des lots',
+        totalImages: "Nombre d'images",
+        reportDetails: 'Détails du rapport',
+        contractNo: 'Numéro de contrat',
+        perItem: 'Par article',
+        perPhoto: 'Par photo',
+        singleLot: 'Lot unique',
+        lotWord: 'Lot',
+        lotsWord: 'Lots',
+        title: 'Titre',
+        serialNoOrLabel: 'N° de série / Étiquette',
+        description: 'Description',
+        details: 'Détails',
+        estimatedValue: 'Valeur estimée',
+        image: 'Image',
+        client: 'Client',
+        inspector: 'Inspecteur',
+      },
+      es: {
+        assetReport: 'Informe de activos',
+        mixed: 'Mixto',
+        groupingMode: 'Modo de agrupación',
+        totalLots: 'Total de lotes',
+        totalImages: 'Total de imágenes',
+        reportDetails: 'Detalles del informe',
+        contractNo: 'Número de contrato',
+        perItem: 'Por artículo',
+        perPhoto: 'Por foto',
+        singleLot: 'Lote único',
+        lotWord: 'Lote',
+        lotsWord: 'Lotes',
+        title: 'Título',
+        serialNoOrLabel: 'Serie / Etiqueta',
+        description: 'Descripción',
+        details: 'Detalles',
+        estimatedValue: 'Valor est.',
+        image: 'Imagen',
+        client: 'Cliente',
+        inspector: 'Inspector',
+      },
+    } as const;
+    const t = (translations as any)[lang] as typeof translations.en;
 
     // Prepare Market Overview data (bullets, sources, and chart images)
     let market: any = null;
@@ -95,6 +176,7 @@ export async function generateAssetPdfFromReport(reportData: any): Promise<Buffe
     const dataForPdf = {
       logo_url: logoUrl,
       market,
+      t,
       ...sanitizedData,
     };
 

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{t.assetReport}} • {{t.mixed}}</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; color: #111827; }
+    .container { max-width: 960px; margin: 0 auto; padding: 20px; }
+
+    .card { background: #ffffff; border: 1px solid #eee; border-radius: 16px; padding: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
+    .muted { color: #6B7280; }
+    .divider { height: 1px; background: linear-gradient(90deg, rgba(251,113,133,0.2), rgba(251,113,133,0.8), rgba(251,113,133,0.2)); border: 0; margin: 16px 0; }
+
+    .title { font-size: 22px; font-weight: 700; margin: 0; letter-spacing: 0.2px; }
+    .subtitle { font-size: 13px; color: #6B7280; margin: 6px 0 0 0; }
+
+    .grid { display: grid; gap: 12px; }
+    .grid-2 { grid-template-columns: 1fr 1fr; }
+    .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+    .kv { display: grid; grid-template-columns: 180px 1fr; gap: 8px; align-items: center; }
+    .kv .k { color: #6B7280; font-size: 12px; }
+    .kv .v { color: #111827; font-size: 13px; font-weight: 600; }
+
+    .summary { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
+    .summary .pill { background: #fff1f2; color: #9f1239; border: 1px solid #fecdd3; border-radius: 12px; padding: 10px 12px; font-size: 12px; }
+    .summary .pill strong { display: block; font-size: 14px; color: #111827; }
+
+    .table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+    .table thead th { text-align: left; color: #6B7280; font-weight: 600; padding: 10px 10px; border-bottom: 1px solid #f1f5f9; background: #fff; position: sticky; top: 0; }
+    .table tbody td { padding: 10px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+    .table tbody tr:nth-child(even) td { background: #fff; }
+    .table tbody tr:nth-child(odd) td { background: #fdfdfd; }
+
+    .tag { display: inline-block; background: #eff6ff; color: #1d4ed8; border: 1px solid #dbeafe; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+    .thumb { width: 68px; height: 48px; object-fit: cover; border-radius: 8px; border: 1px solid #e5e7eb; }
+
+    .section-title { font-size: 16px; font-weight: 700; margin: 0 0 8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1 class="title">{{t.assetReport}} • {{t.mixed}}</h1>
+      <p class="subtitle">{{client_name}} {{#if effective_date}}• {{formatDate effective_date}}{{/if}} {{#if contract_no}}• {{t.contractNo}}: {{contract_no}}{{/if}}</p>
+      <hr class="divider" />
+
+      <div class="summary">
+        <div class="pill">
+          <span class="muted">{{t.groupingMode}}</span>
+          <strong>{{t.mixed}}</strong>
+        </div>
+        <div class="pill">
+          <span class="muted">{{t.totalLots}}</span>
+          <strong>{{#if lots}}{{lots.length}}{{else}}0{{/if}}</strong>
+        </div>
+        <div class="pill">
+          <span class="muted">{{t.totalImages}}</span>
+          <strong>{{#if imageUrls}}{{imageUrls.length}}{{else}}0{{/if}}</strong>
+        </div>
+      </div>
+
+      <h2 class="section-title" style="margin-top:14px;">{{t.reportDetails}}</h2>
+      <div class="grid grid-3">
+        <div class="kv"><div class="k">{{t.contractNo}}</div><div class="v">{{#if contract_no}}{{contract_no}}{{else}}—{{/if}}</div></div>
+        <div class="kv"><div class="k">{{t.client}}</div><div class="v">{{#if client_name}}{{client_name}}{{else}}—{{/if}}</div></div>
+        <div class="kv"><div class="k">{{t.inspector}}</div><div class="v">{{#if inspector_name}}{{inspector_name}}{{else}}—{{/if}}{{#if user_email}} ({{user_email}}){{/if}}</div></div>
+      </div>
+
+      <h2 class="section-title" style="margin-top:16px;">{{t.lotsWord}}</h2>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>{{t.lotWord}}</th>
+            <th>{{t.groupingMode}}</th>
+            <th>{{t.title}}</th>
+            <th>{{t.serialNoOrLabel}}</th>
+            <th>{{t.description}}</th>
+            <th>{{t.details}}</th>
+            <th>{{t.estimatedValue}}</th>
+            <th>{{t.image}}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each lots}}
+          <tr>
+            <td><strong>{{lot_id}}</strong></td>
+            <td>
+              {{#if (eq this.sub_mode 'per_item')}}<span class="tag">{{../t.perItem}}</span>{{/if}}
+              {{#if (eq this.sub_mode 'per_photo')}}<span class="tag">{{../t.perPhoto}}</span>{{/if}}
+              {{#if (eq this.sub_mode 'single_lot')}}<span class="tag">{{../t.singleLot}}</span>{{/if}}
+            </td>
+            <td>{{title}}</td>
+            <td>{{serial_no_or_label}}</td>
+            <td>{{description}}</td>
+            <td>{{details}}</td>
+            <td>{{estimated_value}}</td>
+            <td>
+              {{#if image_url}}
+                <img class="thumb" src="{{image_url}}" alt="thumb" />
+              {{else if image_urls}}
+                <img class="thumb" src="{{image_urls.[0]}}" alt="thumb" />
+              {{/if}}
+            </td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // No-op; templates are static for PDF rendering.
+  </script>
+</body>
+</html>

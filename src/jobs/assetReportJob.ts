@@ -625,6 +625,8 @@ export async function runAssetReportJob({
         const buf = await generateAssetPdfFromReport({
           ...reportObject,
           inspector_name: user?.name || "",
+          user_email: user?.email || "",
+          language: selectedLanguage,
         });
         const t1 = Date.now();
         console.log(
