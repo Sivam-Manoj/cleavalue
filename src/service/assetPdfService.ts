@@ -648,12 +648,47 @@ export async function generateAssetPdfFromReport(
       market = null; // non-fatal
     }
 
+    // Normalize detail fields for template compatibility
+    const normalizedDetails = {
+      owner_name:
+        (sanitizedData as any)?.owner_name ||
+        (sanitizedData as any)?.owner ||
+        (sanitizedData as any)?.company_name,
+      appraisal_purpose:
+        (sanitizedData as any)?.appraisal_purpose ||
+        (sanitizedData as any)?.purpose,
+      appraiser:
+        (sanitizedData as any)?.appraiser ||
+        (sanitizedData as any)?.inspector_name,
+      appraisal_company:
+        (sanitizedData as any)?.appraisal_company ||
+        (sanitizedData as any)?.company ||
+        (sanitizedData as any)?.organisation,
+      industry:
+        (sanitizedData as any)?.industry ||
+        (reportData as any)?.industry,
+      inspection_date:
+        (sanitizedData as any)?.inspection_date ||
+        (sanitizedData as any)?.inspected_at,
+      inspector_name:
+        (sanitizedData as any)?.inspector_name ||
+        (sanitizedData as any)?.inspector ||
+        (reportData as any)?.user_name,
+      createdAt:
+        (sanitizedData as any)?.createdAt ||
+        (sanitizedData as any)?.created_at ||
+        (reportData as any)?.createdAt ||
+        (reportData as any)?.created_at ||
+        new Date().toISOString(),
+    };
+
     const dataForPdf = {
       logo_url: logoUrl,
       market,
       t,
       groups,
       narr,
+      ...normalizedDetails,
       ...sanitizedData,
     };
 
