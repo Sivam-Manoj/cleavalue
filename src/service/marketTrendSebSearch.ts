@@ -5,7 +5,6 @@ export interface PropertyDetails {
   municipality: string;
 }
 
-
 export interface MarketTrend {
   marketTrends2025: {
     reginaBenchmarkPrice: {
@@ -46,18 +45,18 @@ function cleanMarketTrendData(data: any): any {
     return data.map(cleanMarketTrendData);
   }
 
-  if (data && typeof data === 'object') {
+  if (data && typeof data === "object") {
     const cleanedObject: { [key: string]: any } = {};
     // Numeric fields we must coerce to numbers
     const numericFields = [
-      'march',
-      'june',
-      'yearOverYearIncreasePercent',
-      'monthsOfSupply',
-      'historicalAverageMonths',
-      'lowEstimatePriceGrowthPercent',
-      'highEstimatePriceGrowthPercent',
-      'expectedLate2025AveragePriceCAD',
+      "march",
+      "june",
+      "yearOverYearIncreasePercent",
+      "monthsOfSupply",
+      "historicalAverageMonths",
+      "lowEstimatePriceGrowthPercent",
+      "highEstimatePriceGrowthPercent",
+      "expectedLate2025AveragePriceCAD",
     ];
 
     for (const key in data) {
@@ -66,20 +65,23 @@ function cleanMarketTrendData(data: any): any {
 
         if (numericFields.includes(key)) {
           // Coerce numeric fields robustly
-          if (typeof value === 'number') {
+          if (typeof value === "number") {
             cleanedObject[key] = value;
-          } else if (typeof value === 'string') {
+          } else if (typeof value === "string") {
             const lower = value.toLowerCase();
-            if (lower === 'not found') {
+            if (lower === "not found") {
               cleanedObject[key] = 0;
             } else {
-              const numeric = parseFloat(value.replace(/[^0-9.-]/g, ''));
+              const numeric = parseFloat(value.replace(/[^0-9.-]/g, ""));
               cleanedObject[key] = Number.isFinite(numeric) ? numeric : 0;
             }
           } else {
             cleanedObject[key] = 0;
           }
-        } else if (typeof value === 'string' && value.toLowerCase() === 'not found') {
+        } else if (
+          typeof value === "string" &&
+          value.toLowerCase() === "not found"
+        ) {
           // Keep 'Not Found' for string fields
           cleanedObject[key] = value;
         } else {
@@ -94,7 +96,7 @@ function cleanMarketTrendData(data: any): any {
 }
 
 export async function marketTrendSearch(
-  propertyDetails: PropertyDetails,
+  propertyDetails: PropertyDetails
 ): Promise<MarketTrend[]> {
   const { address, municipality } = propertyDetails;
 
@@ -139,19 +141,20 @@ If a value is not available: use 0 for numeric fields and "Not Found" for string
 
   try {
     const response = await openai.responses.create({
-      model: "gpt-4.1",
+      model: "gpt-5",
       tools: [
         {
           type: "web_search_preview",
           search_context_size: "high",
         },
       ],
+
       input: query,
     });
 
     const content = response.output_text;
     // Find the start of the JSON array in the content
-    const jsonStartIndex = content.indexOf('[');
+    const jsonStartIndex = content.indexOf("[");
     if (jsonStartIndex === -1) {
       console.error("Could not find a JSON array in the AI response.");
       console.error("Full response content:", content);
@@ -173,9 +176,9 @@ If a value is not available: use 0 for numeric fields and "Not Found" for string
         let jsonEndIndex = -1;
 
         for (let i = 0; i < jsonString.length; i++) {
-          if (jsonString[i] === '[') {
+          if (jsonString[i] === "[") {
             openBrackets++;
-          } else if (jsonString[i] === ']') {
+          } else if (jsonString[i] === "]") {
             openBrackets--;
           }
 
@@ -202,7 +205,6 @@ If a value is not available: use 0 for numeric fields and "Not Found" for string
       console.error("Error parsing extracted JSON from AI response:", error);
       console.error("Problematic JSON string:", jsonString);
     }
-
 
     return [];
   } catch (error) {

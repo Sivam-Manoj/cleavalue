@@ -13,11 +13,15 @@ import PdfReport from "../models/pdfReport.model.js";
 import fs from "fs/promises";
 import path from "path";
 import { AuthRequest } from "../middleware/auth.middleware.js";
+import { endProgress, getProgress } from "../utils/progressStore.js";
+import { queueRealEstateReportJob } from "../jobs/realEstateReportJob.js";
 import {
   MarketTrend,
   marketTrendSearch,
   PropertyDetails,
 } from "../service/marketTrendSebSearch.js";
+import { generateRealEstateDocx } from "../service/docx/realEstateDocxBuilder.js";
+import { generateRealEstateXlsx } from "../service/xlsx/realEstateXlsxService.js";
 
 export const createRealEstate = async (req: AuthRequest, res: Response) => {
   try {
@@ -148,25 +152,82 @@ export const createRealEstate = async (req: AuthRequest, res: Response) => {
     await fs.mkdir(reportsDir, { recursive: true });
 
     // Save the PDF to the reports folder
-    const filename = `real-estate-report-${newReport._id}-${Date.now()}.pdf`;
-    const filePath = path.join(reportsDir, filename);
-    await fs.writeFile(filePath, pdfBuffer);
+    const timestamp = Date.now();
+    const pdfFilename = `real-estate-report-${newReport._id}-${timestamp}.pdf`;
+    const pdfFilePath = path.join(reportsDir, pdfFilename);
+    await fs.writeFile(pdfFilePath, pdfBuffer);
+
+    // Generate DOCX
+    let docxPublicPath = "";
+    try {
+      const docxBuffer = await generateRealEstateDocx(reportObjectForPdf);
+      const docxFilename = `real-estate-report-${newReport._id}-${timestamp}.docx`;
+      const docxFilePath = path.join(reportsDir, docxFilename);
+      await fs.writeFile(docxFilePath, docxBuffer);
+      docxPublicPath = `/reports/${docxFilename}`;
+
+      // Save record for DOCX
+      const docxReport = new PdfReport({
+        filename: docxFilename,
+        fileType: "docx",
+        filePath: `reports/${docxFilename}`,
+        user: req.userId,
+        report: newReport._id,
+        reportType: "RealEstate",
+        reportModel: "RealEstateReport",
+        address: newReport.property_details?.address || "",
+        fairMarketValue: newReport.valuation?.fair_market_value || "",
+      });
+      await docxReport.save();
+    } catch (e) {
+      console.error("Failed to generate DOCX for real estate:", e);
+    }
+
+    // Generate XLSX
+    let xlsxPublicPath = "";
+    try {
+      const xlsxBuffer = await generateRealEstateXlsx(reportObjectForPdf);
+      const xlsxFilename = `real-estate-report-${newReport._id}-${timestamp}.xlsx`;
+      const xlsxFilePath = path.join(reportsDir, xlsxFilename);
+      await fs.writeFile(xlsxFilePath, xlsxBuffer);
+      xlsxPublicPath = `/reports/${xlsxFilename}`;
+
+      // Save record for XLSX
+      const xlsxReport = new PdfReport({
+        filename: xlsxFilename,
+        fileType: "xlsx",
+        filePath: `reports/${xlsxFilename}`,
+        user: req.userId,
+        report: newReport._id,
+        reportType: "RealEstate",
+        reportModel: "RealEstateReport",
+        address: newReport.property_details?.address || "",
+        fairMarketValue: newReport.valuation?.fair_market_value || "",
+      });
+      await xlsxReport.save();
+    } catch (e) {
+      console.error("Failed to generate XLSX for real estate:", e);
+    }
 
     // Create a record for the saved PDF
     const newPdfReport = new PdfReport({
-      filename: filename,
+      filename: pdfFilename,
       user: req.userId,
       report: newReport._id,
       reportType: "RealEstate",
       reportModel: "RealEstateReport",
       address: newReport.property_details?.address || "",
       fairMarketValue: newReport.valuation?.fair_market_value || "",
+      fileType: "pdf",
+      filePath: `reports/${pdfFilename}`,
     });
     await newPdfReport.save();
 
     res.status(201).json({
       message: "Report generated and saved successfully!",
-      filePath: `/reports/${filename}`,
+      filePath: `/reports/${pdfFilename}`,
+      docxPath: docxPublicPath,
+      xlsxPath: xlsxPublicPath,
     });
   } catch (error) {
     console.error("Error processing real estate data:", error);
@@ -190,3 +251,67 @@ export const getRealEstateReports = async (req: AuthRequest, res: Response) => {
 };
 
 export const uploadMiddleware = upload.array("images", 10);
+
+// Background job variant (queue and return a job id)
+export const createRealEstateQueued = async (req: AuthRequest, res: Response) => {
+  try {
+    const details = JSON.parse((req.body as any)?.details || "{}");
+    const images = req.files as Express.Multer.File[];
+
+    const providedId: string | undefined =
+      (typeof details?.progress_id === "string" && details.progress_id) ||
+      (typeof details?.progressId === "string" && details.progressId) ||
+      (typeof details?.job_id === "string" && details.job_id) ||
+      undefined;
+    const jobId =
+      providedId || `cv-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+    const user = (req as any)?.user;
+    queueRealEstateReportJob({
+      user: { id: String(user?._id), email: String(user?.email || ""), name: (user as any)?.name || (user as any)?.username || undefined },
+      images,
+      details,
+      progressId: jobId,
+    });
+
+    res.status(202).json({
+      message: "Your real estate report is being processed. You will receive an email when it's ready.",
+      jobId,
+      phase: (getProgress(jobId)?.phase) || "processing",
+    });
+  } catch (error) {
+    console.error("Error queueing real estate job:", error);
+    try {
+      const details = JSON.parse((req.body as any)?.details || "{}");
+      const progressId: string | undefined =
+        (typeof details?.progress_id === "string" && details.progress_id) ||
+        (typeof details?.progressId === "string" && details.progressId) ||
+        (typeof details?.job_id === "string" && details.job_id) ||
+        undefined;
+      if (progressId) endProgress(progressId, false, "Error processing request");
+    } catch {}
+    res.status(500).json({ message: "Error processing request", error });
+  }
+};
+
+export const getRealEstateProgress = async (req: AuthRequest, res: Response) => {
+  try {
+    const id = req.params.id;
+    if (!id) {
+      return res.status(400).json({ message: "Missing progress id" });
+    }
+    const rec = getProgress(id);
+    if (!rec) {
+      return res.status(404).json({ message: "Not found" });
+    }
+    res.status(200).json({
+      id: rec.id,
+      phase: rec.phase,
+      serverProgress01: rec.serverProgress01,
+      steps: rec.steps,
+      message: rec.message,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching progress", error });
+  }
+};

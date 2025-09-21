@@ -49,6 +49,7 @@ const RealEstateReportSchema = new Schema(
       ref: "User",
       required: true,
     },
+    language: { type: String, enum: ["en", "fr", "es"], default: "en" },
     property_details: {
       owner_name: { type: String },
       alternate_owner_name: { type: String },

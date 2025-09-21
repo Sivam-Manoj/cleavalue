@@ -19,53 +19,83 @@ export async function calculateFairMarketValue(
   );
 
   const prompt = `
-    Act as a certified real estate appraiser. Your task is to determine the Fair Market Value (FMV) for a subject property using the Direct Comparison Approach.
+  Act as a certified real estate appraiser. Your task is to determine the Fair Market Value (FMV) for a subject property using the Direct Comparison Approach.
 
-    **Subject Property Details:**
-    - Address: ${propertyDetails.address}, ${propertyDetails.municipality}
-    - Type: Residential
-    - Size: ${propertyDetails.house_details.square_footage} sqft
-    - Bedrooms: ${propertyDetails.house_details.bedrooms}
-    - Bathrooms: ${propertyDetails.house_details.bathrooms_full}
+  **Subject Property Details:**
+  - Address: \${propertyDetails.address}, \${propertyDetails.municipality}
+  - Type: Residential
+  - Size: \${propertyDetails.house_details.square_footage} sqft
+  - Bedrooms: \${propertyDetails.house_details.bedrooms}
+  - Bathrooms: \${propertyDetails.house_details.bathrooms_full}
 
-    **Comparable Properties Found Online:**
-    ${JSON.stringify(comparableProperties, null, 2)}
+  **Comparable Properties Found Online:**
+  \${JSON.stringify(comparableProperties, null, 2)}
 
-    **Instructions:**
-    1.  From the 'Comparable Properties Found Online', identify the single property that is the **best match** for the 'Subject Property Details'. The primary selection criteria is the property with the **closest square footage**.
-    2.  **Do not perform any new calculations or create new values.** Your task is to select the best existing comparable.
-    3.  Use the \`listPrice\` of your chosen comparable property as the \`fair_market_value\`.
-    4.  Populate the rest of the JSON response using the data **directly from the chosen comparable property**.
-    5.  In the \`details\` and \`final_estimate_summary\` fields, you must explain which comparable was chosen and why it is the best match for the subject property.
+  **Instructions:**
+  1. From the 'Comparable Properties Found Online', identify the single property that is the **best match** for the 'Subject Property Details'. The primary selection criteria is the property with the **closest square footage**.
+  2. Always calculate the Fair Market Value (FMV) using this formula:
+     - price_per_sqft = comparable.listPrice ÷ comparable.squareFootage
+     - fair_market_value = price_per_sqft × subject.squareFootage
+  3. The calculated \`fair_market_value\` must be used in the JSON output.
+  4. Still include the comparable property’s \`listPrice\` and other details in the JSON for transparency.
+  5. In the \`details\` and \`final_estimate_summary\` fields, always explain:
+     - Which comparable was chosen and why
+     - The price per sqft calculation (show the full formula)
+     - How the final FMV was derived from that calculation
 
-    important: 
-    - Do not perform any new calculations or create new values.
-    - Your task is to select the best existing comparable.
-    - Use the \`listPrice\` of your chosen comparable property as the \`fair_market_value\`.
-    - Populate the rest of the JSON response using the data **directly from the chosen comparable property**.
-    - In the \`details\` and \`final_estimate_summary\` fields, you must explain which comparable was chosen and why it is the best match for the subject property.
+  Important:
+  - Do not invent or assume any new data.
+  - The only calculation you must perform is the per-square-foot FMV calculation described above.
+  - Output must be a valid JSON object in the following structure:
 
-    Provide the result ONLY as a valid JSON object with the following sample structure below:
-    {
-      "fair_market_value": "$846,000 CAD",
-      "value_source": "Direct Comparison Approach",
-      "adjusted_value_from_comparable": "$846,200.00",
-      "comparable_used": "4322 Sand Piper Crescent East, Regina, SK",
-      "final_adjusted_value": "$846,200.00",
-      "final_estimate_summary": "The Direct Comparison Approach to Value produced the following estimate of value for the subject property, 4621 Chuka Drive. The estimate of value by Direct Comparison was based on sales of reasonably similar properties. More weight is given to the Direct Comparison Approach in the final estimate of value, as it more accurately represents the marketplace and the general behaviors of purchasers.",
-      "final_estimate_value": "Eight Hundred Forty-Six Thousand ($846,000) Dollars",
-      "details": "I have chosen one of the comparable properties as an indicator of value for the subject property. I chose Comparable #3 (4322 Sand Piper Crescent East, Regina, SK) because it required the fewest adjustments and had the smallest total adjustment value. It was adjusted for the following categories: Square Footage, Lot Size, Bedrooms, Bathrooms, Other Features, and Condition. The remaining comparables required adjustments in more categories and had greater total adjustment values."
-    }
-  `;
+  {
+    "fair_market_value": "$50,000 CAD",
+    "value_source": "Direct Comparison Approach (Price per Sqft)",
+    "comparable_list_price": "$100,000 CAD",
+    "comparable_used": "123 Example Street, Sample City, SK",
+    "final_estimate_summary": "The Direct Comparison Approach produced an FMV for the subject property at 250 sqft. The best comparable was 123 Example Street at 500 sqft with a list price of $100,000. Using price per square foot ($100,000 ÷ 500 = $200/sqft), the subject's estimated FMV is 250 × $200 = $50,000 CAD.",
+    "final_estimate_value": "Fifty Thousand ($50,000) Dollars",
+    "details": "Comparable chosen: 123 Example Street, Sample City, SK. Price per sqft = 100,000 ÷ 500 sqft = 200/sqft. Subject size = 250 sqft. Final FMV = 200 × 250 = 50,000 CAD. This ensures the value reflects the proportional relationship between the comparable and the subject property."
+  }
+`;
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await openai.responses.create({
       model: "gpt-5",
-      messages: [{ role: "system", content: prompt }],
-      response_format: { type: "json_object" },
+      input: prompt, // your appraisal prompt here
+      reasoning: { effort: "high" },
+      text: {
+        format: {
+          type: "json_schema",
+          name: "real_estate_appraisal",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              fair_market_value: { type: "string" },
+              value_source: { type: "string" },
+              comparable_list_price: { type: "string" },
+              comparable_used: { type: "string" },
+              final_estimate_summary: { type: "string" },
+              final_estimate_value: { type: "string" },
+              details: { type: "string" },
+            },
+            required: [
+              "fair_market_value",
+              "value_source",
+              "comparable_list_price",
+              "comparable_used",
+              "final_estimate_summary",
+              "final_estimate_value",
+              "details",
+            ],
+            additionalProperties: false,
+          },
+        },
+      },
     });
 
-    const content = response.choices[0].message.content;
+    const content = response.output_text;
     if (!content) {
       throw new Error("OpenAI returned an empty valuation response.");
     }
