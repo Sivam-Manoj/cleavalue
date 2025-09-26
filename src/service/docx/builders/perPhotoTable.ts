@@ -15,6 +15,28 @@ import {
 import { fetchImageBuffer } from "./utils.js";
 import { getLang, t } from "./i18n.js";
 
+function formatMoneyStrict(input: any, ccy: string): string {
+  try {
+    let n: number | null = null;
+    if (typeof input === "number" && Number.isFinite(input)) n = input;
+    else if (typeof input === "string") {
+      const cleaned = input.replace(/[^0-9.\-]/g, "");
+      if (cleaned) {
+        const parsed = Number(cleaned);
+        if (Number.isFinite(parsed)) n = parsed;
+      }
+    }
+    if (n === null) return String(input || "—");
+    return new Intl.NumberFormat("en-CA", {
+      style: "currency",
+      currency: ccy || "CAD",
+      maximumFractionDigits: 0,
+    }).format(n);
+  } catch {
+    return String(input || "—");
+  }
+}
+
 export async function buildPerPhotoTable(
   lots: any[],
   rootImageUrls: string[],
@@ -73,49 +95,49 @@ export async function buildPerPhotoTable(
         margins: cellMargins,
         verticalAlign: VerticalAlign.CENTER,
         shading: { type: "clear" as any, fill: "E5E7EB", color: "auto" },
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.lotId, bold: true })] })],
+        children: [new Paragraph({ style: "TableSmall", alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.lotId, bold: true })] })],
       }),
       new TableCell({
         width: { size: w.title, type: WidthType.DXA },
         margins: cellMargins,
         verticalAlign: VerticalAlign.CENTER,
         shading: { type: "clear" as any, fill: "E5E7EB", color: "auto" },
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.title, bold: true })] })],
+        children: [new Paragraph({ style: "TableSmall", alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.title, bold: true })] })],
       }),
       new TableCell({
         width: { size: w.sn, type: WidthType.DXA },
         margins: cellMargins,
         verticalAlign: VerticalAlign.CENTER,
         shading: { type: "clear" as any, fill: "E5E7EB", color: "auto" },
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.serialNoLabel, bold: true })] })],
+        children: [new Paragraph({ style: "TableSmall", alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.serialNoLabel, bold: true })] })],
       }),
       new TableCell({
         width: { size: w.desc, type: WidthType.DXA },
         margins: cellMargins,
         verticalAlign: VerticalAlign.CENTER,
         shading: { type: "clear" as any, fill: "E5E7EB", color: "auto" },
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.description, bold: true })] })],
+        children: [new Paragraph({ style: "TableSmall", alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.description, bold: true })] })],
       }),
       new TableCell({
         width: { size: w.details, type: WidthType.DXA },
         margins: cellMargins,
         verticalAlign: VerticalAlign.CENTER,
         shading: { type: "clear" as any, fill: "E5E7EB", color: "auto" },
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.detailsCol, bold: true })] })],
+        children: [new Paragraph({ style: "TableSmall", alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.detailsCol, bold: true })] })],
       }),
       new TableCell({
         width: { size: w.value, type: WidthType.DXA },
         margins: cellMargins,
         verticalAlign: VerticalAlign.CENTER,
         shading: { type: "clear" as any, fill: "E5E7EB", color: "auto" },
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, keepLines: true, children: [new TextRun({ text: (((tr as any).estValue ? (tr as any).estValue(ccy) : tr.estValueCad) as string).replace(/ /g, "\u00A0"), bold: true })] })],
+        children: [new Paragraph({ style: "TableSmall", alignment: AlignmentType.CENTER, keepLines: true, children: [new TextRun({ text: (((tr as any).estValue ? (tr as any).estValue(ccy) : tr.estValueCad) as string).replace(/ /g, "\u00A0"), bold: true })] })],
       }),
       new TableCell({
         width: { size: w.image, type: WidthType.DXA },
         margins: cellMargins,
         verticalAlign: VerticalAlign.CENTER,
         shading: { type: "clear" as any, fill: "E5E7EB", color: "auto" },
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.image, bold: true })] })],
+        children: [new Paragraph({ style: "TableSmall", alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.image, bold: true })] })],
       }),
     ],
   });
@@ -150,14 +172,14 @@ export async function buildPerPhotoTable(
             margins: cellMargins,
             verticalAlign: VerticalAlign.CENTER,
             shading: zebra ? ({ type: "clear", fill: "FAFAFA", color: "auto" } as any) : undefined,
-            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(rec?.lot_id || "—") })] })],
+            children: [new Paragraph({ style: "TableSmall", alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(rec?.lot_id || "—") })] })],
           }),
           new TableCell({
             width: { size: w.title, type: WidthType.DXA },
             margins: cellMargins,
             verticalAlign: VerticalAlign.CENTER,
             shading: zebra ? ({ type: "clear", fill: "FAFAFA", color: "auto" } as any) : undefined,
-            children: [new Paragraph({ children: [new TextRun({ text: String(rec?.title || "—"), bold: true })] })],
+            children: [new Paragraph({ style: "TableSmall", children: [new TextRun({ text: String(rec?.title || "—"), bold: true })] })],
           }),
           new TableCell({
             width: { size: w.sn, type: WidthType.DXA },
@@ -166,7 +188,7 @@ export async function buildPerPhotoTable(
             shading: zebra ? ({ type: "clear", fill: "FAFAFA", color: "auto" } as any) : undefined,
             children: (() => {
               const out: Paragraph[] = [];
-              out.push(new Paragraph(String(rec?.serial_no_or_label || "—")));
+              out.push(new Paragraph({ style: "TableSmall", text: String(rec?.serial_no_or_label || "—") }));
               const vd: any = (rec as any)?.vinDecoded;
               if (vd) {
                 const parts: string[] = [];
@@ -182,7 +204,7 @@ export async function buildPerPhotoTable(
                 if (vd?.fuelType) parts.push(`${tr.fuelLabel}: ${vd.fuelType}`);
                 if (vd?.driveType) parts.push(`${tr.driveLabel}: ${vd.driveType}`);
                 if (vd?.transmission) parts.push(`${tr.transLabel}: ${vd.transmission}`);
-                if (parts.length) out.push(new Paragraph({ children: [new TextRun({ text: parts.join(" • "), color: "374151" })] }));
+                if (parts.length) out.push(new Paragraph({ style: "TableSmall", children: [new TextRun({ text: parts.join(" • "), color: "374151" })] }));
               }
               return out;
             })(),
@@ -192,21 +214,21 @@ export async function buildPerPhotoTable(
             margins: cellMargins,
             verticalAlign: VerticalAlign.CENTER,
             shading: zebra ? ({ type: "clear", fill: "FAFAFA", color: "auto" } as any) : undefined,
-            children: [new Paragraph(desc || "—")],
+            children: [new Paragraph({ style: "TableSmall", text: desc || "—" })],
           }),
           new TableCell({
             width: { size: w.details, type: WidthType.DXA },
             margins: cellMargins,
             verticalAlign: VerticalAlign.CENTER,
             shading: zebra ? ({ type: "clear", fill: "FAFAFA", color: "auto" } as any) : undefined,
-            children: [new Paragraph(String(details || (rec?.condition ?? "—")))]
+            children: [new Paragraph({ style: "TableSmall", text: String(details || (rec?.condition ?? "—")) })]
           }),
           new TableCell({
             width: { size: w.value, type: WidthType.DXA },
             margins: cellMargins,
             verticalAlign: VerticalAlign.CENTER,
             shading: zebra ? ({ type: "clear", fill: "FAFAFA", color: "auto" } as any) : undefined,
-            children: [new Paragraph({ alignment: AlignmentType.RIGHT, keepLines: true, text: String(rec?.estimated_value || "—").replace(/ /g, "\u00A0") })], // Prevent value wrapping
+            children: [new Paragraph({ style: "TableSmall", alignment: AlignmentType.RIGHT, keepLines: true, text: formatMoneyStrict((rec as any)?.estimated_value, ccy).replace(/ /g, "\u00A0") })], // Prevent value wrapping
           }),
           new TableCell({
             width: { size: w.image, type: WidthType.DXA },
@@ -215,6 +237,7 @@ export async function buildPerPhotoTable(
             shading: zebra ? ({ type: "clear", fill: "FAFAFA", color: "auto" } as any) : undefined,
             children: [
               new Paragraph({
+                style: "TableSmall",
                 alignment: AlignmentType.CENTER,
                 children: buf
                   ? [new ImageRun({ data: buf as any, transformation: { width: 96, height: 72 } } as any)]

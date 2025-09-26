@@ -15,6 +15,28 @@ import {
 import { fetchImageBuffer } from "./utils.js";
 import { getLang, t } from "./i18n.js";
 
+function formatMoneyStrict(input: any, ccy: string): string {
+  try {
+    let n: number | null = null;
+    if (typeof input === "number" && Number.isFinite(input)) n = input;
+    else if (typeof input === "string") {
+      const cleaned = input.replace(/[^0-9.\-]/g, "");
+      if (cleaned) {
+        const parsed = Number(cleaned);
+        if (Number.isFinite(parsed)) n = parsed;
+      }
+    }
+    if (n === null) return String(input || "—");
+    return new Intl.NumberFormat("en-CA", {
+      style: "currency",
+      currency: ccy || "CAD",
+      maximumFractionDigits: 0,
+    }).format(n);
+  } catch {
+    return String(input || "—");
+  }
+}
+
 export async function buildPerItemTable(
   reportData: any,
   rootImageUrls: string[],
@@ -25,8 +47,11 @@ export async function buildPerItemTable(
   const items: any[] = Array.isArray(reportData?.lots) ? reportData.lots : [];
   const lang = getLang(reportData);
   const tr = t(lang);
-  const heading = !headingLabel || headingLabel === "Analyzed Items" ? tr.perItemResults : headingLabel;
-  const ccy = String((reportData as any)?.currency || 'CAD');
+  const heading =
+    !headingLabel || headingLabel === "Analyzed Items"
+      ? tr.perItemResults
+      : headingLabel;
+  const ccy = String((reportData as any)?.currency || "CAD");
 
   if (items.length) {
     children.push(
@@ -60,7 +85,11 @@ export async function buildPerItemTable(
         verticalAlign: VerticalAlign.CENTER,
         shading: { type: "clear" as any, fill: "E5E7EB", color: "auto" },
         children: [
-          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.lotId, bold: true })] }),
+          new Paragraph({
+            style: "TableSmall",
+            alignment: AlignmentType.CENTER,
+            children: [new TextRun({ text: tr.lotId, bold: true })],
+          }),
         ],
       }),
       new TableCell({
@@ -69,7 +98,11 @@ export async function buildPerItemTable(
         verticalAlign: VerticalAlign.CENTER,
         shading: { type: "clear" as any, fill: "E5E7EB", color: "auto" },
         children: [
-          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.title, bold: true })] }),
+          new Paragraph({
+            style: "TableSmall",
+            alignment: AlignmentType.CENTER,
+            children: [new TextRun({ text: tr.title, bold: true })],
+          }),
         ],
       }),
       new TableCell({
@@ -78,7 +111,11 @@ export async function buildPerItemTable(
         verticalAlign: VerticalAlign.CENTER,
         shading: { type: "clear" as any, fill: "E5E7EB", color: "auto" },
         children: [
-          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.serialNoLabel, bold: true })] }),
+          new Paragraph({
+            style: "TableSmall",
+            alignment: AlignmentType.CENTER,
+            children: [new TextRun({ text: tr.serialNoLabel, bold: true })],
+          }),
         ],
       }),
       new TableCell({
@@ -87,7 +124,11 @@ export async function buildPerItemTable(
         verticalAlign: VerticalAlign.CENTER,
         shading: { type: "clear" as any, fill: "E5E7EB", color: "auto" },
         children: [
-          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.description, bold: true })] }),
+          new Paragraph({
+            style: "TableSmall",
+            alignment: AlignmentType.CENTER,
+            children: [new TextRun({ text: tr.description, bold: true })],
+          }),
         ],
       }),
       new TableCell({
@@ -96,7 +137,11 @@ export async function buildPerItemTable(
         verticalAlign: VerticalAlign.CENTER,
         shading: { type: "clear" as any, fill: "E5E7EB", color: "auto" },
         children: [
-          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.detailsCol, bold: true })] }),
+          new Paragraph({
+            style: "TableSmall",
+            alignment: AlignmentType.CENTER,
+            children: [new TextRun({ text: tr.detailsCol, bold: true })],
+          }),
         ],
       }),
       new TableCell({
@@ -105,7 +150,21 @@ export async function buildPerItemTable(
         verticalAlign: VerticalAlign.CENTER,
         shading: { type: "clear" as any, fill: "E5E7EB", color: "auto" },
         children: [
-          new Paragraph({ alignment: AlignmentType.CENTER, keepLines: true, children: [new TextRun({ text: (((tr as any).estValue ? (tr as any).estValue(ccy) : tr.estValueCad) as string).replace(/ /g, "\u00A0"), bold: true })] }),
+          new Paragraph({
+            style: "TableSmall",
+            alignment: AlignmentType.CENTER,
+            keepLines: true,
+            children: [
+              new TextRun({
+                text: (
+                  ((tr as any).estValue
+                    ? (tr as any).estValue(ccy)
+                    : tr.estValueCad) as string
+                ).replace(/ /g, "\u00A0"),
+                bold: true,
+              }),
+            ],
+          }),
         ],
       }),
       new TableCell({
@@ -114,7 +173,11 @@ export async function buildPerItemTable(
         verticalAlign: VerticalAlign.CENTER,
         shading: { type: "clear" as any, fill: "E5E7EB", color: "auto" },
         children: [
-          new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.image, bold: true })] }),
+          new Paragraph({
+            style: "TableSmall",
+            alignment: AlignmentType.CENTER,
+            children: [new TextRun({ text: tr.image, bold: true })],
+          }),
         ],
       }),
     ],
@@ -124,9 +187,15 @@ export async function buildPerItemTable(
   for (const it of items) {
     // Resolve image using local index -> index -> url
     let imgUrl: string | undefined;
-    if (typeof it?.image_local_index === "number" && rootImageUrls?.[it.image_local_index]) {
+    if (
+      typeof it?.image_local_index === "number" &&
+      rootImageUrls?.[it.image_local_index]
+    ) {
       imgUrl = rootImageUrls[it.image_local_index];
-    } else if (typeof it?.image_index === "number" && rootImageUrls?.[it.image_index]) {
+    } else if (
+      typeof it?.image_index === "number" &&
+      rootImageUrls?.[it.image_index]
+    ) {
       imgUrl = rootImageUrls[it.image_index];
     } else if (typeof it?.image_url === "string") {
       imgUrl = it.image_url;
@@ -144,25 +213,46 @@ export async function buildPerItemTable(
             width: { size: w.lot, type: WidthType.DXA },
             margins: cellMargins,
             verticalAlign: VerticalAlign.CENTER,
-            shading: zebra ? ({ type: "clear", fill: "FAFAFA", color: "auto" } as any) : undefined,
-            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(it?.lot_id || "—") })] })],
+            shading: zebra
+              ? ({ type: "clear", fill: "FAFAFA", color: "auto" } as any)
+              : undefined,
+            children: [
+              new Paragraph({
+                style: "TableSmall",
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: String(it?.lot_id || "—") })],
+              }),
+            ],
           }),
           new TableCell({
             width: { size: w.title, type: WidthType.DXA },
             margins: cellMargins,
             verticalAlign: VerticalAlign.CENTER,
-            shading: zebra ? ({ type: "clear", fill: "FAFAFA", color: "auto" } as any) : undefined,
-            children: [new Paragraph({ children: [new TextRun({ text: String(it?.title || "—"), bold: true })] })],
+            shading: zebra
+              ? ({ type: "clear", fill: "FAFAFA", color: "auto" } as any)
+              : undefined,
+            children: [
+              new Paragraph({
+                style: "TableSmall",
+                children: [
+                  new TextRun({ text: String(it?.title || "—"), bold: true }),
+                ],
+              }),
+            ],
           }),
           new TableCell({
             width: { size: w.sn, type: WidthType.DXA },
             margins: cellMargins,
             verticalAlign: VerticalAlign.CENTER,
-            shading: zebra ? ({ type: "clear", fill: "FAFAFA", color: "auto" } as any) : undefined,
+            shading: zebra
+              ? ({ type: "clear", fill: "FAFAFA", color: "auto" } as any)
+              : undefined,
             children: (() => {
               const out: Paragraph[] = [];
               const serialText = String(it?.serial_no_or_label || "—");
-              out.push(new Paragraph(serialText));
+              out.push(
+                new Paragraph({ style: "TableSmall", text: serialText })
+              );
               const vd: any = (it as any)?.vinDecoded;
               if (vd) {
                 const parts: string[] = [];
@@ -171,17 +261,32 @@ export async function buildPerItemTable(
                 if (vd?.make) parts.push(`${tr.makeLabel}: ${vd.make}`);
                 if (vd?.model) parts.push(`${tr.modelLabel}: ${vd.model}`);
                 if (vd?.trim) parts.push(`${tr.trimLabel}: ${vd.trim}`);
-                const eng = [vd?.engineCylinders ? `${vd.engineCylinders} ${tr.cylAbbrev}` : undefined, vd?.displacementL ? `${vd.displacementL}${tr.litersAbbrev}` : undefined]
+                const eng = [
+                  vd?.engineCylinders
+                    ? `${vd.engineCylinders} ${tr.cylAbbrev}`
+                    : undefined,
+                  vd?.displacementL
+                    ? `${vd.displacementL}${tr.litersAbbrev}`
+                    : undefined,
+                ]
                   .filter(Boolean)
                   .join(" ");
                 if (eng) parts.push(`${tr.engineLabel}: ${eng}`);
                 if (vd?.fuelType) parts.push(`${tr.fuelLabel}: ${vd.fuelType}`);
-                if (vd?.driveType) parts.push(`${tr.driveLabel}: ${vd.driveType}`);
-                if (vd?.transmission) parts.push(`${tr.transLabel}: ${vd.transmission}`);
+                if (vd?.driveType)
+                  parts.push(`${tr.driveLabel}: ${vd.driveType}`);
+                if (vd?.transmission)
+                  parts.push(`${tr.transLabel}: ${vd.transmission}`);
                 if (parts.length) {
                   out.push(
                     new Paragraph({
-                      children: [new TextRun({ text: parts.join(" • "), color: "374151" })],
+                      style: "TableSmall",
+                      children: [
+                        new TextRun({
+                          text: parts.join(" • "),
+                          color: "374151",
+                        }),
+                      ],
                     })
                   );
                 }
@@ -193,36 +298,82 @@ export async function buildPerItemTable(
             width: { size: w.desc, type: WidthType.DXA },
             margins: cellMargins,
             verticalAlign: VerticalAlign.CENTER,
-            shading: zebra ? ({ type: "clear", fill: "FAFAFA", color: "auto" } as any) : undefined,
-            children: [new Paragraph(String(it?.description || "—"))],
+            shading: zebra
+              ? ({ type: "clear", fill: "FAFAFA", color: "auto" } as any)
+              : undefined,
+            children: [
+              new Paragraph({
+                style: "TableSmall",
+                text: String(it?.description || "—"),
+              }),
+            ],
           }),
           new TableCell({
             width: { size: w.details, type: WidthType.DXA },
             margins: cellMargins,
             verticalAlign: VerticalAlign.CENTER,
-            shading: zebra ? ({ type: "clear", fill: "FAFAFA", color: "auto" } as any) : undefined,
-            children: [new Paragraph(String((it?.details ?? it?.condition) || "—"))],
+            shading: zebra
+              ? ({ type: "clear", fill: "FAFAFA", color: "auto" } as any)
+              : undefined,
+            children: [
+              new Paragraph({
+                style: "TableSmall",
+                text: String((it?.details ?? it?.condition) || "—"),
+              }),
+            ],
           }),
           new TableCell({
             width: { size: w.value, type: WidthType.DXA },
             margins: cellMargins,
             verticalAlign: VerticalAlign.CENTER,
-            shading: zebra ? ({ type: "clear", fill: "FAFAFA", color: "auto" } as any) : undefined,
-            children: [new Paragraph({ alignment: AlignmentType.RIGHT, keepLines: true, text: String(it?.estimated_value || "—").replace(/ /g, "\u00A0") })],
+            shading: zebra
+              ? ({ type: "clear", fill: "FAFAFA", color: "auto" } as any)
+              : undefined,
+            children: [
+              new Paragraph({
+                style: "TableSmall",
+                alignment: AlignmentType.RIGHT,
+                keepLines: true,
+                text: formatMoneyStrict(
+                  (it as any)?.estimated_value,
+                  ccy
+                ).replace(/ /g, "\u00A0"),
+              }),
+            ],
           }),
           new TableCell({
             width: { size: w.image, type: WidthType.DXA },
             margins: cellMargins,
             verticalAlign: VerticalAlign.CENTER,
-            shading: zebra ? ({ type: "clear", fill: "FAFAFA", color: "auto" } as any) : undefined,
+            shading: zebra
+              ? ({ type: "clear", fill: "FAFAFA", color: "auto" } as any)
+              : undefined,
             children: imgBuf
               ? [
                   new Paragraph({
+                    style: "TableSmall",
                     alignment: AlignmentType.CENTER,
-                    children: [new ImageRun({ data: imgBuf as any, transformation: { width: 96, height: 72 } } as any)],
+                    children: [
+                      new ImageRun({
+                        data: imgBuf as any,
+                        transformation: { width: 96, height: 72 },
+                      } as any),
+                    ],
                   }),
                 ]
-              : [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: tr.noImage, italics: true, color: "6B7280" })] })],
+              : [
+                  new Paragraph({
+                    style: "TableSmall",
+                    alignment: AlignmentType.CENTER,
+                    children: [
+                      new TextRun({
+                        text: tr.noImage,
+                        italics: true,
+                        color: "6B7280",
+                      }),
+                    ],
+                  }),
+                ],
           }),
         ],
       })
@@ -240,7 +391,11 @@ export async function buildPerItemTable(
         bottom: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
         left: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
         right: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
-        insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
+        insideHorizontal: {
+          style: BorderStyle.SINGLE,
+          size: 1,
+          color: "F3F4F6",
+        },
         insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
       },
       rows: [header, ...bodyRows],
