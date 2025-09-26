@@ -15,6 +15,28 @@ import {
 import { fetchImageBuffer, goldDivider } from "./utils.js";
 import { getLang, t } from "./i18n.js";
 
+function formatMoneyStrict(input: any, ccy: string): string {
+  try {
+    let n: number | null = null;
+    if (typeof input === "number" && Number.isFinite(input)) n = input;
+    else if (typeof input === "string") {
+      const cleaned = input.replace(/[^0-9.\-]/g, "");
+      if (cleaned) {
+        const parsed = Number(cleaned);
+        if (Number.isFinite(parsed)) n = parsed;
+      }
+    }
+    if (n === null) return String(input || "—");
+    return new Intl.NumberFormat("en-CA", {
+      style: "currency",
+      currency: ccy || "CAD",
+      maximumFractionDigits: 0,
+    }).format(n);
+  } catch {
+    return String(input || "—");
+  }
+}
+
 export async function buildAssetLots(
   reportData: any,
   rootImageUrls: string[],
@@ -58,7 +80,10 @@ export async function buildAssetLots(
     // Badges line
     const badges: string[] = [];
     if (lot?.condition) badges.push(`${tr.condition}: ${lot.condition}`);
-    if (lot?.estimated_value) badges.push(`${(tr as any).estValue ? (tr as any).estValue(ccy) : tr.estValueCad}: ${lot.estimated_value}`);
+    if (lot?.estimated_value)
+      badges.push(
+        `${(tr as any).estValue ? (tr as any).estValue(ccy) : tr.estValueCad}: ${formatMoneyStrict(lot.estimated_value, ccy)}`
+      );
     if (Array.isArray(lot?.items)) badges.push(`${tr.itemsWord}: ${lot.items.length}`);
     if (badges.length) children.push(new Paragraph({ text: badges.join("  •  "), spacing: { after: 80 } }));
 

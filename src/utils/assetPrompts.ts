@@ -51,7 +51,7 @@ Output Rules:
         "title": "short but specific title",
         "description": "summary of key details",
         "condition": "string describing the item's condition (e.g., 'Used - Good', 'New', 'Damaged')",
-        "estimated_value": "string in ${ccy} with correct prefix (e.g., '${ccyPrefix}150' or '${ccy} 150')",
+        "estimated_value": "string in ${ccy} with the correct prefix (e.g., '${ccyPrefix}12,500' or '${ccy} 12,500'); ALWAYS include thousands separators and NO decimals (round to the nearest whole unit)",
         "tags": ["optional", "keywords"],
         "image_indexes": [array of integers starting at 0]
       }
@@ -62,7 +62,11 @@ Output Rules:
   }
 - All fields except 'tags' are REQUIRED for each lot.
 - 'tags', if included, must be an array of strings.
-- 'estimated_value' must always be in ${ccy} (use proper prefix like '${ccyPrefix}' or leading code '${ccy} '), even if estimated.
+- 'estimated_value' must always be in ${ccy} (use proper prefix like '${ccyPrefix}' or leading code '${ccy} '), even if estimated. Do NOT convert currencies — use the currency provided in the system instructions.
+- Format rules for 'estimated_value':
+  - Use thousands separators (e.g., 12,500; 235,000)
+  - No decimal places (round to nearest whole unit)
+  - Use the appropriate currency prefix: '${ccyPrefix}' is preferred when available; otherwise, prefix with '${ccy} '
 - Titles must be concise yet descriptive and unique across lots; for same-type items, append a differentiator like "(#1)", "(#2)".
 - 'image_indexes' must reference the provided images by 0-based index. Sort indexes ascending and do not repeat an index within a lot.
 
