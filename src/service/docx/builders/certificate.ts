@@ -32,6 +32,8 @@ export function buildCertificateOfAppraisal(
     (reportData?.total_appraised_value as string) ||
     (reportData?.total_value as string) ||
     (reportData?.analysis?.total_value as string) ||
+    (reportData?.valuation?.fair_market_value as string) ||
+    (reportData?.valuation?.final_estimate_value as string) ||
     undefined;
 
   const preparedBy = [reportData?.appraiser, reportData?.appraisal_company].filter(Boolean).join(", ");

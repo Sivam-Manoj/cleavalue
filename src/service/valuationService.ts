@@ -3,8 +3,10 @@ import openai from "../utils/openaiClient.js";
 export interface ValuationResult {
   fair_market_value: string;
   value_source: string;
-  adjusted_value_from_comparable: string;
+  comparable_list_price: string;
   comparable_used: string;
+  final_estimate_summary: string;
+  final_estimate_value: string;
   details: string;
 }
 
@@ -18,44 +20,119 @@ export async function calculateFairMarketValue(
     JSON.stringify(comparableProperties, null, 2)
   );
 
+  // Helpers to normalize numeric inputs like "$749,900" or "2,120 sqft"
+  const toNumber = (val: unknown): number | null => {
+    if (val === undefined || val === null) return null;
+    if (typeof val === "number" && Number.isFinite(val)) return val;
+    const s = String(val);
+    const cleaned = s.replace(/[^0-9.]/g, "");
+    if (!cleaned) return null;
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const formatMoneyCAD = (n: number): string => {
+    try {
+      return n.toLocaleString("en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 });
+    } catch {
+      // Fallback simple formatter
+      const s = Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      return `$${s} CAD`;
+    }
+  };
+
+  // Extract subject square footage as a number
+  const subjectSqft: number | null = (() => {
+    const hd = (propertyDetails as any)?.house_details || {};
+    return (
+      toNumber(hd.square_footage) ??
+      toNumber(hd.squareFootage) ??
+      toNumber((propertyDetails as any)?.square_footage) ??
+      null
+    );
+  })();
+
+  // Normalize comparable properties to numeric listPrice and squareFootage
+  const compsArr: any[] = Array.isArray(comparableProperties)
+    ? comparableProperties
+    : [];
+  const normalizedComps = compsArr
+    .map((c: any) => {
+      const listPriceNumeric =
+        toNumber(c.listPrice) ?? toNumber(c.price) ?? toNumber(c.list_price);
+      const squareFootageNumeric =
+        toNumber(c.squareFootage) ??
+        toNumber(c.square_footage) ??
+        toNumber(c.size);
+      return {
+        name: c?.name || "Comparable",
+        address: c?.address || "",
+        listPriceNumeric,
+        squareFootageNumeric,
+      };
+    })
+    .filter((c) => c.listPriceNumeric && c.squareFootageNumeric);
+
+  // Choose the best comparable (closest square footage)
+  let best: null | typeof normalizedComps[number] = null;
+  if (subjectSqft && normalizedComps.length) {
+    best = normalizedComps
+      .slice()
+      .sort(
+        (a, b) =>
+          Math.abs((a.squareFootageNumeric as number) - subjectSqft) -
+          Math.abs((b.squareFootageNumeric as number) - subjectSqft)
+      )[0];
+  }
+
+  const pricePerSqft: number | null =
+    best && best.listPriceNumeric && best.squareFootageNumeric
+      ? (best.listPriceNumeric as number) / (best.squareFootageNumeric as number)
+      : null;
+  const fmvNumber: number | null =
+    pricePerSqft && subjectSqft ? pricePerSqft * subjectSqft : null;
+
   const prompt = `
-  Act as a certified real estate appraiser. Your task is to determine the Fair Market Value (FMV) for a subject property using the Direct Comparison Approach.
+  Act as a certified real estate appraiser. Use the Direct Comparison Approach.
 
-  **Subject Property Details:**
-  - Address: \${propertyDetails.address}, \${propertyDetails.municipality}
-  - Type: Residential
-  - Size: \${propertyDetails.house_details.square_footage} sqft
-  - Bedrooms: \${propertyDetails.house_details.bedrooms}
-  - Bathrooms: \${propertyDetails.house_details.bathrooms_full}
+  Subject (normalized):
+  - Address: ${String((propertyDetails as any)?.property_details?.address || (propertyDetails as any)?.address || "")}, ${String((propertyDetails as any)?.property_details?.municipality || (propertyDetails as any)?.municipality || "")}
+  - squareFootage_number: ${subjectSqft ?? "null"}
 
-  **Comparable Properties Found Online:**
-  \${JSON.stringify(comparableProperties, null, 2)}
+  Comparable Properties (original):
+  ${JSON.stringify(comparableProperties, null, 2)}
 
-  **Instructions:**
-  1. From the 'Comparable Properties Found Online', identify the single property that is the **best match** for the 'Subject Property Details'. The primary selection criteria is the property with the **closest square footage**.
-  2. Always calculate the Fair Market Value (FMV) using this formula:
-     - price_per_sqft = comparable.listPrice ÷ comparable.squareFootage
-     - fair_market_value = price_per_sqft × subject.squareFootage
-  3. The calculated \`fair_market_value\` must be used in the JSON output.
-  4. Still include the comparable property’s \`listPrice\` and other details in the JSON for transparency.
-  5. In the \`details\` and \`final_estimate_summary\` fields, always explain:
-     - Which comparable was chosen and why
-     - The price per sqft calculation (show the full formula)
-     - How the final FMV was derived from that calculation
+  Comparable Properties (normalized numeric values):
+  ${JSON.stringify(normalizedComps, null, 2)}
 
-  Important:
-  - Do not invent or assume any new data.
-  - The only calculation you must perform is the per-square-foot FMV calculation described above.
-  - Output must be a valid JSON object in the following structure:
+  If the normalized values are present, USE the following pre-computed values to build your output (do not re-compute different numbers):
+  - best_comparable_name: ${best?.name ?? "null"}
+  - best_comparable_address: ${best?.address ?? "null"}
+  - best_comparable_list_price_number: ${best?.listPriceNumeric ?? "null"}
+  - best_comparable_square_footage_number: ${best?.squareFootageNumeric ?? "null"}
+  - price_per_sqft_number: ${pricePerSqft ?? "null"}
+  - fair_market_value_number: ${fmvNumber ?? "null"}
 
+  Instructions:
+  1. Select the comparable with closest square footage to the subject (already indicated above if available).
+  2. price_per_sqft = comparable_list_price_number ÷ comparable_square_footage_number.
+  3. fair_market_value_number = price_per_sqft × subject_squareFootage_number.
+  4. Format money fields with thousands separators and append " CAD" (e.g., "$749,900 CAD"). Round to the nearest dollar.
+  5. Output valid JSON matching the schema below. Use the computed numbers exactly if provided (do not change them). If any number is null, clearly state what's missing in the summary.
+  6. In 'final_estimate_summary' and 'details':
+     - Explain which comparable was chosen and why (closest square footage).
+     - Show the formula with the actual numbers.
+     - Explain how FMV was derived.
+
+  Output JSON structure:
   {
     "fair_market_value": "$50,000 CAD",
     "value_source": "Direct Comparison Approach (Price per Sqft)",
     "comparable_list_price": "$100,000 CAD",
     "comparable_used": "123 Example Street, Sample City, SK",
-    "final_estimate_summary": "The Direct Comparison Approach produced an FMV for the subject property at 250 sqft. The best comparable was 123 Example Street at 500 sqft with a list price of $100,000. Using price per square foot ($100,000 ÷ 500 = $200/sqft), the subject's estimated FMV is 250 × $200 = $50,000 CAD.",
+    "final_estimate_summary": "...",
     "final_estimate_value": "Fifty Thousand ($50,000) Dollars",
-    "details": "Comparable chosen: 123 Example Street, Sample City, SK. Price per sqft = 100,000 ÷ 500 sqft = 200/sqft. Subject size = 250 sqft. Final FMV = 200 × 250 = 50,000 CAD. This ensures the value reflects the proportional relationship between the comparable and the subject property."
+    "details": "..."
   }
 `;
 
@@ -99,8 +176,26 @@ export async function calculateFairMarketValue(
     if (!content) {
       throw new Error("OpenAI returned an empty valuation response.");
     }
-
-    return JSON.parse(content) as ValuationResult;
+    console.log("Valuation Result:", content);
+    let parsed = JSON.parse(content) as ValuationResult;
+    // If the model refused due to missing data but we have computed numbers, synthesize a valid result
+    const looksUnavailable = (str?: string) =>
+      typeof str === "string" && /unable to calculate|insufficient data|n\/?a/i.test(str);
+    if ((looksUnavailable(parsed?.fair_market_value) || looksUnavailable(parsed?.final_estimate_value)) && fmvNumber && best && pricePerSqft && subjectSqft) {
+      const fmStr = formatMoneyCAD(fmvNumber);
+      const compPriceStr = formatMoneyCAD(best.listPriceNumeric as number);
+      const ppsStr = `${formatMoneyCAD(pricePerSqft)}/sqft`.replace("$", "$");
+      parsed = {
+        fair_market_value: fmStr,
+        value_source: "Direct Comparison Approach (Price per Sqft)",
+        comparable_list_price: compPriceStr,
+        comparable_used: best.address || best.name,
+        final_estimate_summary: `Chosen comparable: ${best.name} (${best.address}). Price per sqft = ${compPriceStr} ÷ ${best.squareFootageNumeric} sqft = ${pricePerSqft?.toFixed(2)}. Subject sqft = ${subjectSqft}. FMV = ${pricePerSqft?.toFixed(2)} × ${subjectSqft} = ${fmStr}.`,
+        final_estimate_value: fmStr,
+        details: `Closest sqft comparable used. listPrice_number=${best.listPriceNumeric}, squareFootage_number=${best.squareFootageNumeric}, price_per_sqft=${pricePerSqft?.toFixed(2)}, subject_sqft=${subjectSqft}, fair_market_value=${fmStr}.`,
+      };
+    }
+    return parsed;
   } catch (error) {
     console.error("Error calculating fair market value:", error);
     throw new Error("Failed to calculate fair market value.");

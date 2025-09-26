@@ -30,7 +30,9 @@ export function buildCover(
     (reportData?.client_name as string) ||
     (reportData?.inspector_name as string) ||
     "";
-  const reportDate = formatDateUS(reportData?.createdAt || new Date().toISOString());
+  const reportDate = formatDateUS(
+    reportData?.createdAt || new Date().toISOString()
+  );
   const coverCellMarginTw = 60;
   const coverInnerWidthTw = contentWidthTw - coverCellMarginTw * 2;
 
@@ -41,7 +43,10 @@ export function buildCover(
         alignment: AlignmentType.CENTER,
         spacing: { after: 200 },
         children: [
-          new ImageRun({ data: logoBuffer as any, transformation: { width: 540, height: 192 } } as any),
+          new ImageRun({
+            data: logoBuffer as any,
+            transformation: { width: 540, height: 192 },
+          } as any),
         ],
       })
     );
@@ -57,14 +62,31 @@ export function buildCover(
   coverTop.push(
     new Paragraph({
       text: (() => {
-        const lotsCount = Array.isArray(reportData?.lots) ? reportData.lots.length : 0;
-        const gm = String(reportData?.grouping_mode || "catalogue");
-        const gmLabel = gm === "single_lot" ? tr.singleLot
-          : gm === "per_item" ? tr.perItem
-          : gm === "per_photo" ? tr.perPhoto
-          : gm === "catalogue" ? tr.assetCatalogue
-          : gm === "combined" ? tr.combined
-          : tr.mixed;
+        // Real Estate override: show subject address/municipality if provided
+        const addr = String(
+          (reportData as any)?.property_details?.address || ""
+        ).trim();
+        const muni = String(
+          (reportData as any)?.property_details?.municipality || ""
+        ).trim();
+        if (addr) return muni ? `${addr}, ${muni}` : addr;
+        // Default: Asset report information (lots and grouping)
+        const lotsCount = Array.isArray((reportData as any)?.lots)
+          ? (reportData as any).lots.length
+          : 0;
+        const gm = String((reportData as any)?.grouping_mode || "catalogue");
+        const gmLabel =
+          gm === "single_lot"
+            ? tr.singleLot
+            : gm === "per_item"
+              ? tr.perItem
+              : gm === "per_photo"
+                ? tr.perPhoto
+                : gm === "catalogue"
+                  ? tr.assetCatalogue
+                  : gm === "combined"
+                    ? tr.combined
+                    : tr.mixed;
         return `${lotsCount} ${tr.lotsWord} (${gmLabel})`;
       })(),
       alignment: AlignmentType.CENTER,
@@ -75,7 +97,10 @@ export function buildCover(
   const coverDetails = new Table({
     width: { size: coverInnerWidthTw, type: WidthType.DXA },
     layout: TableLayoutType.FIXED,
-    columnWidths: [Math.round(coverInnerWidthTw * 0.28), Math.round(coverInnerWidthTw * 0.72)],
+    columnWidths: [
+      Math.round(coverInnerWidthTw * 0.28),
+      Math.round(coverInnerWidthTw * 0.72),
+    ],
     borders: {
       top: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
       bottom: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
@@ -90,7 +115,11 @@ export function buildCover(
           new TableCell({
             margins: { top: 80, bottom: 80, left: 120, right: 120 },
             shading: { type: ShadingType.CLEAR, fill: "F9FAFB", color: "auto" },
-            children: [new Paragraph({ children: [new TextRun({ text: tr.preparedFor, bold: true })] })],
+            children: [
+              new Paragraph({
+                children: [new TextRun({ text: tr.preparedFor, bold: true })],
+              }),
+            ],
           }),
           new TableCell({
             margins: { top: 80, bottom: 80, left: 120, right: 120 },
@@ -103,7 +132,11 @@ export function buildCover(
           new TableCell({
             margins: { top: 80, bottom: 80, left: 120, right: 120 },
             shading: { type: ShadingType.CLEAR, fill: "F9FAFB", color: "auto" },
-            children: [new Paragraph({ children: [new TextRun({ text: tr.reportDate, bold: true })] })],
+            children: [
+              new Paragraph({
+                children: [new TextRun({ text: tr.reportDate, bold: true })],
+              }),
+            ],
           }),
           new TableCell({
             margins: { top: 80, bottom: 80, left: 120, right: 120 },
@@ -131,7 +164,12 @@ export function buildCover(
         height: { value: convertInchesToTwip(6.2), rule: HeightRule.ATLEAST },
         children: [
           new TableCell({
-            margins: { top: 240, bottom: 120, left: coverCellMarginTw, right: coverCellMarginTw },
+            margins: {
+              top: 240,
+              bottom: 120,
+              left: coverCellMarginTw,
+              right: coverCellMarginTw,
+            },
             children: coverTop,
           }),
         ],
@@ -140,7 +178,12 @@ export function buildCover(
         height: { value: convertInchesToTwip(1.6), rule: HeightRule.EXACT },
         children: [
           new TableCell({
-            margins: { top: 120, bottom: 120, left: coverCellMarginTw, right: coverCellMarginTw },
+            margins: {
+              top: 120,
+              bottom: 120,
+              left: coverCellMarginTw,
+              right: coverCellMarginTw,
+            },
             verticalAlign: VerticalAlign.BOTTOM,
             children: [coverDetails],
           }),

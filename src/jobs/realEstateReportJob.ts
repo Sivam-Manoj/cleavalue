@@ -4,7 +4,11 @@ import PdfReport from "../models/pdfReport.model.js";
 import { analyzeRealEstateImages } from "../service/openAIService.js";
 import { findComparableProperties } from "../service/webSearchService.js";
 import { calculateFairMarketValue } from "../service/valuationService.js";
-import { marketTrendSearch, type MarketTrend, type PropertyDetails } from "../service/marketTrendSebSearch.js";
+import {
+  marketTrendSearch,
+  type MarketTrend,
+  type PropertyDetails,
+} from "../service/marketTrendSebSearch.js";
 import { generatePdfFromReport } from "../service/pdfService.js";
 import { generateRealEstateDocx } from "../service/docx/realEstateDocxBuilder.js";
 import { generateRealEstateXlsx } from "../service/xlsx/realEstateXlsxService.js";
@@ -29,17 +33,34 @@ export function queueRealEstateReportJob(input: RealEstateJobInput) {
   setImmediate(() =>
     runRealEstateReportJob(input).catch((e) => {
       if (input.progressId)
-        endProgress(input.progressId, false, "Error processing real estate request");
+        endProgress(
+          input.progressId,
+          false,
+          "Error processing real estate request"
+        );
       console.error("Real estate job failed:", e);
     })
   );
 }
 
-export async function runRealEstateReportJob({ user, images, details, progressId }: RealEstateJobInput) {
-  type StepRec = { key: string; label: string; startedAt?: string; endedAt?: string; durationMs?: number };
+export async function runRealEstateReportJob({
+  user,
+  images,
+  details,
+  progressId,
+}: RealEstateJobInput) {
+  type StepRec = {
+    key: string;
+    label: string;
+    startedAt?: string;
+    endedAt?: string;
+    durationMs?: number;
+  };
   const steps: StepRec[] = [];
   if (progressId) startProgress(progressId);
-  const syncSteps = () => progressId && updateProgress(progressId, { steps: steps as unknown as StoreStepRec[] });
+  const syncSteps = () =>
+    progressId &&
+    updateProgress(progressId, { steps: steps as unknown as StoreStepRec[] });
   const SERVER_WEIGHTS = {
     r2_upload: 0.2,
     ai_analysis: 0.25,
@@ -94,7 +115,8 @@ export async function runRealEstateReportJob({ user, images, details, progressId
     start("ai_analysis", "Analyzing images with AI");
     let aiExtractedData: any = {};
     try {
-      if (imageUrls.length > 0) aiExtractedData = await analyzeRealEstateImages(imageUrls);
+      if (imageUrls.length > 0)
+        aiExtractedData = await analyzeRealEstateImages(imageUrls);
     } catch (e) {
       console.error("AI analysis failed for real-estate:", e);
     }
@@ -113,7 +135,10 @@ export async function runRealEstateReportJob({ user, images, details, progressId
     let comparableProperties: any = {};
     try {
       if (finalData.property_details?.address) {
-        comparableProperties = await findComparableProperties(finalData.property_details, finalData.house_details);
+        comparableProperties = await findComparableProperties(
+          finalData.property_details,
+          finalData.house_details
+        );
       }
     } catch (e) {
       console.error("Error finding comparable properties:", e);
@@ -124,7 +149,9 @@ export async function runRealEstateReportJob({ user, images, details, progressId
     start("valuation", "Calculating fair market value");
     let valuation: any = {};
     try {
-      const compsArr = Array.isArray(comparableProperties) ? comparableProperties : [];
+      const compsArr = Array.isArray(comparableProperties)
+        ? comparableProperties
+        : [];
       if (compsArr.length > 0) {
         valuation = await calculateFairMarketValue(finalData, compsArr);
       }
@@ -141,7 +168,8 @@ export async function runRealEstateReportJob({ user, images, details, progressId
         address: finalData.property_details?.address,
         municipality: finalData.property_details?.municipality,
       } as any;
-      if (p.address && p.municipality) marketTrendData = await marketTrendSearch(p);
+      if (p.address && p.municipality)
+        marketTrendData = await marketTrendSearch(p);
     } catch (e) {
       console.error("Error fetching market trend:", e);
     }
@@ -150,7 +178,9 @@ export async function runRealEstateReportJob({ user, images, details, progressId
     // 7) Save DB record
     start("save_report", "Saving report to database");
     const comparablePropertiesMap = new Map();
-    const compsForMap = Array.isArray(comparableProperties) ? comparableProperties : [];
+    const compsForMap = Array.isArray(comparableProperties)
+      ? comparableProperties
+      : [];
     compsForMap.forEach((comp: any) => {
       const { name, ...rest } = comp || {};
       comparablePropertiesMap.set(name, rest);
@@ -161,9 +191,9 @@ export async function runRealEstateReportJob({ user, images, details, progressId
       comparableProperties: comparablePropertiesMap,
       valuation,
       marketTrend: marketTrendData,
-      language: ((): 'en' | 'fr' | 'es' => {
-        const l = String(details?.language || '').toLowerCase();
-        return (l === 'fr' || l === 'es') ? (l as any) : 'en';
+      language: ((): "en" | "fr" | "es" => {
+        const l = String(details?.language || "").toLowerCase();
+        return l === "fr" || l === "es" ? (l as any) : "en";
       })(),
     });
     await newReport.save();
@@ -171,11 +201,28 @@ export async function runRealEstateReportJob({ user, images, details, progressId
 
     // 8) Generate outputs
     const reportObjForPdf = newReport.toObject();
-    reportObjForPdf.comparableProperties = Object.fromEntries(comparablePropertiesMap);
+    reportObjForPdf.comparableProperties = Object.fromEntries(
+      comparablePropertiesMap
+    );
     const [pdfBuffer, docxBuffer, xlsxBuffer] = await Promise.all([
-      (async () => { start("generate_pdf", "Generating PDF"); const b = await generatePdfFromReport(reportObjForPdf); end("generate_pdf"); return b; })(),
-      (async () => { start("generate_docx", "Generating DOCX"); const b = await generateRealEstateDocx(reportObjForPdf); end("generate_docx"); return b; })(),
-      (async () => { start("generate_xlsx", "Generating Excel"); const b = await generateRealEstateXlsx(reportObjForPdf); end("generate_xlsx"); return b; })(),
+      (async () => {
+        start("generate_pdf", "Generating PDF");
+        const b = await generatePdfFromReport(reportObjForPdf);
+        end("generate_pdf");
+        return b;
+      })(),
+      (async () => {
+        start("generate_docx", "Generating DOCX");
+        const b = await generateRealEstateDocx(reportObjForPdf);
+        end("generate_docx");
+        return b;
+      })(),
+      (async () => {
+        start("generate_xlsx", "Generating Excel");
+        const b = await generateRealEstateXlsx(reportObjForPdf);
+        end("generate_xlsx");
+        return b;
+      })(),
     ]);
 
     // 9) Save files and create PdfReport entries
@@ -203,9 +250,24 @@ export async function runRealEstateReportJob({ user, images, details, progressId
       fairMarketValue: newReport.valuation?.fair_market_value || "",
     };
     await Promise.all([
-      new PdfReport({ ...baseRec, filename: pdfFilename, fileType: "pdf", filePath: path.join("reports", pdfFilename) }).save(),
-      new PdfReport({ ...baseRec, filename: docxFilename, fileType: "docx", filePath: path.join("reports", docxFilename) }).save(),
-      new PdfReport({ ...baseRec, filename: xlsxFilename, fileType: "xlsx", filePath: path.join("reports", xlsxFilename) }).save(),
+      new PdfReport({
+        ...baseRec,
+        filename: pdfFilename,
+        fileType: "pdf",
+        filePath: path.join("reports", pdfFilename),
+      }).save(),
+      new PdfReport({
+        ...baseRec,
+        filename: docxFilename,
+        fileType: "docx",
+        filePath: path.join("reports", docxFilename),
+      }).save(),
+      new PdfReport({
+        ...baseRec,
+        filename: xlsxFilename,
+        fileType: "xlsx",
+        filePath: path.join("reports", xlsxFilename),
+      }).save(),
     ]);
     end("save_files");
 
@@ -236,9 +298,11 @@ export async function runRealEstateReportJob({ user, images, details, progressId
       console.error("Failed to send completion email:", e);
     }
 
-    if (progressId) endProgress(progressId, true, "Report generated successfully");
+    if (progressId)
+      endProgress(progressId, true, "Report generated successfully");
   } catch (e) {
-    if (progressId) endProgress(progressId, false, "Error during report generation");
+    if (progressId)
+      endProgress(progressId, false, "Error during report generation");
     console.error("runRealEstateReportJob error:", e);
     throw e;
   }
