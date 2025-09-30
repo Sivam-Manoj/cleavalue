@@ -38,7 +38,7 @@ Rules:
 
   try {
     const response = await openai.responses.create({
-      model: "gpt-4.1",
+      model: "gpt-5",
       tools: [
         {
           type: "web_search_preview",
