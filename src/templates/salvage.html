@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{language}}">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Salvage Report - {{file_number}}</title>
+    <title>{{tt.title}} - {{file_number}}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap"
@@ -63,13 +63,13 @@
   </head>
   <body class="bg-gray-100">
     <div class="watermark">
-      <div class="watermark-text">Confidential</div>
+      <div class="watermark-text">{{tt.confidential}}</div>
     </div>
     <!-- Cover Page -->
     <section id="cover-page" class="w-full h-screen flex items-center justify-center bg-white">
       <div class="max-w-3xl w-full text-center p-10">
         <img src="{{logo_url}}" alt="Company Logo" class="h-16 mx-auto mb-6" />
-        <h1 class="text-5xl font-bold brand-red mb-2">Salvage Valuation Report</h1>
+        <h1 class="text-5xl font-bold brand-red mb-2">{{tt.title}}</h1>
         <p class="text-xl text-gray-700 mb-8">{{year}} {{make}} {{item_model}}</p>
         <div class="mx-auto max-w-2xl text-left">
           <div class="rounded-2xl border border-gray-300 shadow-md bg-white overflow-hidden">
@@ -77,11 +77,11 @@
               <div class="w-1.5 bg-brand-red"></div>
               <div class="flex-1 grid grid-cols-1 sm:grid-cols-2">
                 <div class="p-5 sm:p-6">
-                  <div class="text-xs uppercase tracking-wider text-gray-500">Prepared for</div>
+                  <div class="text-xs uppercase tracking-wider text-gray-500">{{tt.preparedFor}}</div>
                   <div class="mt-1 text-2xl font-semibold text-gray-900">{{insured_name}}</div>
                 </div>
                 <div class="p-5 sm:p-6 border-t sm:border-t-0 sm:border-l border-gray-300">
-                  <div class="text-xs uppercase tracking-wider text-gray-500">Report Date</div>
+                  <div class="text-xs uppercase tracking-wider text-gray-500">{{tt.reportDate}}</div>
                   <div class="mt-1 text-2xl font-semibold text-gray-900">{{formatDate report_date}}</div>
                 </div>
               </div>
@@ -96,7 +96,7 @@
     <div class="max-w-5xl mx-auto p-4 sm:p-8">
       <header class="card flex items-center justify-between mb-8">
         <div>
-          <h1 class="text-4xl font-bold brand-red">Salvage Report</h1>
+          <h1 class="text-4xl font-bold brand-red">{{tt.title}}</h1>
           <p class="text-gray-600">File #: {{file_number}}</p>
         </div>
         <div class="text-right">
@@ -108,88 +108,84 @@
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div class="lg:col-span-2">
           <div class="card">
-            <h2 class="text-2xl font-semibold section-title">Report Details</h2>
+            <h2 class="text-2xl font-semibold section-title">{{tt.reportDetails}}</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
               <div class="detail-item">
-                <strong>Report Date:</strong>
+                <strong>{{tt.reportDate}}:</strong>
                 <span>{{formatDate report_date}}</span>
               </div>
               <div class="detail-item">
-                <strong>Date Received:</strong>
+                <strong>{{tt.dateReceived}}:</strong>
                 <span>{{formatDate date_received}}</span>
               </div>
               <div class="detail-item">
-                <strong>Next Report Due:</strong>
+                <strong>{{tt.nextReportDue}}:</strong>
                 <span>{{formatDate next_report_due}}</span>
               </div>
               <div class="detail-item">
-                <strong>File Number:</strong> <span>{{file_number}}</span>
+                <strong>{{tt.fileNumber}}:</strong> <span>{{file_number}}</span>
               </div>
               <div class="detail-item">
-                <strong>Claim Number:</strong> <span>{{claim_number}}</span>
+                <strong>{{tt.claimNumber}}:</strong> <span>{{claim_number}}</span>
               </div>
               <div class="detail-item">
-                <strong>Policy Number:</strong> <span>{{policy_number}}</span>
+                <strong>{{tt.policyNumber}}:</strong> <span>{{policy_number}}</span>
               </div>
               <div class="detail-item">
-                <strong>Loss Type:</strong> <span>{{reported_loss_type}}</span>
+                <strong>{{tt.lossType}}:</strong> <span>{{reported_loss_type}}</span>
               </div>
             </div>
 
-            <h3 class="text-xl font-semibold section-title mt-6">
-              Asset Details
-            </h3>
+            <h3 class="text-xl font-semibold section-title mt-6">{{tt.assetDetails}}</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
               <div class="detail-item">
-                <strong>Item Type:</strong> <span>{{item_type}}</span>
+                <strong>{{tt.itemType}}:</strong> <span>{{item_type}}</span>
               </div>
               <div class="detail-item">
-                <strong>Year:</strong> <span>{{year}}</span>
+                <strong>{{tt.year}}:</strong> <span>{{year}}</span>
               </div>
               <div class="detail-item">
-                <strong>Make:</strong> <span>{{make}}</span>
+                <strong>{{tt.make}}:</strong> <span>{{make}}</span>
               </div>
               <div class="detail-item">
-                <strong>Model:</strong> <span>{{item_model}}</span>
+                <strong>{{tt.model}}:</strong> <span>{{item_model}}</span>
               </div>
               <div class="detail-item">
-                <strong>VIN:</strong> <span>{{vin}}</span>
+                <strong>{{tt.vin}}:</strong> <span>{{vin}}</span>
               </div>
             </div>
           </div>
 
           <div class="card">
-            <h2 class="text-2xl font-semibold section-title">
-              Damage & Repair Analysis
-            </h2>
+            <h2 class="text-2xl font-semibold section-title">{{tt.damageRepairAnalysis}}</h2>
             <div class="mb-4 p-4 bg-red-50 rounded-lg">
-              <h3 class="font-bold text-lg brand-red">Item Condition</h3>
+              <h3 class="font-bold text-lg brand-red">{{tt.itemCondition}}</h3>
               <p>{{aiExtractedDetails.item_condition}}</p>
             </div>
             <div class="mb-4">
-              <h3 class="font-bold text-lg">Damage Description</h3>
+              <h3 class="font-bold text-lg">{{tt.damageDescription}}</h3>
               <p class="text-gray-700">
                 {{aiExtractedDetails.damage_description}}
               </p>
             </div>
             <div class="mb-4">
-              <h3 class="font-bold text-lg">Inspection Comments</h3>
+              <h3 class="font-bold text-lg">{{tt.inspectionComments}}</h3>
               <p class="text-gray-700">
                 {{aiExtractedDetails.inspection_comments}}
               </p>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
               <div class="detail-item">
-                <strong>Repairable:</strong>
+                <strong>{{tt.repairable}}:</strong>
                 <span>{{aiExtractedDetails.is_repairable}}</span>
               </div>
               <div class="detail-item">
-                <strong>Repair Facility:</strong>
+                <strong>{{tt.repairFacility}}:</strong>
                 <span>{{aiExtractedDetails.repair_facility}}</span>
               </div>
             </div>
             <div class="mt-4">
-              <h3 class="font-bold text-lg">Repair Facility Comments</h3>
+              <h3 class="font-bold text-lg">{{tt.repairFacilityComments}}</h3>
               <p class="text-gray-700">
                 {{aiExtractedDetails.repair_facility_comments}}
               </p>
@@ -197,80 +193,52 @@
           </div>
 
           <div class="card">
-            <h2 class="text-2xl font-semibold section-title">
-              Repair Estimate
-            </h2>
+            <h2 class="text-2xl font-semibold section-title">{{tt.repairEstimate}}</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
               <div class="detail-item">
-                <strong>Parts:</strong>
-                <span
-                  >${{numberFormat
-                  aiExtractedDetails.repair_estimate.parts}}</span
-                >
+                <strong>{{tt.parts}}:</strong>
+                <span>{{currencyFormat aiExtractedDetails.repair_estimate.parts}}</span>
               </div>
               <div class="detail-item">
-                <strong>Labour:</strong>
-                <span
-                  >${{numberFormat
-                  aiExtractedDetails.repair_estimate.labour}}</span
-                >
+                <strong>{{tt.labour}}:</strong>
+                <span>{{currencyFormat aiExtractedDetails.repair_estimate.labour}}</span>
               </div>
               <div class="detail-item">
-                <strong>Shop Supplies:</strong>
-                <span
-                  >${{numberFormat
-                  aiExtractedDetails.repair_estimate.shop_supplies}}</span
-                >
+                <strong>{{tt.shopSupplies}}:</strong>
+                <span>{{currencyFormat aiExtractedDetails.repair_estimate.shop_supplies}}</span>
               </div>
               <div class="detail-item">
-                <strong>Miscellaneous:</strong>
-                <span
-                  >${{numberFormat
-                  aiExtractedDetails.repair_estimate.miscellaneous}}</span
-                >
+                <strong>{{tt.miscellaneous}}:</strong>
+                <span>{{currencyFormat aiExtractedDetails.repair_estimate.miscellaneous}}</span>
               </div>
               <div class="detail-item">
-                <strong>Taxes:</strong>
-                <span
-                  >${{numberFormat
-                  aiExtractedDetails.repair_estimate.taxes}}</span
-                >
+                <strong>{{tt.taxes}}:</strong>
+                <span>{{currencyFormat aiExtractedDetails.repair_estimate.taxes}}</span>
               </div>
               <div class="detail-item">
-                <strong>Less Betterment:</strong>
-                <span class="text-red-600"
-                  >-${{numberFormat
-                  aiExtractedDetails.repair_estimate.less_betterment}}</span
-                >
+                <strong>{{tt.lessBetterment}}:</strong>
+                <span class="text-red-600">-{{currencyFormat aiExtractedDetails.repair_estimate.less_betterment}}</span>
               </div>
             </div>
             <div class="mt-4 pt-4 border-t-2 border-gray-300 text-right">
-              <strong class="text-xl">Total Estimate:</strong>
-              <span class="text-xl font-bold brand-red"
-                >${{numberFormat
-                aiExtractedDetails.repair_estimate.total}}</span
-              >
+              <strong class="text-xl">{{tt.totalEstimate}}:</strong>
+              <span class="text-xl font-bold brand-red">{{currencyFormat aiExtractedDetails.repair_estimate.total}}</span>
+              </div>
             </div>
-          </div>
 
           <div class="card">
-            <h2 class="text-2xl font-semibold section-title">Valuation</h2>
+            <h2 class="text-2xl font-semibold section-title">{{tt.valuation}}</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div class="bg-gray-50 p-4 rounded-lg text-center">
-                <p class="text-gray-600">Actual Cash Value</p>
-                <p class="text-2xl font-bold brand-red">
-                  ${{numberFormat aiExtractedDetails.actual_cash_value}}
-                </p>
+                <p class="text-2xl font-bold brand-red">{{currencyFormat aiExtractedDetails.actual_cash_value}}</p>
               </div>
               <div class="bg-gray-50 p-4 rounded-lg text-center">
-                <p class="text-gray-600">Replacement Cost</p>
-                <p class="text-2xl font-bold brand-red">
-                  ${{numberFormat aiExtractedDetails.replacement_cost}}
-                </p>
+                <p class="text-gray-600">{{tt.replacementCost}}</p>
+                <p class="text-2xl font-bold brand-red">{{currencyFormat aiExtractedDetails.replacement_cost}}</p>
               </div>
             </div>
             <div class="mt-4">
-              <h3 class="font-bold text-lg">Replacement Cost References</h3>
+              <h3 class="font-bold text-lg">{{tt.replacementCostReferences}}</h3>
               <p class="text-gray-700">
                 {{aiExtractedDetails.replacement_cost_references}}
               </p>
@@ -278,19 +246,15 @@
             <div
               class="mt-6 bg-brand-red text-white p-4 rounded-lg text-center"
             >
-              <p class="text-lg">Recommended Reserve</p>
-              <p class="text-3xl font-bold">
-                ${{numberFormat aiExtractedDetails.recommended_reserve}}
-              </p>
+              <p class="text-lg">{{tt.recommendedReserve}}</p>
+              <p class="text-3xl font-bold">{{currencyFormat aiExtractedDetails.recommended_reserve}}</p>
             </div>
           </div>
 
           <div class="card">
-            <h2 class="text-2xl font-semibold section-title">
-              Loss Summary & Comments
-            </h2>
+            <h2 class="text-2xl font-semibold section-title">{{tt.lossSummaryComments}}</h2>
             <div>
-              <h3 class="font-bold text-lg">Appraiser Comments</h3>
+              <h3 class="font-bold text-lg">{{tt.appraiserComments}}</h3>
               <p class="text-gray-700">{{appraiser_comments}}</p>
             </div>
           </div>
@@ -298,31 +262,27 @@
 
         <div class="lg:col-span-1">
           <div class="card">
-            <h2 class="text-2xl font-semibold section-title">
-              Contact Information
-            </h2>
+            <h2 class="text-2xl font-semibold section-title">{{tt.contactInformation}}</h2>
             <div class="space-y-3">
               <div class="detail-item">
-                <strong>Insured:</strong> <span>{{insured_name}}</span>
+                <strong>{{tt.insured}}:</strong> <span>{{insured_name}}</span>
               </div>
               <div class="detail-item">
-                <strong>Adjuster:</strong> <span>{{adjuster_name}}</span>
+                <strong>{{tt.adjuster}}:</strong> <span>{{adjuster_name}}</span>
               </div>
               <div class="detail-item">
-                <strong>Appraiser:</strong> <span>{{appraiser_name}}</span>
+                <strong>{{tt.appraiser}}:</strong> <span>{{appraiser_name}}</span>
               </div>
               <div class="detail-item">
-                <strong>Phone:</strong> <span>{{appraiser_phone}}</span>
+                <strong>{{tt.phone}}:</strong> <span>{{appraiser_phone}}</span>
               </div>
               <div class="detail-item">
-                <strong>Email:</strong> <span>{{appraiser_email}}</span>
+                <strong>{{tt.email}}:</strong> <span>{{appraiser_email}}</span>
               </div>
             </div>
           </div>
           <div class="card">
-            <h2 class="text-2xl font-semibold section-title">
-              Comparable Sales
-            </h2>
+            <h2 class="text-2xl font-semibold section-title">{{tt.comparableSales}}</h2>
             <div class="space-y-4">
               {{#each comparableItems}}
               <div
@@ -336,7 +296,7 @@
                     href="{{link}}"
                     class="text-sm text-blue-600 hover:underline"
                     target="_blank"
-                    >View Listing</a
+                    >{{tt.viewListing}}</a
                   >
                 </div>
               </div>
@@ -347,7 +307,7 @@
       </div>
 
       <div class="card">
-        <h2 class="text-2xl font-semibold section-title">Images</h2>
+        <h2 class="text-2xl font-semibold section-title">{{tt.images}}</h2>
         <div
           class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
         >

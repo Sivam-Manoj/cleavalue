@@ -27,14 +27,19 @@ export interface ExtractedSalvageDetails {
   replacement_cost: number;
   replacement_cost_references: string;
   recommended_reserve: number;
+  specialty_data?: {
+    client_vehicle: Record<string, string>;
+    comparable_1: Record<string, string>;
+    adjustments: Record<string, number>;
+  };
 }
 
 // Helper function to fetch image and convert to Base64
 async function imageUrlToBase64(url: string): Promise<string> {
   try {
-    const response = await axios.get(url, { responseType: 'arraybuffer' });
+    const response = await axios.get(url, { responseType: "arraybuffer" });
     const buffer = Buffer.from(response.data as ArrayBuffer);
-    return buffer.toString('base64');
+    return buffer.toString("base64");
   } catch (error) {
     console.error(`Failed to download or convert image from ${url}:`, error);
     throw new Error(`Failed to process image URL: ${url}`);
@@ -42,7 +47,8 @@ async function imageUrlToBase64(url: string): Promise<string> {
 }
 
 export async function analyzeSalvageImages(
-  imageUrls: string[]
+  imageUrls: string[],
+  language: "en" | "fr" | "es" = "en"
 ): Promise<ExtractedSalvageDetails> {
   if (!imageUrls || imageUrls.length === 0) {
     throw new Error("No image URLs provided for analysis.");
@@ -53,7 +59,7 @@ export async function analyzeSalvageImages(
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     {
       role: "system",
-      content: `You are an expert salvage analyst. Your task is to analyze the provided images of a salvaged item and extract specific details. Respond ONLY with a valid JSON object matching this structure: 
+      content: `You are an expert salvage analyst. Your task is to analyze the provided images of a salvaged item and extract specific details. Respond ONLY with a valid JSON object matching this structure. JSON keys must remain exactly as specified and in English. For free-text fields (e.g., item_condition, damage_description, inspection_comments, repair_facility, repair_facility_comments, replacement_cost_references), the LANGUAGE for content should be: ${language}. For the field is_repairable, output must be exactly one of: "Yes", "No", or "To Be Determined" (in English). Use numbers (no currency symbols) for numeric fields.
       {
         "item_type": "string",
         "year": "string",
@@ -78,16 +84,23 @@ export async function analyzeSalvageImages(
         "actual_cash_value": number,
         "replacement_cost": number,
         "replacement_cost_references": "string",
-        "recommended_reserve": number
+        "recommended_reserve": number,
+        "specialty_data": {
+          "client_vehicle": { "<LABEL>": "<VALUE>", "...": "..." },
+          "comparable_1": { "<LABEL>": "<VALUE>", "...": "..." },
+          "adjustments": { "<LABEL>": number }
+        }
       }
-      If a detail cannot be determined from the images, use a reasonable default (e.g., "Not visible" for descriptions, or 0 for numbers). For VIN, if not visible, return "Not Visible".`,
+      Rules:
+      - Populate specialty_data maps with as many fields as visible. Use UPPERCASE English labels like YEAR, MAKE, MODEL, BODY STYLE, DRIVE TYPE, ENGINE HP, ODOMETER, etc. If not visible, set value to "Not Found". For adjustments use a number (0 if unknown).
+      - If a detail cannot be determined, use a reasonable default (e.g., "Not visible" for descriptions, or 0 for numbers). For VIN, if not visible, return exactly "Not Visible".`,
     },
     {
       role: "user",
       content: [
         {
           type: "text",
-          text: "Analyze these images and provide the salvage details in the specified JSON format.",
+          text: `Analyze these images and provide the salvage details in the specified JSON format. Use language: ${language} for textual content.`,
         },
         ...base64Images.map((base64) => ({
           type: "image_url" as const,

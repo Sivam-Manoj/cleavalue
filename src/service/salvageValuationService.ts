@@ -20,10 +20,11 @@ export async function calculateSalvageValue(
     ${JSON.stringify(comparableItems, null, 2)}
 
     **Instructions:**
-    1. Analyze the comparable items.
-    2. Provide an estimated value for the subject item.
-    3. Indicate your confidence level in the estimation (e.g., High, Medium, Low).
-    4. Write a brief summary explaining your valuation.
+    1. Analyze the comparable items thoroughly. Each comparable may include a 'details' map with UPPERCASE labels (e.g., YEAR, MAKE, MODEL, BODY STYLE, CAB TYPE, DRIVE TYPE, TRIM, BODY TYPE, POWER UNIT, ENGINE, ODOMETER, VIN). Use these to assess similarity and make adjustments.
+    2. If 'price_numeric' is present, use it as the numeric list price; otherwise infer from 'price' when possible. Consider 'currency' if present but do not perform FX conversion; treat different currencies qualitatively.
+    3. Provide an estimated value for the subject item as 'fairMarketValue' (string). Keep it concise; you may include a currency code if appropriate.
+    4. Indicate your confidence level in the estimation (e.g., High, Medium, Low).
+    5. Write a brief summary explaining your valuation and how comparable details influenced it.
 
     Provide the result ONLY as a valid JSON object with the following structure:
     {

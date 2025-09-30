@@ -59,40 +59,40 @@ export function buildCover(
       spacing: { after: 120 },
     })
   );
-  coverTop.push(
-    new Paragraph({
-      text: (() => {
-        // Real Estate override: show subject address/municipality if provided
-        const addr = String(
-          (reportData as any)?.property_details?.address || ""
-        ).trim();
-        const muni = String(
-          (reportData as any)?.property_details?.municipality || ""
-        ).trim();
-        if (addr) return muni ? `${addr}, ${muni}` : addr;
-        // Default: Asset report information (lots and grouping)
-        const lotsCount = Array.isArray((reportData as any)?.lots)
-          ? (reportData as any).lots.length
-          : 0;
-        const gm = String((reportData as any)?.grouping_mode || "catalogue");
-        const gmLabel =
-          gm === "single_lot"
-            ? tr.singleLot
-            : gm === "per_item"
-              ? tr.perItem
-              : gm === "per_photo"
-                ? tr.perPhoto
-                : gm === "catalogue"
-                  ? tr.assetCatalogue
-                  : gm === "combined"
-                    ? tr.combined
-                    : tr.mixed;
-        return `${lotsCount} ${tr.lotsWord} (${gmLabel})`;
-      })(),
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 120 },
-    })
-  );
+  // Optional middle line: address (Real Estate) or lots/grouping (Assets). Allow suppression.
+  const lotsOrAddr = (() => {
+    // Real Estate override: show subject address/municipality if provided
+    const addr = String((reportData as any)?.property_details?.address || "").trim();
+    const muni = String((reportData as any)?.property_details?.municipality || "").trim();
+    if (addr) return muni ? `${addr}, ${muni}` : addr;
+    // Default: Asset report information (lots and grouping)
+    const lotsCount = Array.isArray((reportData as any)?.lots)
+      ? (reportData as any).lots.length
+      : 0;
+    const gm = String((reportData as any)?.grouping_mode || "catalogue");
+    const gmLabel =
+      gm === "single_lot"
+        ? tr.singleLot
+        : gm === "per_item"
+        ? tr.perItem
+        : gm === "per_photo"
+        ? tr.perPhoto
+        : gm === "catalogue"
+        ? tr.assetCatalogue
+        : gm === "combined"
+        ? tr.combined
+        : tr.mixed;
+    return `${lotsCount} ${tr.lotsWord} (${gmLabel})`;
+  })();
+  if (!(reportData as any)?.suppressLotsLine && lotsOrAddr) {
+    coverTop.push(
+      new Paragraph({
+        text: lotsOrAddr,
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 120 },
+      })
+    );
+  }
 
   const coverDetails = new Table({
     width: { size: coverInnerWidthTw, type: WidthType.DXA },

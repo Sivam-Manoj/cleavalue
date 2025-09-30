@@ -4,9 +4,12 @@ export interface SalvageSearchResult {
   title: string;
   link: string;
   price: string;
+  price_numeric?: number;
+  currency?: string; // ISO code if identifiable
   snippet: string;
   location: string;
   image_url: string;
+  details?: Record<string, string>; // e.g., YEAR, MAKE, MODEL, BODY STYLE, CAB TYPE, DRIVE TYPE, TRIM, BODY TYPE, POWER UNIT, etc.
 }
 
 export async function findComparableSalvageItems(itemDetails: {
@@ -17,17 +20,21 @@ export async function findComparableSalvageItems(itemDetails: {
 }): Promise<SalvageSearchResult[]> {
   const { item_type, year, make, item_model } = itemDetails;
   const query = `Find 3 comparable salvage listings for a ${year} ${make} ${item_model} ${item_type}. Focus on for-sale listings in Canada and you can check Kijiji, Iron guides, Marketbook.ca and other salvage websites in Canada.
-Return the response as a **raw JSON array of objects only**, with no additional text or formatting outside the array.
-Each object in the array must follow this **exact flat structure**:
+Return the response as a raw JSON array of objects only (no extra text), where each object follows THIS EXACT structure and key casing:
 {
   "title": "<value>",
   "link": "<value>",
   "price": "<value>",
+  "price_numeric": <number>,
+  "currency": "<ISO or Not Found>",
   "snippet": "<value>",
   "location": "<value>",
-  "image_url": "<value>"
+  "image_url": "<value>",
+  "details": { "<UPPER_LABEL>": "<VALUE>", "...": "..." }
 }
-If a value is not available, use "Not Found".`;
+Rules:
+- Extract as many comparable specs into details as possible using UPPERCASE labels (e.g., YEAR, MAKE, MODEL, BODY STYLE, CAB TYPE, DRIVE TYPE, TRIM, BODY TYPE, POWER UNIT, ENGINE, ODOMETER, VIN, etc.). If unknown, use "Not Found".
+- price_numeric must be the numeric amount only (no currency symbol), or 0 if unknown. currency should be ISO code if identifiable (e.g., CAD, USD) else "Not Found".`;
 
   try {
     const response = await openai.responses.create({

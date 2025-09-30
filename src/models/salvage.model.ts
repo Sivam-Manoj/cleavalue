@@ -30,11 +30,17 @@ export interface ISalvageReport extends Document {
     title: string;
     link: string;
     price: string;
+    price_numeric?: number;
+    currency?: string;
     snippet: string;
     location: string;
     image_url: string;
+    details?: Record<string, string>;
   }[];
   valuation: Record<string, any>;
+  language?: 'en' | 'fr' | 'es';
+  currency?: string;
+  specialty_data?: Record<string, any>;
 }
 
 const SalvageReportSchema: Schema = new Schema(
@@ -73,12 +79,18 @@ const SalvageReportSchema: Schema = new Schema(
         title: { type: String },
         link: { type: String },
         price: { type: String },
+        price_numeric: { type: Number },
+        currency: { type: String },
         snippet: { type: String },
         location: { type: String },
         image_url: { type: String },
+        details: { type: Schema.Types.Mixed },
       },
     ],
     valuation: { type: Schema.Types.Mixed },
+    language: { type: String, enum: ['en', 'fr', 'es'], default: 'en' },
+    currency: { type: String, default: 'CAD' },
+    specialty_data: { type: Schema.Types.Mixed },
   },
   { timestamps: true }
 );
