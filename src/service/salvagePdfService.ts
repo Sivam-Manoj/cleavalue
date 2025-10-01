@@ -83,7 +83,9 @@ export async function generateSalvagePdfFromReport(reportData: any): Promise<Buf
         assetDetails: "Asset Details",
         repairEstimate: "Repair Estimate",
         comparables: "Comparable Salvage Listings",
+        comparableDetails: "Comparable Details",
         valuationSummary: "Valuation Summary",
+        confidence: "Confidence Level",
         preparedFor: "Prepared for",
         appraiser: "Appraiser",
         reportDate: "Report Date",
@@ -128,6 +130,16 @@ export async function generateSalvagePdfFromReport(reportData: any): Promise<Buf
         viewListing: "View Listing",
         images: "Images",
         confidential: "Confidential",
+        compsColumnsTitle: "Title",
+        compsColumnsPrice: "Price",
+        compsColumnsLocation: "Location",
+        compsColumnsLink: "Link",
+        specValuationHeader: "Specialty Valuation Data",
+        specField: "Field",
+        specClient: "Client Vehicle",
+        specComp1: "Comparable 1",
+        specAdj: "Adjustments",
+        notFound: "Not Found",
       },
       fr: {
         title: "Rapport de récupération",
@@ -135,7 +147,9 @@ export async function generateSalvagePdfFromReport(reportData: any): Promise<Buf
         assetDetails: "Détails de l'actif",
         repairEstimate: "Estimation des réparations",
         comparables: "Annonces de récupération comparables",
+        comparableDetails: "Détails comparables",
         valuationSummary: "Résumé de l’évaluation",
+        confidence: "Niveau de confiance",
         preparedFor: "Préparé pour",
         appraiser: "Évaluateur",
         reportDate: "Date du rapport",
@@ -180,6 +194,16 @@ export async function generateSalvagePdfFromReport(reportData: any): Promise<Buf
         viewListing: "Voir l'annonce",
         images: "Images",
         confidential: "Confidentiel",
+        compsColumnsTitle: "Titre",
+        compsColumnsPrice: "Prix",
+        compsColumnsLocation: "Emplacement",
+        compsColumnsLink: "Lien",
+        specValuationHeader: "Données d'évaluation spécialisées",
+        specField: "Champ",
+        specClient: "Véhicule du client",
+        specComp1: "Comparable 1",
+        specAdj: "Ajustements",
+        notFound: "Introuvable",
       },
       es: {
         title: "Informe de salvamento",
@@ -187,7 +211,9 @@ export async function generateSalvagePdfFromReport(reportData: any): Promise<Buf
         assetDetails: "Detalles del activo",
         repairEstimate: "Estimación de reparación",
         comparables: "Anuncios de salvamento comparables",
+        comparableDetails: "Detalles comparables",
         valuationSummary: "Resumen de la valoración",
+        confidence: "Nivel de confianza",
         preparedFor: "Preparado para",
         appraiser: "Tasador",
         reportDate: "Fecha del informe",
@@ -232,14 +258,35 @@ export async function generateSalvagePdfFromReport(reportData: any): Promise<Buf
         viewListing: "Ver anuncio",
         images: "Imágenes",
         confidential: "Confidencial",
+        compsColumnsTitle: "Título",
+        compsColumnsPrice: "Precio",
+        compsColumnsLocation: "Ubicación",
+        compsColumnsLink: "Enlace",
+        specValuationHeader: "Datos de valoración especializada",
+        specField: "Campo",
+        specClient: "Vehículo del cliente",
+        specComp1: "Comparable 1",
+        specAdj: "Ajustes",
+        notFound: "No encontrado",
       },
     } as const;
+
+    // Precompute dynamic label sets for template tables
+    const sd: any = (reportData as any)?.specialty_data || (reportData as any)?.aiExtractedDetails?.specialty_data || {};
+    const clientMap: Record<string, any> = (sd && typeof sd.client_vehicle === 'object' && sd.client_vehicle) || {};
+    const compMap: Record<string, any> = (sd && typeof sd.comparable_1 === 'object' && sd.comparable_1) || {};
+    const adjMap: Record<string, any> = (sd && typeof sd.adjustments === 'object' && sd.adjustments) || {};
+    const specLabels = Array.from(new Set<string>([...Object.keys(clientMap), ...Object.keys(compMap), ...Object.keys(adjMap)]));
+    if (specLabels.length === 0) specLabels.push("YEAR");
+    const compDetailsLabels = Array.from(new Set<string>((Array.isArray((reportData as any)?.comparableItems) ? (reportData as any).comparableItems : []).flatMap((c: any) => Object.keys((c && typeof c.details === 'object' && c.details) || {}))));
 
     const dataForPdf = {
       logo_url: logoUrl,
       language: lang,
       tt: (t as any)[lang],
       currency: (reportData as any)?.currency || 'CAD',
+      specLabels,
+      compDetailsLabels,
       ...sanitizedData,
     };
 

@@ -120,7 +120,7 @@
 
     <div class="page-break"></div>
 
-    <div class="max-w-5xl mx-auto p-4 sm:p-8">
+    <div class="max-w-6xl mx-auto p-4 sm:p-8">
       <!-- Transmittal Letter -->
       <section id="transmittal-letter" class="card">
         <h2 class="text-3xl font-semibold section-title">Transmittal Letter</h2>
@@ -649,6 +649,33 @@
 
       <div class="page-break"></div>
 
+      <!-- Report Summary -->
+      <section id="report-summary" class="card">
+        <h2 class="text-3xl font-semibold section-title">Report Summary</h2>
+        <div class="overflow-x-auto">
+          <table class="min-w-full table-auto">
+            <tbody class="divide-y divide-gray-200">
+              <tr>
+                <td class="py-2 pr-4 font-medium text-gray-700 w-1/3">Prepared for</td>
+                <td class="py-2 text-gray-900">{{owner_name}}</td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-4 font-medium text-gray-700">Report Date</td>
+                <td class="py-2 text-gray-900">{{formatDate report_dates.report_date}}</td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-4 font-medium text-gray-700">Address</td>
+                <td class="py-2 text-gray-900">{{property_details.address}}</td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-4 font-medium text-gray-700">Fair Market Value</td>
+                <td class="py-2 text-gray-900">{{valuation.fair_market_value}}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <!-- Schedule A -->
       <section id="property-details" class="card">
         <h2 class="text-3xl font-semibold section-title">Schedule "A" - Property Details</h2>
@@ -764,6 +791,34 @@
           </div>
         </div>
 
+        <!-- Valuation Summary (aligned with DOCX) -->
+        <div class="mt-8">
+          <h3 class="font-bold text-xl mb-4 brand-blue">Valuation Summary</h3>
+          <div class="overflow-x-auto">
+            <table class="min-w-full table-auto">
+              <tbody class="divide-y divide-gray-200">
+                <tr>
+                  <td class="py-2 pr-4 font-medium text-gray-700 w-1/3">Fair Market Value</td>
+                  <td class="py-2 text-gray-900">{{valuation.fair_market_value}}</td>
+                </tr>
+                <tr>
+                  <td class="py-2 pr-4 font-medium text-gray-700">Value Source</td>
+                  <td class="py-2 text-gray-900">{{valuation.value_source}}</td>
+                </tr>
+                <tr>
+                  <td class="py-2 pr-4 font-medium text-gray-700">Comparable Used</td>
+                  <td class="py-2 text-gray-900">{{valuation.comparable_used}}</td>
+                </tr>
+                <tr>
+                  <td class="py-2 pr-4 font-medium text-gray-700">Comparable List Price</td>
+                  <td class="py-2 text-gray-900">{{valuation.comparable_list_price}}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Final Estimate of Value -->
         <div class="mt-8">
           <h3 class="font-bold text-xl mb-4 brand-blue">Final Estimate of Value</h3>
           <p class="text-gray-700 mb-4">{{valuation.final_estimate_summary}}</p>
@@ -775,6 +830,7 @@
           </div>
         </div>
       </section>
+
       <div class="page-break"></div>
       <!-- Footer -->
       <footer class="text-center text-xs text-gray-500 pt-4 mt-8 border-t">

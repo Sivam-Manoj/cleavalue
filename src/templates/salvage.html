@@ -93,7 +93,7 @@
 
     <div class="page-break"></div>
 
-    <div class="max-w-5xl mx-auto p-4 sm:p-8">
+    <div class="max-w-6xl mx-auto p-4 sm:p-8">
       <header class="card flex items-center justify-between mb-8">
         <div>
           <h1 class="text-4xl font-bold brand-red">{{tt.title}}</h1>
@@ -104,6 +104,37 @@
           <p class="text-sm text-gray-500">{{company_address}}</p>
         </div>
       </header>
+
+      <!-- Report Summary -->
+      <section class="card">
+        <h2 class="text-2xl font-semibold section-title">{{tt.reportSummary}}</h2>
+        <div class="overflow-x-auto">
+          <table class="min-w-full table-auto">
+            <tbody class="divide-y divide-gray-200">
+              <tr>
+                <td class="py-2 pr-4 font-medium text-gray-700 w-1/3">{{tt.preparedFor}}</td>
+                <td class="py-2 text-gray-900">{{company_name}}</td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-4 font-medium text-gray-700">{{tt.appraiser}}</td>
+                <td class="py-2 text-gray-900">{{appraiser_name}}</td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-4 font-medium text-gray-700">{{tt.reportDate}}</td>
+                <td class="py-2 text-gray-900">{{formatDate report_date}}</td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-4 font-medium text-gray-700">{{tt.fileNumber}}</td>
+                <td class="py-2 text-gray-900">{{file_number}}</td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-4 font-medium text-gray-700">{{tt.totalValue}}</td>
+                <td class="py-2 text-gray-900">{{currencyFormat valuation.fairMarketValue}}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div class="lg:col-span-2">
@@ -227,28 +258,43 @@
             </div>
 
           <div class="card">
-            <h2 class="text-2xl font-semibold section-title">{{tt.valuation}}</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div class="bg-gray-50 p-4 rounded-lg text-center">
-                <p class="text-2xl font-bold brand-red">{{currencyFormat aiExtractedDetails.actual_cash_value}}</p>
-              </div>
-              <div class="bg-gray-50 p-4 rounded-lg text-center">
-                <p class="text-gray-600">{{tt.replacementCost}}</p>
-                <p class="text-2xl font-bold brand-red">{{currencyFormat aiExtractedDetails.replacement_cost}}</p>
-              </div>
+            <h2 class="text-2xl font-semibold section-title">{{tt.valuationSummary}}</h2>
+            <div class="overflow-x-auto">
+              <table class="min-w-full table-auto">
+                <tbody class="divide-y divide-gray-200">
+                  <tr>
+                    <td class="py-2 pr-4 font-medium text-gray-700 w-1/3">{{tt.totalValue}}</td>
+                    <td class="py-2 text-gray-900">{{currencyFormat valuation.fairMarketValue}}</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 pr-4 font-medium text-gray-700">{{tt.confidence}}</td>
+                    <td class="py-2 text-gray-900">{{valuation.confidence_level}}</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 pr-4 font-medium text-gray-700">{{tt.recommendedReserve}}</td>
+                    <td class="py-2 text-gray-900">{{currencyFormat aiExtractedDetails.recommended_reserve}}</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 pr-4 font-medium text-gray-700">{{tt.actualCashValue}}</td>
+                    <td class="py-2 text-gray-900">{{currencyFormat aiExtractedDetails.actual_cash_value}}</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 pr-4 font-medium text-gray-700">{{tt.replacementCost}}</td>
+                    <td class="py-2 text-gray-900">{{currencyFormat aiExtractedDetails.replacement_cost}}</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 pr-4 font-medium text-gray-700">{{tt.replacementCostReferences}}</td>
+                    <td class="py-2 text-gray-900">{{aiExtractedDetails.replacement_cost_references}}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
+            {{#if valuation.summary}}
             <div class="mt-4">
-              <h3 class="font-bold text-lg">{{tt.replacementCostReferences}}</h3>
-              <p class="text-gray-700">
-                {{aiExtractedDetails.replacement_cost_references}}
-              </p>
+              <h3 class="font-bold text-lg">{{tt.summary}}</h3>
+              <p class="text-gray-700">{{valuation.summary}}</p>
             </div>
-            <div
-              class="mt-6 bg-brand-red text-white p-4 rounded-lg text-center"
-            >
-              <p class="text-lg">{{tt.recommendedReserve}}</p>
-              <p class="text-3xl font-bold">{{currencyFormat aiExtractedDetails.recommended_reserve}}</p>
-            </div>
+            {{/if}}
           </div>
 
           <div class="card">
@@ -281,30 +327,119 @@
               </div>
             </div>
           </div>
-          <div class="card">
-            <h2 class="text-2xl font-semibold section-title">{{tt.comparableSales}}</h2>
-            <div class="space-y-4">
-              {{#each comparableItems}}
-              <div
-                class="flex items-start space-x-4 border p-3 rounded-lg hover:shadow-md transition-shadow"
-              >
-                <div class="flex-grow">
-                  <h3 class="font-bold text-md">{{title}}</h3>
-                  <p class="text-sm text-gray-600">{{location}}</p>
-                  <p class="brand-red font-semibold text-lg mt-1">{{price}}</p>
-                  <a
-                    href="{{link}}"
-                    class="text-sm text-blue-600 hover:underline"
-                    target="_blank"
-                    >{{tt.viewListing}}</a
-                  >
-                </div>
-              </div>
-              {{/each}}
-            </div>
-          </div>
         </div>
       </div>
+
+      <!-- Comparable Salvage Listings (table) -->
+      <section class="card">
+        <h2 class="text-2xl font-semibold section-title">{{tt.comparables}}</h2>
+        <div class="overflow-x-auto">
+          <table class="min-w-full table-auto">
+            <thead>
+              <tr class="bg-gray-50">
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">{{tt.compsColumnsTitle}}</th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">{{tt.compsColumnsPrice}}</th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">{{tt.compsColumnsLocation}}</th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">{{tt.compsColumnsLink}}</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+              {{#each comparableItems}}
+              <tr>
+                <td class="py-2 px-3">{{title}}</td>
+                <td class="py-2 px-3">{{price}}</td>
+                <td class="py-2 px-3">{{location}}</td>
+                <td class="py-2 px-3">
+                  <a href="{{link}}" class="text-blue-600 hover:underline" target="_blank">{{tt.viewListing}}</a>
+                </td>
+              </tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Comparable Details matrix -->
+      {{#if compDetailsLabels.length}}
+      <section class="card">
+        <h2 class="text-2xl font-semibold section-title">{{tt.comparableDetails}}</h2>
+        <div class="overflow-x-auto">
+          <table class="min-w-full table-auto">
+            <thead>
+              <tr class="bg-gray-50">
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">{{tt.specField}}</th>
+                {{#each comparableItems}}
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">{{title}}</th>
+                {{/each}}
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+              {{#each compDetailsLabels}}
+              <tr>
+                <td class="py-2 px-3">{{this}}</td>
+                {{#each ../comparableItems}}
+                <td class="py-2 px-3">
+                  {{#if details}}
+                    {{#if (lookup details ../this)}}
+                      {{lookup details ../this}}
+                    {{else}}
+                      {{../tt.notFound}}
+                    {{/if}}
+                  {{else}}
+                    {{../tt.notFound}}
+                  {{/if}}
+                </td>
+                {{/each}}
+              </tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      {{/if}}
+
+      <!-- Specialty Valuation Data: Field | Client Vehicle | Comparable 1 | Adjustments -->
+      <section class="card">
+        <h2 class="text-2xl font-semibold section-title">{{tt.specValuationHeader}}</h2>
+        <div class="overflow-x-auto">
+          <table class="min-w-full table-auto">
+            <thead>
+              <tr class="bg-gray-50">
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">{{tt.specField}}</th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">{{tt.specClient}}</th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">{{tt.specComp1}}</th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">{{tt.specAdj}}</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+              {{#each specLabels}}
+              <tr>
+                <td class="py-2 px-3">{{this}}</td>
+                <td class="py-2 px-3">
+                  {{#if specialty_data.client_vehicle}}
+                    {{#if (lookup specialty_data.client_vehicle this)}}
+                      {{lookup specialty_data.client_vehicle this}}
+                    {{else}}{{tt.notFound}}{{/if}}
+                  {{else}}{{tt.notFound}}{{/if}}
+                </td>
+                <td class="py-2 px-3">
+                  {{#if specialty_data.comparable_1}}
+                    {{#if (lookup specialty_data.comparable_1 this)}}
+                      {{lookup specialty_data.comparable_1 this}}
+                    {{else}}{{tt.notFound}}{{/if}}
+                  {{else}}{{tt.notFound}}{{/if}}
+                </td>
+                <td class="py-2 px-3">
+                  {{#if (lookup specialty_data.adjustments this)}}
+                    {{currencyFormat (lookup specialty_data.adjustments this)}}
+                  {{else}}0{{/if}}
+                </td>
+              </tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <div class="card">
         <h2 class="text-2xl font-semibold section-title">{{tt.images}}</h2>
