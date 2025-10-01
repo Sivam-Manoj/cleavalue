@@ -38,9 +38,36 @@ export interface ISalvageReport extends Document {
     details?: Record<string, string>;
   }[];
   valuation: Record<string, any>;
-  language?: 'en' | 'fr' | 'es';
+  language?: "en" | "fr" | "es";
   currency?: string;
   specialty_data?: Record<string, any>;
+  // Optional: itemized parts and labour extracted by AI or entered manually
+  repair_items?: Array<{
+    name: string;
+    sku?: string;
+    oem_or_aftermarket?: "OEM" | "Aftermarket" | "Unknown";
+    quantity: number;
+    unit_price: number;
+    line_total: number;
+    vendor?: string;
+    vendor_link?: string;
+    lead_time_days?: number;
+    notes?: string;
+  }>;
+  labour_breakdown?: Array<{
+    task: string;
+    hours: number;
+    rate_per_hour?: number;
+    line_total: number;
+    notes?: string;
+  }>;
+  procurement_notes?: string;
+  assumptions?: string;
+  safety_concerns?: string;
+  priority_level?: "High" | "Medium" | "Low";
+  labour_rate_default?: number;
+  parts_subtotal?: number;
+  labour_total?: number;
 }
 
 const SalvageReportSchema: Schema = new Schema(
@@ -88,9 +115,44 @@ const SalvageReportSchema: Schema = new Schema(
       },
     ],
     valuation: { type: Schema.Types.Mixed },
-    language: { type: String, enum: ['en', 'fr', 'es'], default: 'en' },
-    currency: { type: String, default: 'CAD' },
+    language: { type: String, enum: ["en", "fr", "es"], default: "en" },
+    currency: { type: String, default: "CAD" },
     specialty_data: { type: Schema.Types.Mixed },
+    // Optional denormalized structures for itemized estimate
+    repair_items: [
+      {
+        name: { type: String },
+        sku: { type: String },
+        oem_or_aftermarket: {
+          type: String,
+          enum: ["OEM", "Aftermarket", "Unknown"],
+          default: "Unknown",
+        },
+        quantity: { type: Number },
+        unit_price: { type: Number },
+        line_total: { type: Number },
+        vendor: { type: String },
+        vendor_link: { type: String },
+        lead_time_days: { type: Number },
+        notes: { type: String },
+      },
+    ],
+    labour_breakdown: [
+      {
+        task: { type: String },
+        hours: { type: Number },
+        rate_per_hour: { type: Number },
+        line_total: { type: Number },
+        notes: { type: String },
+      },
+    ],
+    procurement_notes: { type: String },
+    assumptions: { type: String },
+    safety_concerns: { type: String },
+    priority_level: { type: String, enum: ["High", "Medium", "Low"] },
+    labour_rate_default: { type: Number },
+    parts_subtotal: { type: Number },
+    labour_total: { type: Number },
   },
   { timestamps: true }
 );

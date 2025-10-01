@@ -100,6 +100,43 @@ export async function generateSalvageDocx(reportData: any): Promise<Buffer> {
         taxes: "Taxes",
         total: "Total",
       },
+      itemizedPartsHeading: "Itemized Parts",
+      labourBreakdownHeading: "Labour Breakdown",
+      estimateComposition: "Estimate Composition",
+      managerNotesHeading: "Manager Notes",
+      procurementNotes: "Procurement Notes",
+      safetyConcerns: "Safety Concerns",
+      assumptions: "Assumptions",
+      priorityLevel: "Priority Level",
+      partsColumns: {
+        item: "Item",
+        sku: "SKU",
+        oem: "OEM/Aftermarket",
+        qty: "Qty",
+        unitPrice: "Unit Price",
+        lineTotal: "Line Total",
+        vendor: "Vendor",
+        link: "Link",
+        leadTime: "Lead Time (days)",
+        notes: "Notes",
+      },
+      labourColumns: {
+        task: "Task",
+        hours: "Hours",
+        rate: "Rate/hour",
+        lineTotal: "Line Total",
+        notes: "Notes",
+      },
+      compositionRows: {
+        partsSubtotal: "Parts Subtotal",
+        labourTotal: "Labour Total",
+        totalHours: "Total Labour Hours",
+        lessBetterment: "Less Betterment",
+        shopSupplies: "Shop Supplies",
+        miscellaneous: "Miscellaneous",
+        taxes: "Taxes",
+        grandTotal: "Grand Total",
+      },
     },
     fr: {
       title: "Rapport de récupération",
@@ -145,6 +182,43 @@ export async function generateSalvageDocx(reportData: any): Promise<Buffer> {
         taxes: "Taxes",
         total: "Total",
       },
+      itemizedPartsHeading: "Pièces détaillées",
+      labourBreakdownHeading: "Répartition de la main-d'œuvre",
+      estimateComposition: "Composition de l'estimation",
+      managerNotesHeading: "Notes du gestionnaire",
+      procurementNotes: "Notes d'approvisionnement",
+      safetyConcerns: "Préoccupations de sécurité",
+      assumptions: "Hypothèses",
+      priorityLevel: "Niveau de priorité",
+      partsColumns: {
+        item: "Article",
+        sku: "SKU",
+        oem: "OEM/Après-vente",
+        qty: "Qté",
+        unitPrice: "Prix unitaire",
+        lineTotal: "Total de ligne",
+        vendor: "Fournisseur",
+        link: "Lien",
+        leadTime: "Délai (jours)",
+        notes: "Notes",
+      },
+      labourColumns: {
+        task: "Tâche",
+        hours: "Heures",
+        rate: "Taux/heure",
+        lineTotal: "Total de ligne",
+        notes: "Notes",
+      },
+      compositionRows: {
+        partsSubtotal: "Sous-total pièces",
+        labourTotal: "Total main-d'œuvre",
+        totalHours: "Total d'heures",
+        lessBetterment: "Moins plus-value",
+        shopSupplies: "Fournitures d'atelier",
+        miscellaneous: "Divers",
+        taxes: "Taxes",
+        grandTotal: "Total général",
+      },
     },
     es: {
       title: "Informe de salvamento",
@@ -189,6 +263,43 @@ export async function generateSalvageDocx(reportData: any): Promise<Buffer> {
         miscellaneous: "Misceláneos",
         taxes: "Impuestos",
         total: "Total",
+      },
+      itemizedPartsHeading: "Piezas detalladas",
+      labourBreakdownHeading: "Desglose de mano de obra",
+      estimateComposition: "Composición de la estimación",
+      managerNotesHeading: "Notas del gerente",
+      procurementNotes: "Notas de compras",
+      safetyConcerns: "Preocupaciones de seguridad",
+      assumptions: "Suposiciones",
+      priorityLevel: "Nivel de prioridad",
+      partsColumns: {
+        item: "Artículo",
+        sku: "SKU",
+        oem: "OEM/Posventa",
+        qty: "Cant.",
+        unitPrice: "Precio unitario",
+        lineTotal: "Total de línea",
+        vendor: "Proveedor",
+        link: "Enlace",
+        leadTime: "Plazo (días)",
+        notes: "Notas",
+      },
+      labourColumns: {
+        task: "Tarea",
+        hours: "Horas",
+        rate: "Tarifa/hora",
+        lineTotal: "Total de línea",
+        notes: "Notas",
+      },
+      compositionRows: {
+        partsSubtotal: "Subtotal de piezas",
+        labourTotal: "Total de mano de obra",
+        totalHours: "Horas totales",
+        lessBetterment: "Menos mejoramiento",
+        shopSupplies: "Suministros de taller",
+        miscellaneous: "Misceláneos",
+        taxes: "Impuestos",
+        grandTotal: "Total general",
       },
     },
   } as const;
@@ -578,6 +689,188 @@ export async function generateSalvageDocx(reportData: any): Promise<Buffer> {
       ],
     })
   );
+
+  // Itemized details (Parts & Labour) and composition
+  const toNum = (v: any): number => {
+    try {
+      if (typeof v === "number" && Number.isFinite(v)) return v;
+      if (typeof v === "string") {
+        const p = Number(v.replace(/[^0-9.\-]/g, ""));
+        return Number.isFinite(p) ? p : 0;
+      }
+      return 0;
+    } catch {
+      return 0;
+    }
+  };
+  const partsItems: any[] = Array.isArray((reportData as any)?.repair_items)
+    ? ((reportData as any)?.repair_items as any[])
+    : (Array.isArray((re as any)?.parts_items) ? (re as any)?.parts_items : []);
+  const labourBreakdown: any[] = Array.isArray((reportData as any)?.labour_breakdown)
+    ? ((reportData as any)?.labour_breakdown as any[])
+    : (Array.isArray((re as any)?.labour_breakdown) ? (re as any)?.labour_breakdown : []);
+  const labourRateDefault = toNum((reportData as any)?.labour_rate_default ?? (re as any)?.labour_rate_default);
+
+  const partsSubtotalCalc = partsItems.reduce((sum, it: any) => sum + toNum(it?.line_total ?? (toNum(it?.quantity) * toNum(it?.unit_price))), 0);
+  const labourTotalCalc = labourBreakdown.reduce((sum, it: any) => {
+    const rate = toNum(it?.rate_per_hour ?? labourRateDefault);
+    const hours = toNum(it?.hours);
+    const line = toNum(it?.line_total ?? hours * rate);
+    return sum + line;
+  }, 0);
+  const totalHoursCalc = labourBreakdown.reduce((sum, it: any) => sum + toNum(it?.hours), 0);
+
+  const partsSubtotal = toNum((reportData as any)?.parts_subtotal ?? (re as any)?.parts_subtotal ?? partsSubtotalCalc);
+  const labourTotal = toNum((reportData as any)?.labour_total ?? (re as any)?.labour_total ?? labourTotalCalc);
+  const lessBetterment = toNum((re as any)?.less_betterment);
+  const shopSupplies = toNum((re as any)?.shop_supplies);
+  const miscellaneous = toNum((re as any)?.miscellaneous);
+  const taxes = toNum((re as any)?.taxes);
+  const grandTotal = toNum((re as any)?.total ?? (partsSubtotal + labourTotal + shopSupplies + miscellaneous + taxes - lessBetterment));
+
+  // Itemized Parts
+  children.push(
+    new Paragraph({
+      text: tt.itemizedPartsHeading,
+      heading: HeadingLevel.HEADING_2,
+      spacing: { before: 120, after: 60 },
+    })
+  );
+  if (partsItems.length > 0) {
+    const partRows: TableRow[] = [];
+    // Header
+    partRows.push(
+      new TableRow({
+        children: [
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: tt.partsColumns.item, bold: true })] })] }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: tt.partsColumns.sku, bold: true })] })] }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: tt.partsColumns.oem, bold: true })] })] }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: tt.partsColumns.qty, bold: true })] })] }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: tt.partsColumns.unitPrice, bold: true })] })] }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: tt.partsColumns.lineTotal, bold: true })] })] }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: tt.partsColumns.vendor, bold: true })] })] }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: tt.partsColumns.link, bold: true })] })] }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: tt.partsColumns.leadTime, bold: true })] })] }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: tt.partsColumns.notes, bold: true })] })] }),
+        ],
+      })
+    );
+    for (const it of partsItems) {
+      const qty = toNum(it?.quantity);
+      const unit = toNum(it?.unit_price);
+      const line = toNum(it?.line_total ?? qty * unit);
+      partRows.push(
+        new TableRow({
+          children: [
+            new TableCell({ children: [new Paragraph(safe(it?.name) || "—")] }),
+            new TableCell({ children: [new Paragraph(safe(it?.sku) || "—")] }),
+            new TableCell({ children: [new Paragraph(safe(it?.oem_or_aftermarket) || "—")] }),
+            new TableCell({ children: [new Paragraph(String(qty || 0))] }),
+            new TableCell({ children: [new Paragraph(formatMoneyStrict(unit, ccy) || "—")] }),
+            new TableCell({ children: [new Paragraph(formatMoneyStrict(line, ccy) || "—")] }),
+            new TableCell({ children: [new Paragraph(safe(it?.vendor) || "—")] }),
+            new TableCell({ children: [new Paragraph(safe(it?.vendor_link) || "—")] }),
+            new TableCell({ children: [new Paragraph(String(toNum(it?.lead_time_days) || 0))] }),
+            new TableCell({ children: [new Paragraph(safe(it?.notes) || "")] }),
+          ],
+        })
+      );
+    }
+    children.push(
+      new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: partRows })
+    );
+  } else {
+    children.push(new Paragraph({ text: "—" }));
+  }
+
+  // Labour Breakdown
+  children.push(
+    new Paragraph({
+      text: tt.labourBreakdownHeading,
+      heading: HeadingLevel.HEADING_2,
+      spacing: { before: 120, after: 60 },
+    })
+  );
+  if (labourBreakdown.length > 0) {
+    const labRows: TableRow[] = [];
+    labRows.push(
+      new TableRow({
+        children: [
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: tt.labourColumns.task, bold: true })] })] }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: tt.labourColumns.hours, bold: true })] })] }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: tt.labourColumns.rate, bold: true })] })] }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: tt.labourColumns.lineTotal, bold: true })] })] }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: tt.labourColumns.notes, bold: true })] })] }),
+        ],
+      })
+    );
+    for (const it of labourBreakdown) {
+      const hours = toNum(it?.hours);
+      const rate = toNum(it?.rate_per_hour ?? labourRateDefault);
+      const line = toNum(it?.line_total ?? hours * rate);
+      labRows.push(
+        new TableRow({
+          children: [
+            new TableCell({ children: [new Paragraph(safe(it?.task) || "—")] }),
+            new TableCell({ children: [new Paragraph(String(hours || 0))] }),
+            new TableCell({ children: [new Paragraph(formatMoneyStrict(rate, ccy) || "—")] }),
+            new TableCell({ children: [new Paragraph(formatMoneyStrict(line, ccy) || "—")] }),
+            new TableCell({ children: [new Paragraph(safe(it?.notes) || "")] }),
+          ],
+        })
+      );
+    }
+    children.push(
+      new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: labRows })
+    );
+  } else {
+    children.push(new Paragraph({ text: "—" }));
+  }
+
+  // Estimate Composition Summary
+  children.push(
+    new Paragraph({
+      text: tt.estimateComposition,
+      heading: HeadingLevel.HEADING_2,
+      spacing: { before: 120, after: 60 },
+    })
+  );
+  children.push(
+    new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [
+        new TableRow({ children: [ new TableCell({ children: [new Paragraph(tt.compositionRows.partsSubtotal)] }), new TableCell({ children: [new Paragraph(formatMoneyStrict(partsSubtotal, ccy))] }) ] }),
+        new TableRow({ children: [ new TableCell({ children: [new Paragraph(tt.compositionRows.labourTotal)] }), new TableCell({ children: [new Paragraph(formatMoneyStrict(labourTotal, ccy))] }) ] }),
+        new TableRow({ children: [ new TableCell({ children: [new Paragraph(tt.compositionRows.totalHours)] }), new TableCell({ children: [new Paragraph(String(totalHoursCalc))] }) ] }),
+        new TableRow({ children: [ new TableCell({ children: [new Paragraph(tt.compositionRows.lessBetterment)] }), new TableCell({ children: [new Paragraph(formatMoneyStrict(lessBetterment, ccy))] }) ] }),
+        new TableRow({ children: [ new TableCell({ children: [new Paragraph(tt.compositionRows.shopSupplies)] }), new TableCell({ children: [new Paragraph(formatMoneyStrict(shopSupplies, ccy))] }) ] }),
+        new TableRow({ children: [ new TableCell({ children: [new Paragraph(tt.compositionRows.miscellaneous)] }), new TableCell({ children: [new Paragraph(formatMoneyStrict(miscellaneous, ccy))] }) ] }),
+        new TableRow({ children: [ new TableCell({ children: [new Paragraph(tt.compositionRows.taxes)] }), new TableCell({ children: [new Paragraph(formatMoneyStrict(taxes, ccy))] }) ] }),
+        new TableRow({ children: [ new TableCell({ children: [new Paragraph(tt.compositionRows.grandTotal)] }), new TableCell({ children: [new Paragraph(formatMoneyStrict(grandTotal, ccy))] }) ] }),
+      ],
+    })
+  );
+
+  // Manager Notes
+  const procurementNotes = safe((reportData as any)?.procurement_notes) || safe((reportData as any)?.aiExtractedDetails?.procurement_notes);
+  const safetyConcerns = safe((reportData as any)?.safety_concerns) || safe((reportData as any)?.aiExtractedDetails?.safety_concerns);
+  const assumptions = safe((reportData as any)?.assumptions) || safe((reportData as any)?.aiExtractedDetails?.assumptions);
+  const priorityLevel = safe((reportData as any)?.priority_level) || safe((reportData as any)?.aiExtractedDetails?.priority_level);
+  if (procurementNotes || safetyConcerns || assumptions || priorityLevel) {
+    children.push(
+      new Paragraph({
+        text: tt.managerNotesHeading,
+        heading: HeadingLevel.HEADING_2,
+        spacing: { before: 120, after: 60 },
+      })
+    );
+    const notesRows: TableRow[] = [];
+    if (procurementNotes) notesRows.push(new TableRow({ children: [ new TableCell({ children: [new Paragraph(tt.procurementNotes)] }), new TableCell({ children: [ new Paragraph(String(procurementNotes)) ] }) ] }));
+    if (safetyConcerns) notesRows.push(new TableRow({ children: [ new TableCell({ children: [new Paragraph(tt.safetyConcerns)] }), new TableCell({ children: [ new Paragraph(String(safetyConcerns)) ] }) ] }));
+    if (assumptions) notesRows.push(new TableRow({ children: [ new TableCell({ children: [new Paragraph(tt.assumptions)] }), new TableCell({ children: [ new Paragraph(String(assumptions)) ] }) ] }));
+    if (priorityLevel) notesRows.push(new TableRow({ children: [ new TableCell({ children: [new Paragraph(tt.priorityLevel)] }), new TableCell({ children: [ new Paragraph(String(priorityLevel)) ] }) ] }));
+    children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: notesRows }));
+  }
 
   // Comparables
   children.push(

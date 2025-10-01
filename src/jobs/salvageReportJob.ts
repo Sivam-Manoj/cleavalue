@@ -95,7 +95,8 @@ export async function runSalvageReportJob({ user, images, details, progressId }:
         start("ai_analysis", "Analyzing images with AI");
         const langRaw = String(details?.language || '').toLowerCase();
         const lang = (langRaw === 'fr' || langRaw === 'es') ? (langRaw as 'fr' | 'es') : 'en';
-        aiExtractedDetails = await analyzeSalvageImages(imageUrls, lang);
+        const ccy = String(details?.currency || 'CAD').toUpperCase();
+        aiExtractedDetails = await analyzeSalvageImages(imageUrls, lang, ccy);
         end("ai_analysis");
       }
     } catch (e) {
@@ -126,6 +127,40 @@ export async function runSalvageReportJob({ user, images, details, progressId }:
     }
 
     // 5) Save DB record
+    // Map itemized estimate details and notes from AI with fallbacks to user-provided 'details'
+    const toNum = (v: any): number => {
+      try {
+        if (typeof v === 'number' && Number.isFinite(v)) return v;
+        if (typeof v === 'string') {
+          const p = Number(v.replace(/[^0-9.\-]/g, ''));
+          return Number.isFinite(p) ? p : 0;
+        }
+        return 0;
+      } catch { return 0; }
+    };
+    const reAi: any = (aiExtractedDetails as any)?.repair_estimate || {};
+    const partsItems: any[] = Array.isArray(details?.repair_items)
+      ? details.repair_items
+      : (Array.isArray(reAi?.parts_items) ? reAi.parts_items : []);
+    const labourBreakdown: any[] = Array.isArray(details?.labour_breakdown)
+      ? details.labour_breakdown
+      : (Array.isArray(reAi?.labour_breakdown) ? reAi.labour_breakdown : []);
+    const labourRateDefault = toNum(details?.labour_rate_default ?? reAi?.labour_rate_default);
+    const partsSubtotalCalc = partsItems.reduce((sum, it: any) => sum + toNum(it?.line_total ?? (toNum(it?.quantity) * toNum(it?.unit_price))), 0);
+    const labourTotalCalc = labourBreakdown.reduce((sum, it: any) => {
+      const rate = toNum(it?.rate_per_hour ?? labourRateDefault);
+      const hours = toNum(it?.hours);
+      const line = toNum(it?.line_total ?? hours * rate);
+      return sum + line;
+    }, 0);
+    const parts_subtotal = toNum(details?.parts_subtotal ?? reAi?.parts_subtotal ?? partsSubtotalCalc);
+    const labour_total = toNum(details?.labour_total ?? reAi?.labour_total ?? labourTotalCalc);
+
+    const procurement_notes = details?.procurement_notes ?? (aiExtractedDetails as any)?.procurement_notes;
+    const safety_concerns = details?.safety_concerns ?? (aiExtractedDetails as any)?.safety_concerns;
+    const assumptions = details?.assumptions ?? (aiExtractedDetails as any)?.assumptions;
+    const priority_level = details?.priority_level ?? (aiExtractedDetails as any)?.priority_level;
+
     const finalData: any = {
       ...details,
       imageUrls,
@@ -144,6 +179,16 @@ export async function runSalvageReportJob({ user, images, details, progressId }:
       repair_facility: aiExtractedDetails?.repair_facility,
       repair_facility_comments: aiExtractedDetails?.repair_facility_comments,
       repair_estimate: aiExtractedDetails?.repair_estimate,
+      // Itemized (denormalized) for convenience in templates and exports
+      repair_items: partsItems,
+      labour_breakdown: labourBreakdown,
+      labour_rate_default: labourRateDefault,
+      parts_subtotal,
+      labour_total,
+      procurement_notes,
+      safety_concerns,
+      assumptions,
+      priority_level,
       actual_cash_value: aiExtractedDetails?.actual_cash_value,
       replacement_cost: aiExtractedDetails?.replacement_cost,
       replacement_cost_references: aiExtractedDetails?.replacement_cost_references,
