@@ -16,6 +16,20 @@ export interface AssetLotAI {
   condition: string;
   estimated_value: string;
   tags?: string[];
+  // Excel-related fields
+  lot_number?: string | number | null; // maps to "Lot #"
+  quantity?: number | null; // default 1
+  must_take?: boolean | null; // true/false
+  contract_number?: string | null; // maps to "Contract #"
+  categories?: string | null; // one of predefined list provided in system prompt
+  show_on_website?: boolean | null; // true/false
+  close_date?: string | null; // ISO date YYYY-MM-DD
+  bid_increment?: number | null; // numeric amount (no currency symbol)
+  location?: string | null; // free text location
+  opening_bid?: number | null; // numeric amount (no currency symbol)
+  latitude?: number | null;
+  longitude?: number | null;
+  item_condition?: string | null; // may mirror 'condition'
   // Optional fields used primarily for per_item mode
   serial_no_or_label?: string | null;
   details?: string;
@@ -32,13 +46,27 @@ export interface AssetLotAI {
     image_local_index?: number | null;
     // Optional direct URL if known by the model (rare when using base64)
     image_url?: string | null;
+    // Excel-related fields for item rows as well
+    lot_number?: string | number | null;
+    quantity?: number | null;
+    must_take?: boolean | null;
+    contract_number?: string | null;
+    categories?: string | null;
+    show_on_website?: boolean | null;
+    close_date?: string | null;
+    bid_increment?: number | null;
+    location?: string | null;
+    opening_bid?: number | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    item_condition?: string | null;
   }>;
 }
 
 export interface AssetAnalysisResult {
   lots: AssetLotAI[];
   summary?: string;
-  language?: 'en' | 'fr' | 'es';
+  language?: "en" | "fr" | "es";
   currency?: string;
 }
 
@@ -236,23 +264,34 @@ async function deduplicateAssetLotsAI(
   }
 }
 
+function addModeTag(lots: AssetLotAI[], mode: AssetGroupingMode): AssetLotAI[] {
+  return (lots || []).map((lot) => {
+    const tags = Array.isArray(lot.tags) ? [...lot.tags] : [];
+    if (!tags.some((t) => typeof t === "string" && t.startsWith("mode:"))) {
+      tags.push(`mode:${mode}`);
+    }
+    lot.tags = tags;
+    return lot;
+  });
+}
+
 export async function analyzeAssetImages(
   imageUrls: string[],
   groupingMode: AssetGroupingMode,
-  language?: 'en' | 'fr' | 'es',
+  language?: "en" | "fr" | "es",
   currency?: string
 ): Promise<AssetAnalysisResult> {
   if (!Array.isArray(imageUrls) || imageUrls.length === 0) {
     throw new Error("No image URLs provided for analysis.");
   }
 
-  const lang: 'en' | 'fr' | 'es' = ((): any => {
-    const l = String(language || '').toLowerCase();
-    return (l === 'fr' || l === 'es') ? l : 'en';
+  const lang: "en" | "fr" | "es" = ((): any => {
+    const l = String(language || "").toLowerCase();
+    return l === "fr" || l === "es" ? l : "en";
   })();
   const ccy = ((): string => {
-    const c = String(currency || '').toUpperCase();
-    return /^[A-Z]{3}$/.test(c) ? c : (process.env.DEFAULT_CURRENCY || 'CAD');
+    const c = String(currency || "").toUpperCase();
+    return /^[A-Z]{3}$/.test(c) ? c : process.env.DEFAULT_CURRENCY || "CAD";
   })();
   const systemPrompt = getAssetSystemPrompt(groupingMode as any, lang, ccy);
 
@@ -350,7 +389,10 @@ export async function analyzeAssetImages(
         const content = resp.choices?.[0]?.message?.content?.trim();
         if (content) {
           const parsed = JSON.parse(content) as AssetAnalysisResult;
-          const fallbackLots = Array.isArray(parsed?.lots) ? parsed.lots : [];
+          const fallbackLots = addModeTag(
+            Array.isArray(parsed?.lots) ? parsed.lots : [],
+            "per_photo"
+          );
           return {
             lots: fallbackLots,
             summary: `${fallbackLots.length} items identified via fallback per_photo analysis of ${imageUrls.length} images.`,
@@ -372,7 +414,8 @@ export async function analyzeAssetImages(
 
     // Deduplicate across images to remove the same physical item
     const dedupedLots = await deduplicateAssetLotsAI(imageUrls, combinedLots);
-    const finalLots = dedupedLots.length > 0 ? dedupedLots : combinedLots; // safeguard against over-aggressive dedup
+    const finalLotsRaw = dedupedLots.length > 0 ? dedupedLots : combinedLots; // safeguard against over-aggressive dedup
+    const finalLots = addModeTag(finalLotsRaw, "per_item");
 
     return {
       lots: finalLots,
@@ -420,7 +463,16 @@ export async function analyzeAssetImages(
   try {
     console.log("content", content);
     const parsed = JSON.parse(content) as AssetAnalysisResult;
-    return { ...parsed, language: parsed.language || lang, currency: parsed.currency || ccy };
+    const lotsTagged = addModeTag(
+      Array.isArray(parsed?.lots) ? parsed.lots : [],
+      groupingMode
+    );
+    return {
+      ...parsed,
+      lots: lotsTagged,
+      language: parsed.language || lang,
+      currency: parsed.currency || ccy,
+    };
   } catch (err) {
     console.error("Invalid JSON from model:", content);
     throw new Error("Failed to parse JSON from AI response.");

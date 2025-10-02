@@ -61,6 +61,7 @@ Output Rules:
     "currency": "${ccy}"
   }
 - All fields except 'tags' are REQUIRED for each lot.
+ - All fields except 'tags' are REQUIRED for each lot.
 - 'tags', if included, must be an array of strings.
 - 'estimated_value' must always be in ${ccy} (use proper prefix like '${ccyPrefix}' or leading code '${ccy} '), even if estimated. Do NOT convert currencies — use the currency provided in the system instructions.
 - Format rules for 'estimated_value':
@@ -82,6 +83,32 @@ VIN and Serial Handling:
   - en: "not found"
   - fr: "introuvable"
   - es: "no encontrado"
+`;
+
+  // New: Excel export fields guidance
+  const allowedCategories = [
+    "Buyer Return", "Cleaning And Repair", "Commissions", "Storage", "Conveyors", "Crushers", "Feeders", "Material Washing Equipment", "Power Stations", "Screening Equipment", "Applicators", "Grain Handling", "Harvest", "Hay & Forage", "Landscape Equipment", "Livestock Handling", "Seeding And Tilling", "Tractor Attachments", "Tractors", "Trailers", "Air Support", "Airplane", "Crawler Tractor Attachments", "Demolition Attachments", "Excavator Attachments", "Loader Backhoe Attachments", "Motor Grader Attachments", "Skid Steer Attachments", "Truck Attachments", "Wheel Loader Attachments", "Cars / SUVs / Vans", "Computers / Electronics / Photocopiers / Office Equipment", "Articulated Dump Trucks", "Compactors", "Cranes", "Dozers", "Drill", "Excavators", "Generators", "Haul Trucks", "Loader Backhoes", "Loaders", "Motor Graders", "RTMove Homes / Mobile Homes / Sheds / Skid Shacks", "Scrapers", "Skid Steers", "Water Wagons", "Firearms And Accessories", "Chipping / Shredding", "Self Propelled Clearing", "Skidder", "General Merchandise", "Heavy Trucks", "Jewellery", "Boom And Scissor Lifts", "Forklift", "Telehandler", "Light Duty Freight Trailers", "Light Duty Trucks (1 Ton And Under)", "Asphalt Trucks", "Concrete Mixer Truck", "Concrete Mixing", "Concrete Paving", "Concrete Plant / Components", "Concrete Pump", "Concrete Pump Trucks", "Oil & Gas", "Paving Equipment", "Rail Road Equipment", "Commercial", "Farm Land", "Residential", "ATVs / UTVs", "Camper Trailer", "Golf Cart", "Motorcycles", "Motorhome", "Snowmobiles", "Watercraft", "Restaurant Equipment", "Salvage And Seized Vehicles", "Semi Tractors", "Semi Trailers", "Storage Wars", "Yard Care And Lawn Equipment / Lumber"
+  ];
+
+  const excelFieldsGuidance = `
+Excel Fields (optional but include when inferable for EACH lot; for catalogue, also allowed per item):
+- lot_number: string | number — maps to "Lot #".
+- quantity: integer — default 1 when not specified.
+- must_take: boolean — true if the lot must be sold together.
+- contract_number: string — maps to "Contract #".
+- categories: string — choose EXACTLY ONE from this list: ${allowedCategories.map((c) => `"${c}"`).join(", ")}
+- show_on_website: boolean — whether to show this item online.
+- close_date: string — ISO date (YYYY-MM-DD). Leave empty if unknown.
+- bid_increment: number — numeric amount (no currency symbol).
+- location: string — choose EXACTLY ONE from this list: "800 North Service Road, Emerald Park, SK", "203 60th Street East, Saskatoon, SK", "5221 Portage Ave, Headingley, MB", "8761 Wilkes Ave, Saint Eustache, MB", "601 17th Street East, Brandon, MB", "1209 - 8A Street, Nisku, AB", "6270 Dorman Rd, Mississauga, ON", "175 Chem. Du Grand-Pre, Saint-Jean-Sur-Richelieu, QC", "4728 I-35W, Alvarado, TX 76009". If location cannot be inferred, default to the first address in the list.
+- opening_bid: number — numeric amount (no currency symbol).
+- latitude: number — decimal degrees.
+- longitude: number — decimal degrees.
+- item_condition: string — choose EXACTLY ONE of: "Unverified Working Condition", "Untested", "Unused". Prefer the best match based on description; if uncertain, use "Unverified Working Condition".
+
+Rules:
+- Keep these as JSON fields (do not translate keys). Only include values you can infer; otherwise omit.
+- For booleans, use true/false (not strings). For numeric amounts, provide numbers (not formatted strings).
 `;
 
   const exampleDefault = `
@@ -602,11 +629,15 @@ Grouping mode: single_lot
 
   return `
 ${commonOutputRules}
+${excelFieldsGuidance}
 ${modeSection}
 Assignment Constraints:
 - per_photo: With N images, return N lots and include each image index exactly once (one index per lot). No overlaps.
 - per_item: Include image indexes that best represent each unique item (distinct views). Deduplicate near-identical frames/angles of the SAME view. Avoid overlaps between lots.
 - single_lot: Return exactly ONE lot. For duplicate/near-identical frames of the same shot, include only ONE representative index per duplicate group.
+
+Tagging for Excel Mode column:
+- For every returned lot, include a tag 'mode:<MODE>' in 'tags' to indicate the grouping used for that lot. Use one of: 'single_lot', 'per_item', 'per_photo', 'catalogue'.
 
 ${exampleBlock}
 
