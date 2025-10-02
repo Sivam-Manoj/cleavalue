@@ -9,48 +9,38 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
     reportData?.contract_no || reportData?.contract_number || ""
   );
 
-  // Define headers per mode
-  let headers: string[];
-  const rows: any[][] = [];
-
-  const vinHeaders = [
-    "VIN",
-    "Year",
-    "Make",
-    "Model",
-    "Trim",
-    "Series",
-    "Body Class",
-    "Drive Type",
-    "Engine Cyl",
-    "Displacement (L)",
-    "Fuel",
-    "Transmission",
+  // Define headers (ONLY requested fields)
+  const headers: string[] = [
+    "Lot #",
+    "Description",
+    "Quantity",
+    "Must Take",
+    "Contract #",
+    "Categories",
+    "Serial Number (VIN/SN)",
+    "Show On Website",
+    "Close Date",
+    "Bid Increment",
+    "Location",
+    "Opening Bid",
+    "Latitude",
+    "Longitude",
+    "Item Condition",
   ];
-  const vinCols = (rec: any): any[] => {
-    const vd = (rec?.vinDecoded as any) || {};
-    const vin =
-      vd?.vin ||
+  let rows: any[][] = [];
+
+  // Helper to derive serial/VIN when absent
+  const deriveSerial = (rec: any): string => {
+    const sv = (rec?.serial_number || rec?.sn_vin || rec?.serial_no_or_label || "").trim();
+    if (sv && sv.toLowerCase() !== "not found") return sv;
+    const found =
       extractVinFromText(rec?.sn_vin) ||
       extractVinFromText(
         [rec?.serial_no_or_label, rec?.details, rec?.description, rec?.title]
           .filter(Boolean)
           .join(" ")
-      ) || "";
-    return [
-      vin || "",
-      vd?.year ?? "",
-      vd?.make ?? "",
-      vd?.model ?? "",
-      vd?.trim ?? "",
-      vd?.series ?? "",
-      vd?.bodyClass ?? "",
-      vd?.driveType ?? "",
-      vd?.engineCylinders ?? "",
-      vd?.displacementL ?? "",
-      vd?.fuelType ?? "",
-      vd?.transmission ?? "",
-    ];
+      );
+    return found || "";
   };
 
   // Fixed dropdown lists
@@ -72,24 +62,6 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
   ];
   const DEFAULT_LOCATION = LOCATION_LIST[0];
 
-  // New extras columns requested for XLSX (applies to all modes)
-  const extrasHeaders = [
-    "Lot #",
-    "Quantity",
-    "Must Take",
-    "Contract #",
-    "Categories",
-    "Serial Number (VIN/SN)",
-    "Show On Website",
-    "Close Date",
-    "Bid Increment",
-    "Location",
-    "Opening Bid",
-    "Latitude",
-    "Longitude",
-    "Item Condition",
-  ];
-
   const toBoolCell = (v: any) => (v === undefined || v === null ? "" : !!v);
   const toNumCell = (v: any) => {
     if (v === undefined || v === null) return "";
@@ -97,27 +69,14 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
     return Number.isFinite(n) ? n : "";
   };
   const toStrCell = (v: any) => (v === undefined || v === null ? "" : String(v));
-
-  const computeSerial = (rec: any): string => {
-    const sv = (rec?.sn_vin || rec?.serial_no_or_label || "").trim();
-    if (sv && sv.toLowerCase() !== "not found") return sv;
-    const found =
-      extractVinFromText(rec?.sn_vin) ||
-      extractVinFromText(
-        [rec?.serial_no_or_label, rec?.details, rec?.description, rec?.title]
-          .filter(Boolean)
-          .join(" ")
-      );
-    return found || "";
-  };
-
-  const extrasValues = (rec: any): any[] => [
+  const mapExcelRow = (rec: any): any[] => [
     toStrCell(rec?.lot_number),
+    toStrCell(rec?.description),
     toNumCell(rec?.quantity),
     toBoolCell(rec?.must_take),
-    toStrCell(rec?.contract_number || defaultContractNo),
+    toStrCell(defaultContractNo),
     toStrCell(rec?.categories),
-    toStrCell(computeSerial(rec)),
+    toStrCell(rec?.serial_number ?? deriveSerial(rec)),
     toBoolCell(rec?.show_on_website),
     toStrCell(rec?.close_date),
     toNumCell(rec?.bid_increment),
@@ -128,66 +87,39 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
     toStrCell(rec?.item_condition ?? CONDITION_LIST[0]),
   ];
 
-  // Unified mixed-style output for ALL inputs
-  headers = [
-    "Mode",
-    "Lot ID",
-    "Lot Title",
-    "Item Title",
-    "Description",
-    ...extrasHeaders,
-    "Details",
-    "Condition",
-    "Estimated Value",
-    ...vinHeaders,
-  ];
-
-  const getModeLabel = (lot: any): string => {
-    if (typeof lot?.mode === "string" && lot.mode) return String(lot.mode);
-    const tags: string[] = Array.isArray(lot?.tags) ? lot.tags.map(String) : [];
-    const modeTag = tags.find((t) => t?.startsWith?.("mode:"));
-    if (modeTag) return modeTag.split(":", 2)[1] || "";
-    return String(grouping || "");
-  };
-
-  for (const lot of lots) {
-    const mode = getModeLabel(lot);
-    const lotId = lot?.lot_id ?? "";
-    const lotTitle = lot?.title ?? "";
-    const items: any[] = Array.isArray(lot?.items) ? lot.items : [];
-
-    if (items.length > 0) {
-      // Expand catalogue-like items into individual rows
-      for (const it of items) {
-        rows.push([
-          mode || "catalogue",
-          lotId,
-          lotTitle,
-          it?.title ?? "",
-          it?.description ?? "",
-          ...extrasValues(it),
-          it?.details ?? "",
-          it?.condition ?? "",
-          it?.estimated_value ?? "",
-          ...vinCols(it),
-        ]);
+  // Prefer explicit excel rows from report JSON object, then array; otherwise derive from lots/items
+  const excelRowsJsonRows: any[] | null = Array.isArray((reportData as any)?.excel_rows_json?.rows)
+    ? (reportData as any).excel_rows_json.rows
+    : null;
+  const excelRowsArray: any[] | null = Array.isArray((reportData as any)?.excel_rows)
+    ? (reportData as any).excel_rows
+    : null;
+  if (excelRowsJsonRows && excelRowsJsonRows.length > 0) {
+    rows = excelRowsJsonRows.map(mapExcelRow);
+  } else if (excelRowsArray && excelRowsArray.length > 0) {
+    rows = excelRowsArray.map(mapExcelRow);
+  } else {
+    for (const lot of lots) {
+      const items: any[] = Array.isArray(lot?.items) ? lot.items : [];
+      if (items.length > 0) {
+        for (const it of items) rows.push(mapExcelRow({ ...lot, ...it }));
+      } else {
+        rows.push(mapExcelRow(lot));
       }
-    } else {
-      // Regular lot row (single_lot, per_item, per_photo, or catalogue-without-items)
-      rows.push([
-        mode || String(grouping || ""),
-        lotId,
-        lotTitle,
-        "",
-        lot?.description ?? "",
-        ...extrasValues(lot),
-        lot?.details ?? "",
-        lot?.condition ?? "",
-        lot?.estimated_value ?? "",
-        ...vinCols(lot),
-      ]);
     }
   }
+
+  // Ensure every row has a Lot #; fill sequentially in current order
+  try {
+    let seq = 1;
+    for (const r of rows) {
+      const current = r?.[0];
+      if (current === undefined || current === null || String(current).trim() === "") {
+        r[0] = String(seq);
+      }
+      seq += 1;
+    }
+  } catch {}
 
   const data = [headers, ...rows];
   const wb = XLSX.utils.book_new();
@@ -223,12 +155,12 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
   XLSX.utils.book_append_sheet(wb, ws, "Results");
   XLSX.utils.book_append_sheet(wb, listsWs, "Lists");
 
-  // Attempt to add data validation for Item Condition (col S) and Location (col O)
+  // Attempt to add data validation for Item Condition (col O) and Location (col K)
   try {
     const dvAny: any = (ws as any);
     const validations: any[] = dvAny["!dataValidation"] || [];
-    validations.push({ type: "list", allowBlank: true, sqref: "S2:S1048576", formulae: ["ItemConditionList"] });
-    validations.push({ type: "list", allowBlank: true, sqref: "O2:O1048576", formulae: ["LocationList"] });
+    validations.push({ type: "list", allowBlank: true, sqref: "O2:O1048576", formulae: ["ItemConditionList"] });
+    validations.push({ type: "list", allowBlank: true, sqref: "K2:K1048576", formulae: ["LocationList"] });
     dvAny["!dataValidation"] = validations;
   } catch {}
   const out: any = XLSX.write(wb, { bookType: "xlsx", type: "buffer" });

@@ -63,11 +63,82 @@ export interface AssetLotAI {
   }>;
 }
 
+function extractSerial(lot: any): string | null {
+  const sv = (lot?.serial_no_or_label || lot?.sn_vin || lot?.serial_number || "").trim?.() || "";
+  if (!sv) return null;
+  return sv;
+}
+
+function buildExcelRowsFromLots(lots: AssetLotAI[], defaultContract?: string): ExcelRow[] {
+  const rows: ExcelRow[] = [];
+  for (const lot of lots || []) {
+    const base: ExcelRow = {
+      lot_number: (lot as any)?.lot_number ?? null,
+      description: (lot as any)?.description ?? null,
+      quantity: (lot as any)?.quantity ?? null,
+      must_take: (lot as any)?.must_take ?? null,
+      contract_number: (lot as any)?.contract_number ?? defaultContract ?? null,
+      categories: (lot as any)?.categories ?? null,
+      serial_number: extractSerial(lot),
+      show_on_website: (lot as any)?.show_on_website ?? null,
+      close_date: (lot as any)?.close_date ?? null,
+      bid_increment: (lot as any)?.bid_increment ?? null,
+      location: (lot as any)?.location ?? null,
+      opening_bid: (lot as any)?.opening_bid ?? null,
+      latitude: (lot as any)?.latitude ?? null,
+      longitude: (lot as any)?.longitude ?? null,
+      item_condition: (lot as any)?.item_condition ?? null,
+    };
+    rows.push(base);
+    const items: any[] = Array.isArray((lot as any)?.items) ? (lot as any).items : [];
+    for (const it of items) {
+      rows.push({
+        lot_number: (it as any)?.lot_number ?? (lot as any)?.lot_number ?? null,
+        description: (it as any)?.description ?? (lot as any)?.description ?? null,
+        quantity: (it as any)?.quantity ?? null,
+        must_take: (it as any)?.must_take ?? (lot as any)?.must_take ?? null,
+        contract_number: (it as any)?.contract_number ?? (lot as any)?.contract_number ?? defaultContract ?? null,
+        categories: (it as any)?.categories ?? (lot as any)?.categories ?? null,
+        serial_number: (it as any)?.serial_number ?? (it as any)?.sn_vin ?? extractSerial(it) ?? extractSerial(lot),
+        show_on_website: (it as any)?.show_on_website ?? (lot as any)?.show_on_website ?? null,
+        close_date: (it as any)?.close_date ?? (lot as any)?.close_date ?? null,
+        bid_increment: (it as any)?.bid_increment ?? (lot as any)?.bid_increment ?? null,
+        location: (it as any)?.location ?? (lot as any)?.location ?? null,
+        opening_bid: (it as any)?.opening_bid ?? (lot as any)?.opening_bid ?? null,
+        latitude: (it as any)?.latitude ?? (lot as any)?.latitude ?? null,
+        longitude: (it as any)?.longitude ?? (lot as any)?.longitude ?? null,
+        item_condition: (it as any)?.item_condition ?? (lot as any)?.item_condition ?? null,
+      });
+    }
+  }
+  return rows;
+}
+
 export interface AssetAnalysisResult {
   lots: AssetLotAI[];
   summary?: string;
   language?: "en" | "fr" | "es";
   currency?: string;
+  excel_rows?: ExcelRow[];
+  excel_rows_json?: { rows?: ExcelRow[] };
+}
+
+export interface ExcelRow {
+  lot_number?: string | number | null;
+  description?: string | null;
+  quantity?: number | null;
+  must_take?: boolean | null;
+  contract_number?: string | null;
+  categories?: string | null;
+  serial_number?: string | null; // 'VIN: <VIN>' or other SN; if unknown, omit
+  show_on_website?: boolean | null;
+  close_date?: string | null; // YYYY-MM-DD
+  bid_increment?: number | null;
+  location?: string | null;
+  opening_bid?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  item_condition?: string | null;
 }
 
 async function imageUrlToBase64WithMime(
@@ -389,60 +460,50 @@ export async function analyzeAssetImages(
         const content = resp.choices?.[0]?.message?.content?.trim();
         if (content) {
           const parsed = JSON.parse(content) as AssetAnalysisResult;
-          const fallbackLots = addModeTag(
-            Array.isArray(parsed?.lots) ? parsed.lots : [],
-            "per_photo"
-          );
+          const fallbackLots = addModeTag(Array.isArray(parsed?.lots) ? parsed.lots : [], 'per_photo');
+          const excelRowsFromJson = (parsed as any)?.excel_rows_json?.rows;
+          const excel_rows = Array.isArray(excelRowsFromJson) && excelRowsFromJson.length
+            ? (excelRowsFromJson as ExcelRow[])
+            : (Array.isArray((parsed as any)?.excel_rows) && (parsed as any).excel_rows.length
+              ? ((parsed as any).excel_rows as ExcelRow[])
+              : buildExcelRowsFromLots(fallbackLots, undefined));
           return {
             lots: fallbackLots,
             summary: `${fallbackLots.length} items identified via fallback per_photo analysis of ${imageUrls.length} images.`,
             language: parsed.language || lang,
             currency: parsed.currency || ccy,
+            excel_rows,
           };
         }
       } catch (e) {
         console.error("Fallback per_photo analysis failed:", e);
       }
-      // If fallback also fails, return empty
-      return {
-        lots: [],
-        summary: `0 items identified (per_item), fallback failed.`,
-        language: lang,
-        currency: ccy,
-      };
     }
 
     // Deduplicate across images to remove the same physical item
     const dedupedLots = await deduplicateAssetLotsAI(imageUrls, combinedLots);
     const finalLotsRaw = dedupedLots.length > 0 ? dedupedLots : combinedLots; // safeguard against over-aggressive dedup
-    const finalLots = addModeTag(finalLotsRaw, "per_item");
+    const finalLots = addModeTag(finalLotsRaw, 'per_item');
+    const excel_rows = buildExcelRowsFromLots(finalLots, undefined);
 
     return {
       lots: finalLots,
       summary: `${finalLots.length} unique items identified from ${imageUrls.length} images (per_item, deduped).`,
       language: lang,
       currency: ccy,
+      excel_rows,
     };
   }
 
-  // Default handling for single_lot, per_photo, and catalogue: send all images together (base64 for consistency)
+  // Default handling for single_lot, per_photo, and catalogue: send all images together
   const imgs = await Promise.all(imageUrls.map(imageUrlToBase64WithMime));
-
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },
     {
       role: "user",
       content: [
-        {
-          type: "text",
-          text: `Grouping mode: ${groupingMode}. Analyze these images and return the JSON result.`,
-        },
-        {
-          type: "text",
-          text: `Original image URLs (index -> URL):\n${imageUrls
-            .map((u, idx) => `#${idx}: ${u}`)
-            .join("\n")}`,
-        },
+        { type: "text", text: `Grouping mode: ${groupingMode}. Analyze these images and return valid JSON as instructed.` },
+        { type: "text", text: `Original image URLs (index -> URL):\n${imageUrls.map((u, idx) => `#${idx}: ${u}`).join("\n")}` },
         ...imgs.map(({ base64, mime }) => ({
           type: "image_url" as const,
           image_url: { url: `data:${mime};base64,${base64}` },
@@ -450,7 +511,7 @@ export async function analyzeAssetImages(
       ],
     },
   ];
-  console.log("messages", messages);
+
   const response = await openai.chat.completions.create({
     model: process.env.OPENAI_MODEL || "gpt-5",
     messages,
@@ -463,16 +524,14 @@ export async function analyzeAssetImages(
   try {
     console.log("content", content);
     const parsed = JSON.parse(content) as AssetAnalysisResult;
-    const lotsTagged = addModeTag(
-      Array.isArray(parsed?.lots) ? parsed.lots : [],
-      groupingMode
-    );
-    return {
-      ...parsed,
-      lots: lotsTagged,
-      language: parsed.language || lang,
-      currency: parsed.currency || ccy,
-    };
+    const lotsTagged = addModeTag(Array.isArray(parsed?.lots) ? parsed.lots : [], groupingMode);
+    const excelRowsFromJson = (parsed as any)?.excel_rows_json?.rows;
+    const excel_rows = Array.isArray(excelRowsFromJson) && excelRowsFromJson.length
+      ? (excelRowsFromJson as ExcelRow[])
+      : (Array.isArray(parsed?.excel_rows) && parsed.excel_rows.length
+        ? parsed.excel_rows
+        : buildExcelRowsFromLots(lotsTagged, undefined));
+    return { ...parsed, lots: lotsTagged, excel_rows, language: parsed.language || lang, currency: parsed.currency || ccy };
   } catch (err) {
     console.error("Invalid JSON from model:", content);
     throw new Error("Failed to parse JSON from AI response.");

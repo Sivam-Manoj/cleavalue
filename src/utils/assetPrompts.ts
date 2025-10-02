@@ -10,31 +10,31 @@ export type AssetGroupingModeUtil =
  */
 export function getAssetSystemPrompt(
   groupingMode: AssetGroupingModeUtil,
-  language?: 'en' | 'fr' | 'es',
+  language?: "en" | "fr" | "es",
   currency?: string
 ): string {
-  const lang = ((): 'en' | 'fr' | 'es' => {
-    const l = String(language || '').toLowerCase();
-    return (l === 'fr' || l === 'es') ? (l as any) : 'en';
+  const lang = ((): "en" | "fr" | "es" => {
+    const l = String(language || "").toLowerCase();
+    return l === "fr" || l === "es" ? (l as any) : "en";
   })();
   const ccy = ((): string => {
-    const c = String(currency || '').toUpperCase();
-    if (!c) return 'CAD';
-    return /^[A-Z]{3}$/.test(c) ? c : 'CAD';
+    const c = String(currency || "").toUpperCase();
+    if (!c) return "CAD";
+    return /^[A-Z]{3}$/.test(c) ? c : "CAD";
   })();
   const ccyPrefix = ((): string => {
     const map: Record<string, string> = {
-      CAD: 'CA$',
-      USD: 'US$',
-      EUR: '€',
-      GBP: '£',
-      INR: '₹',
-      AUD: 'AU$',
-      NZD: 'NZ$',
-      JPY: '¥',
-      CNY: '¥',
-      SGD: 'S$',
-      AED: 'AED ',
+      CAD: "CA$",
+      USD: "US$",
+      EUR: "€",
+      GBP: "£",
+      INR: "₹",
+      AUD: "AU$",
+      NZD: "NZ$",
+      JPY: "¥",
+      CNY: "¥",
+      SGD: "S$",
+      AED: "AED ",
     };
     return map[ccy] || `${ccy} `;
   })();
@@ -58,7 +58,28 @@ Output Rules:
     ],
     "summary": "string summarizing all lots",
     "language": "${lang}",
-    "currency": "${ccy}"
+    "currency": "${ccy}",
+    "excel_rows_json": {
+      "rows": [
+        {
+          "lot_number": "string or number",
+          "description": "string",
+          "quantity": 1,
+          "must_take": false,
+          "contract_number": "string",
+          "categories": "one of allowedCategories",
+          "serial_number": "VIN: 1HGCM82633A004352 or other SN or null",
+          "show_on_website": true,
+          "close_date": "YYYY-MM-DD or null",
+          "bid_increment": 25,
+          "location": "800 North Service Road, Emerald Park, SK",
+          "opening_bid": 100,
+          "latitude": 50.471,
+          "longitude": -104.365,
+          "item_condition": "Unverified Working Condition"
+        }
+      ]
+    }
   }
 - All fields except 'tags' are REQUIRED for each lot.
  - All fields except 'tags' are REQUIRED for each lot.
@@ -87,7 +108,91 @@ VIN and Serial Handling:
 
   // New: Excel export fields guidance
   const allowedCategories = [
-    "Buyer Return", "Cleaning And Repair", "Commissions", "Storage", "Conveyors", "Crushers", "Feeders", "Material Washing Equipment", "Power Stations", "Screening Equipment", "Applicators", "Grain Handling", "Harvest", "Hay & Forage", "Landscape Equipment", "Livestock Handling", "Seeding And Tilling", "Tractor Attachments", "Tractors", "Trailers", "Air Support", "Airplane", "Crawler Tractor Attachments", "Demolition Attachments", "Excavator Attachments", "Loader Backhoe Attachments", "Motor Grader Attachments", "Skid Steer Attachments", "Truck Attachments", "Wheel Loader Attachments", "Cars / SUVs / Vans", "Computers / Electronics / Photocopiers / Office Equipment", "Articulated Dump Trucks", "Compactors", "Cranes", "Dozers", "Drill", "Excavators", "Generators", "Haul Trucks", "Loader Backhoes", "Loaders", "Motor Graders", "RTMove Homes / Mobile Homes / Sheds / Skid Shacks", "Scrapers", "Skid Steers", "Water Wagons", "Firearms And Accessories", "Chipping / Shredding", "Self Propelled Clearing", "Skidder", "General Merchandise", "Heavy Trucks", "Jewellery", "Boom And Scissor Lifts", "Forklift", "Telehandler", "Light Duty Freight Trailers", "Light Duty Trucks (1 Ton And Under)", "Asphalt Trucks", "Concrete Mixer Truck", "Concrete Mixing", "Concrete Paving", "Concrete Plant / Components", "Concrete Pump", "Concrete Pump Trucks", "Oil & Gas", "Paving Equipment", "Rail Road Equipment", "Commercial", "Farm Land", "Residential", "ATVs / UTVs", "Camper Trailer", "Golf Cart", "Motorcycles", "Motorhome", "Snowmobiles", "Watercraft", "Restaurant Equipment", "Salvage And Seized Vehicles", "Semi Tractors", "Semi Trailers", "Storage Wars", "Yard Care And Lawn Equipment / Lumber"
+    "Buyer Return",
+    "Cleaning And Repair",
+    "Commissions",
+    "Storage",
+    "Conveyors",
+    "Crushers",
+    "Feeders",
+    "Material Washing Equipment",
+    "Power Stations",
+    "Screening Equipment",
+    "Applicators",
+    "Grain Handling",
+    "Harvest",
+    "Hay & Forage",
+    "Landscape Equipment",
+    "Livestock Handling",
+    "Seeding And Tilling",
+    "Tractor Attachments",
+    "Tractors",
+    "Trailers",
+    "Air Support",
+    "Airplane",
+    "Crawler Tractor Attachments",
+    "Demolition Attachments",
+    "Excavator Attachments",
+    "Loader Backhoe Attachments",
+    "Motor Grader Attachments",
+    "Skid Steer Attachments",
+    "Truck Attachments",
+    "Wheel Loader Attachments",
+    "Cars / SUVs / Vans",
+    "Computers / Electronics / Photocopiers / Office Equipment",
+    "Articulated Dump Trucks",
+    "Compactors",
+    "Cranes",
+    "Dozers",
+    "Drill",
+    "Excavators",
+    "Generators",
+    "Haul Trucks",
+    "Loader Backhoes",
+    "Loaders",
+    "Motor Graders",
+    "RTMove Homes / Mobile Homes / Sheds / Skid Shacks",
+    "Scrapers",
+    "Skid Steers",
+    "Water Wagons",
+    "Firearms And Accessories",
+    "Chipping / Shredding",
+    "Self Propelled Clearing",
+    "Skidder",
+    "General Merchandise",
+    "Heavy Trucks",
+    "Jewellery",
+    "Boom And Scissor Lifts",
+    "Forklift",
+    "Telehandler",
+    "Light Duty Freight Trailers",
+    "Light Duty Trucks (1 Ton And Under)",
+    "Asphalt Trucks",
+    "Concrete Mixer Truck",
+    "Concrete Mixing",
+    "Concrete Paving",
+    "Concrete Plant / Components",
+    "Concrete Pump",
+    "Concrete Pump Trucks",
+    "Oil & Gas",
+    "Paving Equipment",
+    "Rail Road Equipment",
+    "Commercial",
+    "Farm Land",
+    "Residential",
+    "ATVs / UTVs",
+    "Camper Trailer",
+    "Golf Cart",
+    "Motorcycles",
+    "Motorhome",
+    "Snowmobiles",
+    "Watercraft",
+    "Restaurant Equipment",
+    "Salvage And Seized Vehicles",
+    "Semi Tractors",
+    "Semi Trailers",
+    "Storage Wars",
+    "Yard Care And Lawn Equipment / Lumber",
   ];
 
   const excelFieldsGuidance = `
@@ -109,6 +214,11 @@ Excel Fields (optional but include when inferable for EACH lot; for catalogue, a
 Rules:
 - Keep these as JSON fields (do not translate keys). Only include values you can infer; otherwise omit.
 - For booleans, use true/false (not strings). For numeric amounts, provide numbers (not formatted strings).
+ 
+ Excel Rows JSON (top-level "excel_rows_json"):
+ - Provide a single object: { "rows": [ { ...row fields... } ] }.
+ - per_item / per_photo / single_lot: include one row per lot. catalogue: one row per item in 'items'.
+ - Use 'serial_number' for VIN as "VIN: <VIN>" (or other SN); do not repeat VIN/SN in description.
 `;
 
   const exampleDefault = `
@@ -135,7 +245,28 @@ Example Output (default modes):
   ],
   "summary": "2 lots identified: a red mountain bike and a wooden dining table.",
   "language": "${lang}",
-  "currency": "${ccy}"
+  "currency": "${ccy}",
+  "excel_rows_json": {
+    "rows": [
+      {
+        "lot_number": "101",
+        "description": "Adult-sized red mountain bike with front suspension and minor scratches.",
+        "quantity": 1,
+        "must_take": true,
+        "contract_number": "CN-12345",
+        "categories": "General Merchandise",
+        "serial_number": null,
+        "show_on_website": true,
+        "close_date": "2025-10-31",
+        "bid_increment": 25,
+        "location": "800 North Service Road, Emerald Park, SK",
+        "opening_bid": 100,
+        "latitude": 50.471,
+        "longitude": -104.365,
+        "item_condition": "Unverified Working Condition"
+      }
+    ]
+  }
 }`;
 
   const vehicleAttributeFieldList = `
