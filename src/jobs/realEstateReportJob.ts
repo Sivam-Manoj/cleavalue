@@ -15,6 +15,8 @@ import { generateRealEstateXlsx } from "../service/xlsx/realEstateXlsxService.js
 import { sendEmail } from "../utils/sendVerificationEmail.js";
 import fs from "fs/promises";
 import path from "path";
+import { createWriteStream } from "fs";
+import archiver from "archiver";
 import {
   startProgress,
   updateProgress,
@@ -72,6 +74,8 @@ export async function runRealEstateReportJob({
     generate_docx: 0.06,
     generate_xlsx: 0.03,
     save_files: 0.03,
+    save_images_folder: 0.025,
+    zip_images: 0.025,
   } as const;
   let accum = 0;
   const setProg = (delta: number) => {
@@ -230,9 +234,10 @@ export async function runRealEstateReportJob({
     const reportsDir = path.resolve(process.cwd(), "reports");
     await fs.mkdir(reportsDir, { recursive: true });
     const ts = Date.now();
-    const pdfFilename = `real-estate-report-${newReport._id}-${ts}.pdf`;
-    const docxFilename = `real-estate-report-${newReport._id}-${ts}.docx`;
-    const xlsxFilename = `real-estate-report-${newReport._id}-${ts}.xlsx`;
+    const baseName = `real-estate-report-${newReport._id}-${ts}`;
+    const pdfFilename = `${baseName}.pdf`;
+    const docxFilename = `${baseName}.docx`;
+    const xlsxFilename = `${baseName}.xlsx`;
     const pdfPath = path.join(reportsDir, pdfFilename);
     const docxPath = path.join(reportsDir, docxFilename);
     const xlsxPath = path.join(reportsDir, xlsxFilename);
@@ -241,6 +246,53 @@ export async function runRealEstateReportJob({
       fs.writeFile(docxPath, docxBuffer),
       fs.writeFile(xlsxPath, xlsxBuffer),
     ]);
+
+    // Save original uploaded images to a folder and zip
+    const imagesFolderName = `${baseName}-images`;
+    const imagesDirPath = path.join(reportsDir, imagesFolderName);
+    const imagesZipFilename = `${imagesFolderName}.zip`;
+    const imagesZipPath = path.join(reportsDir, imagesZipFilename);
+    try {
+      start("save_images_folder", "Saving original images to folder");
+      await fs.mkdir(imagesDirPath, { recursive: true });
+      const extFromMime = (m?: string) => {
+        if (!m) return "";
+        if (m.includes("jpeg")) return ".jpg";
+        if (m.includes("png")) return ".png";
+        if (m.includes("webp")) return ".webp";
+        if (m.includes("heic")) return ".heic";
+        if (m.includes("heif")) return ".heif";
+        if (m.includes("gif")) return ".gif";
+        if (m.includes("bmp")) return ".bmp";
+        if (m.includes("tiff")) return ".tiff";
+        return "";
+      };
+      const sanitize = (name: string) => name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      for (let i = 0; i < images.length; i++) {
+        const file = images[i];
+        const orig = file.originalname || "";
+        const fallback = `image-${String(i + 1).padStart(3, "0")}`;
+        const ext = path.extname(orig) || extFromMime((file as any)?.mimetype) || "";
+        const base = sanitize((orig && orig.split("/").pop()!) || fallback + ext);
+        const filePath = path.join(imagesDirPath, base);
+        await fs.writeFile(filePath, file.buffer);
+      }
+      end("save_images_folder");
+
+      start("zip_images", "Zipping images folder");
+      await new Promise<void>((resolve, reject) => {
+        const output = createWriteStream(imagesZipPath);
+        const archive = archiver("zip", { zlib: { level: 9 } });
+        output.on("close", () => resolve());
+        archive.on("error", (err: any) => reject(err));
+        archive.pipe(output);
+        archive.directory(imagesDirPath, false);
+        archive.finalize();
+      });
+      end("zip_images");
+    } catch (e) {
+      console.error("Failed saving/zipping images folder (real-estate)", e);
+    }
     const baseRec = {
       user: user.id,
       report: newReport._id,
@@ -267,6 +319,13 @@ export async function runRealEstateReportJob({
         filename: xlsxFilename,
         fileType: "xlsx",
         filePath: path.join("reports", xlsxFilename),
+      }).save(),
+      new PdfReport({
+        ...baseRec,
+        filename: imagesZipFilename,
+        fileType: "images",
+        filePath: path.join("reports", imagesZipFilename),
+        imagesFolderPath: path.join("reports", imagesFolderName),
       }).save(),
     ]);
     end("save_files");

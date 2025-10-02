@@ -33,11 +33,18 @@ export const approveReport = async (req: any, res: Response) => {
     const report = await PdfReport.findById(id).populate("user", "email username");
     if (!report) return res.status(404).json({ message: "Report not found" });
 
-    report.approvalStatus = "approved" as any;
-    report.approvalNote = "";
-    report.reviewedBy = adminUser?._id;
-    report.reviewedAt = new Date();
-    await report.save();
+    // Approve ALL sibling outputs for the same report (one-click approval)
+    const now = new Date();
+    const filter: any = { report: report.report };
+    // Optional: ensure same owner
+    if ((report as any).user?._id) filter.user = (report as any).user._id;
+    const update: any = {
+      approvalStatus: "approved",
+      approvalNote: "",
+      reviewedBy: adminUser?._id,
+      reviewedAt: now,
+    };
+    await PdfReport.updateMany(filter, update);
 
     const to = (report as any).user?.email as string | undefined;
     if (to) {
@@ -47,7 +54,7 @@ export const approveReport = async (req: any, res: Response) => {
         <div style="font-family: Inter, Arial, sans-serif;">
           <h2 style="color:#111827;">Report Approved ✅</h2>
           <p>Hi ${(report as any).user?.username || "there"},</p>
-          <p>Your report has been approved by ${adminUser?.username || adminUser?.email}.</p>
+          <p>Your report outputs (PDF, DOCX, Excel${report.fileType === 'images' ? '' : ', and Images ZIP' }) have been approved by ${adminUser?.username || adminUser?.email}.</p>
           <ul>
             <li><strong>Type:</strong> ${report.reportType}</li>
             <li><strong>Address:</strong> ${report.address}</li>
@@ -67,7 +74,7 @@ export const approveReport = async (req: any, res: Response) => {
       }
     }
 
-    return res.status(200).json({ message: "Report approved" });
+    return res.status(200).json({ message: "All outputs for this report have been approved" });
   } catch (e) {
     console.error("approveReport error", e);
     return res.status(500).json({ message: "Failed to approve report" });
@@ -86,11 +93,16 @@ export const rejectReport = async (req: any, res: Response) => {
     const report = await PdfReport.findById(id).populate("user", "email username");
     if (!report) return res.status(404).json({ message: "Report not found" });
 
-    report.approvalStatus = "rejected" as any;
-    report.approvalNote = note.trim();
-    report.reviewedBy = adminUser?._id;
-    report.reviewedAt = new Date();
-    await report.save();
+    // Reject ALL sibling outputs for the same report
+    const now = new Date();
+    const filter: any = { report: report.report };
+    if ((report as any).user?._id) filter.user = (report as any).user._id;
+    await PdfReport.updateMany(filter, {
+      approvalStatus: "rejected",
+      approvalNote: note.trim(),
+      reviewedBy: adminUser?._id,
+      reviewedAt: now,
+    });
 
     const to = (report as any).user?.email as string | undefined;
     if (to) {
@@ -118,7 +130,7 @@ export const rejectReport = async (req: any, res: Response) => {
       }
     }
 
-    return res.status(200).json({ message: "Report rejected" });
+    return res.status(200).json({ message: "All outputs for this report have been rejected" });
   } catch (e) {
     console.error("rejectReport error", e);
     return res.status(500).json({ message: "Failed to reject report" });

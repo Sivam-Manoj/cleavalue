@@ -17,7 +17,8 @@ export function buildHeaderTable(
   userEmail?: string | null
 ): Table {
   const site = "www.McDougallBay.com";
-  const phone = "(306)757-1747";
+  const phone = "(800)263-4193";
+  const address = "301 – 15 Great Plains Road, Emerald Park, SK  S4L 1C6";
   const email = (userEmail && String(userEmail)) || "";
 
   return new Table({
@@ -56,6 +57,12 @@ export function buildHeaderTable(
           new TableCell({
             margins: { top: 40, bottom: 20, left: 40, right: 40 },
             children: [
+              // Address line
+              new Paragraph({
+                alignment: AlignmentType.RIGHT,
+                children: [new TextRun({ text: address, size: 20, color: "6B7280" })],
+              }),
+              // Site • Phone • Employee email
               new Paragraph({
                 alignment: AlignmentType.RIGHT,
                 children: [
@@ -64,11 +71,7 @@ export function buildHeaderTable(
                   new TextRun({ text: phone, size: 20, color: "6B7280" }),
                   ...(email
                     ? [
-                        new TextRun({
-                          text: "  •  ",
-                          size: 20,
-                          color: "9CA3AF",
-                        }),
+                        new TextRun({ text: "  •  ", size: 20, color: "9CA3AF" }),
                         new TextRun({ text: email, size: 20, color: "6B7280" }),
                       ]
                     : []),

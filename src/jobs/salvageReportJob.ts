@@ -11,6 +11,8 @@ import { startProgress, updateProgress, endProgress, type StepRec as StoreStepRe
 import { sendEmail } from "../utils/sendVerificationEmail.js";
 import fs from "fs/promises";
 import path from "path";
+import { createWriteStream } from "fs";
+import archiver from "archiver";
 
 export type SalvageJobInput = {
   user: { id: string; email?: string | null; name?: string | null };
@@ -47,7 +49,7 @@ export async function runSalvageReportJob({ user, images, details, progressId }:
     const steps: StepRec[] = [];
     if (progressId) startProgress(progressId);
     const syncSteps = () => progressId && updateProgress(progressId, { steps: steps as unknown as StoreStepRec[] });
-    const SERVER_WEIGHTS = { r2_upload: 0.25, ai_analysis: 0.35, find_comparables: 0.1, valuation: 0.1, save_report: 0.05, generate_pdf: 0.06, generate_docx: 0.05, generate_xlsx: 0.02, save_files: 0.02 } as const;
+    const SERVER_WEIGHTS = { r2_upload: 0.25, ai_analysis: 0.35, find_comparables: 0.1, valuation: 0.1, save_report: 0.05, generate_pdf: 0.06, generate_docx: 0.05, generate_xlsx: 0.02, save_files: 0.02, save_images_folder: 0.03, zip_images: 0.02 } as const;
     let accum = 0;
     const setProg = (delta: number) => { if (!progressId) return; accum = Math.min(1, accum + delta); updateProgress(progressId, { serverProgress01: accum }); };
     const start = (key: keyof typeof SERVER_WEIGHTS, label: string) => { steps.push({ key, label, startedAt: new Date().toISOString() }); syncSteps(); };
@@ -233,6 +235,53 @@ export async function runSalvageReportJob({ user, images, details, progressId }:
     ]);
     end("save_files");
 
+    // Save original uploaded images to a folder and zip
+    const imagesFolderName = `${base}-images`;
+    const imagesDirPath = path.join(reportsDir, imagesFolderName);
+    const imagesZipFilename = `${imagesFolderName}.zip`;
+    const imagesZipPath = path.join(reportsDir, imagesZipFilename);
+    try {
+      start("save_images_folder", "Saving original images to folder");
+      await fs.mkdir(imagesDirPath, { recursive: true });
+      const extFromMime = (m?: string) => {
+        if (!m) return "";
+        if (m.includes("jpeg")) return ".jpg";
+        if (m.includes("png")) return ".png";
+        if (m.includes("webp")) return ".webp";
+        if (m.includes("heic")) return ".heic";
+        if (m.includes("heif")) return ".heif";
+        if (m.includes("gif")) return ".gif";
+        if (m.includes("bmp")) return ".bmp";
+        if (m.includes("tiff")) return ".tiff";
+        return "";
+      };
+      const sanitize = (name: string) => name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      for (let i = 0; i < images.length; i++) {
+        const file = images[i];
+        const orig = file.originalname || "";
+        const fallback = `image-${String(i + 1).padStart(3, "0")}`;
+        const ext = path.extname(orig) || extFromMime((file as any)?.mimetype) || "";
+        const baseName = sanitize((orig && orig.split("/").pop()!) || fallback + ext);
+        const filePath = path.join(imagesDirPath, baseName);
+        await fs.writeFile(filePath, file.buffer);
+      }
+      end("save_images_folder");
+
+      start("zip_images", "Zipping images folder");
+      await new Promise<void>((resolve, reject) => {
+        const output = createWriteStream(imagesZipPath);
+        const archive = archiver("zip", { zlib: { level: 9 } });
+        output.on("close", () => resolve());
+        archive.on("error", (err: any) => reject(err));
+        archive.pipe(output);
+        archive.directory(imagesDirPath, false);
+        archive.finalize();
+      });
+      end("zip_images");
+    } catch (e) {
+      console.error("Failed saving/zipping images folder (salvage)", e);
+    }
+
     const baseRec = {
       user: user.id,
       report: newReport._id,
@@ -245,6 +294,13 @@ export async function runSalvageReportJob({ user, images, details, progressId }:
       new (PdfReport as any)({ ...baseRec, filename: pdfFilename, fileType: "pdf", filePath: path.join("reports", pdfFilename) }).save(),
       new (PdfReport as any)({ ...baseRec, filename: docxFilename, fileType: "docx", filePath: path.join("reports", docxFilename) }).save(),
       new (PdfReport as any)({ ...baseRec, filename: xlsxFilename, fileType: "xlsx", filePath: path.join("reports", xlsxFilename) }).save(),
+      new (PdfReport as any)({
+        ...baseRec,
+        filename: imagesZipFilename,
+        fileType: "images",
+        filePath: path.join("reports", imagesZipFilename),
+        imagesFolderPath: path.join("reports", imagesFolderName),
+      }).save(),
     ]);
 
     // Completion email
