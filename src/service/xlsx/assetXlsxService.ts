@@ -62,6 +62,136 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
   ];
   const DEFAULT_LOCATION = LOCATION_LIST[0];
 
+  // Allowed Categories (mirrors prompt's allowedCategories)
+  const CATEGORIES_LIST = [
+    "Buyer Return",
+    "Cleaning And Repair",
+    "Commissions",
+    "Storage",
+    "Conveyors",
+    "Crushers",
+    "Feeders",
+    "Material Washing Equipment",
+    "Power Stations",
+    "Screening Equipment",
+    "Applicators",
+    "Grain Handling",
+    "Harvest",
+    "Hay & Forage",
+    "Landscape Equipment",
+    "Livestock Handling",
+    "Seeding And Tilling",
+    "Tractor Attachments",
+    "Tractors",
+    "Trailers",
+    "Air Support",
+    "Airplane",
+    "Crawler Tractor Attachments",
+    "Demolition Attachments",
+    "Excavator Attachments",
+    "Loader Backhoe Attachments",
+    "Motor Grader Attachments",
+    "Skid Steer Attachments",
+    "Truck Attachments",
+    "Wheel Loader Attachments",
+    "Cars / SUVs / Vans",
+    "Computers / Electronics / Photocopiers / Office Equipment",
+    "Articulated Dump Trucks",
+    "Compactors",
+    "Cranes",
+    "Dozers",
+    "Drill",
+    "Excavators",
+    "Generators",
+    "Haul Trucks",
+    "Loader Backhoes",
+    "Loaders",
+    "Motor Graders",
+    "RTMove Homes / Mobile Homes / Sheds / Skid Shacks",
+    "Scrapers",
+    "Skid Steers",
+    "Water Wagons",
+    "Firearms And Accessories",
+    "Chipping / Shredding",
+    "Self Propelled Clearing",
+    "Skidder",
+    "General Merchandise",
+    "Heavy Trucks",
+    "Jewellery",
+    "Boom And Scissor Lifts",
+    "Forklift",
+    "Telehandler",
+    "Light Duty Freight Trailers",
+    "Light Duty Trucks (1 Ton And Under)",
+    "Asphalt Trucks",
+    "Concrete Mixer Truck",
+    "Concrete Mixing",
+    "Concrete Paving",
+    "Concrete Plant / Components",
+    "Concrete Pump",
+    "Concrete Pump Trucks",
+    "Oil & Gas",
+    "Paving Equipment",
+    "Rail Road Equipment",
+    "Commercial",
+    "Farm Land",
+    "Residential",
+    "ATVs / UTVs",
+    "Camper Trailer",
+    "Golf Cart",
+    "Motorcycles",
+    "Motorhome",
+    "Snowmobiles",
+    "Watercraft",
+    "Restaurant Equipment",
+    "Salvage And Seized Vehicles",
+    "Semi Tractors",
+    "Semi Trailers",
+    "Storage Wars",
+    "Yard Care And Lawn Equipment / Lumber",
+  ];
+  const DEFAULT_CATEGORY = "General Merchandise";
+
+  // Normalization helpers
+  const normalizeCategory = (v: any): string => {
+    try {
+      if (v === undefined || v === null) return DEFAULT_CATEGORY;
+      const s = String(v).trim();
+      if (!s) return DEFAULT_CATEGORY;
+      const sl = s.toLowerCase();
+      // exact case-insensitive match
+      const exact = CATEGORIES_LIST.find((c) => c.toLowerCase() === sl);
+      if (exact) return exact;
+      // partial includes (both directions)
+      const partial = CATEGORIES_LIST.find((c) => c.toLowerCase().includes(sl) || sl.includes(c.toLowerCase()));
+      if (partial) return partial;
+      // naive plural/singular flip
+      const alt = sl.endsWith("s") ? sl.slice(0, -1) : sl + "s";
+      const fuzzy = CATEGORIES_LIST.find((c) => c.toLowerCase() === alt || c.toLowerCase().includes(alt) || alt.includes(c.toLowerCase()));
+      return fuzzy || DEFAULT_CATEGORY;
+    } catch {
+      return DEFAULT_CATEGORY;
+    }
+  };
+
+  const normalizeCondition = (v: any): string => {
+    try {
+      const fallback = CONDITION_LIST[0];
+      if (v === undefined || v === null) return fallback;
+      const s = String(v).trim();
+      if (!s) return fallback;
+      const sl = s.toLowerCase();
+      // exact match ignoring case
+      const exact = CONDITION_LIST.find((c) => c.toLowerCase() === sl);
+      if (exact) return exact;
+      if (sl.includes("unused") || sl.includes("new")) return "Unused";
+      if (sl.includes("untested")) return "Untested";
+      return fallback;
+    } catch {
+      return CONDITION_LIST[0];
+    }
+  };
+
   const toBoolCell = (v: any) => (v === undefined || v === null ? "" : !!v);
   const toNumCell = (v: any) => {
     if (v === undefined || v === null) return "";
@@ -75,7 +205,7 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
     toNumCell(rec?.quantity),
     toBoolCell(rec?.must_take),
     toStrCell(defaultContractNo),
-    toStrCell(rec?.categories),
+    toStrCell(normalizeCategory(rec?.categories)),
     toStrCell(rec?.serial_number ?? deriveSerial(rec)),
     toBoolCell(rec?.show_on_website),
     toStrCell(rec?.close_date),
@@ -84,7 +214,7 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
     toNumCell(rec?.opening_bid),
     toNumCell(rec?.latitude),
     toNumCell(rec?.longitude),
-    toStrCell(rec?.item_condition ?? CONDITION_LIST[0]),
+    toStrCell(normalizeCondition(rec?.item_condition)),
   ];
 
   // Prefer explicit excel rows from report JSON object, then array; otherwise derive from lots/items
