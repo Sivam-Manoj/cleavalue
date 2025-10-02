@@ -56,9 +56,29 @@
         color: #4a5568;
       }
       /* Watermark */
-      .watermark { position: fixed; inset: 0; z-index: 50; pointer-events: none; display: flex; align-items: center; justify-content: center; }
-      .watermark-text { font-size: clamp(48px, 12vw, 160px); font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; transform: rotate(-30deg); color: rgba(0,0,0,0.06); -webkit-text-stroke: 1px rgba(0,0,0,0.08); }
-      @media print { .watermark { position: fixed !important; } }
+      .watermark {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        pointer-events: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .watermark-text {
+        font-size: clamp(48px, 12vw, 160px);
+        font-weight: 800;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        transform: rotate(-30deg);
+        color: rgba(0, 0, 0, 0.06);
+        -webkit-text-stroke: 1px rgba(0, 0, 0, 0.08);
+      }
+      @media print {
+        .watermark {
+          position: fixed !important;
+        }
+      }
     </style>
   </head>
   <body class="bg-gray-100">
@@ -66,23 +86,40 @@
       <div class="watermark-text">{{tt.confidential}}</div>
     </div>
     <!-- Cover Page -->
-    <section id="cover-page" class="w-full h-screen flex items-center justify-center bg-white">
+    <section
+      id="cover-page"
+      class="w-full h-screen flex items-center justify-center bg-white"
+    >
       <div class="max-w-3xl w-full text-center p-10">
         <img src="{{logo_url}}" alt="Company Logo" class="h-16 mx-auto mb-6" />
         <h1 class="text-5xl font-bold brand-red mb-2">{{tt.title}}</h1>
-        <p class="text-xl text-gray-700 mb-8">{{year}} {{make}} {{item_model}}</p>
+        <p class="text-xl text-gray-700 mb-8">
+          {{year}} {{make}} {{item_model}}
+        </p>
         <div class="mx-auto max-w-2xl text-left">
-          <div class="rounded-2xl border border-gray-300 shadow-md bg-white overflow-hidden">
+          <div
+            class="rounded-2xl border border-gray-300 shadow-md bg-white overflow-hidden"
+          >
             <div class="flex">
               <div class="w-1.5 bg-brand-red"></div>
               <div class="flex-1 grid grid-cols-1 sm:grid-cols-2">
                 <div class="p-5 sm:p-6">
-                  <div class="text-xs uppercase tracking-wider text-gray-500">{{tt.preparedFor}}</div>
-                  <div class="mt-1 text-2xl font-semibold text-gray-900">{{insured_name}}</div>
+                  <div class="text-xs uppercase tracking-wider text-gray-500">
+                    {{tt.preparedFor}}
+                  </div>
+                  <div class="mt-1 text-2xl font-semibold text-gray-900">
+                    {{insured_name}}
+                  </div>
                 </div>
-                <div class="p-5 sm:p-6 border-t sm:border-t-0 sm:border-l border-gray-300">
-                  <div class="text-xs uppercase tracking-wider text-gray-500">{{tt.reportDate}}</div>
-                  <div class="mt-1 text-2xl font-semibold text-gray-900">{{formatDate report_date}}</div>
+                <div
+                  class="p-5 sm:p-6 border-t sm:border-t-0 sm:border-l border-gray-300"
+                >
+                  <div class="text-xs uppercase tracking-wider text-gray-500">
+                    {{tt.reportDate}}
+                  </div>
+                  <div class="mt-1 text-2xl font-semibold text-gray-900">
+                    {{formatDate report_date}}
+                  </div>
                 </div>
               </div>
             </div>
@@ -107,29 +144,43 @@
 
       <!-- Report Summary -->
       <section class="card">
-        <h2 class="text-2xl font-semibold section-title">{{tt.reportSummary}}</h2>
+        <h2 class="text-2xl font-semibold section-title">
+          {{tt.reportSummary}}
+        </h2>
         <div class="overflow-x-auto">
           <table class="min-w-full table-auto">
             <tbody class="divide-y divide-gray-200">
               <tr>
-                <td class="py-2 pr-4 font-medium text-gray-700 w-1/3">{{tt.preparedFor}}</td>
+                <td class="py-2 pr-4 font-medium text-gray-700 w-1/3">
+                  {{tt.preparedFor}}
+                </td>
                 <td class="py-2 text-gray-900">{{company_name}}</td>
               </tr>
               <tr>
-                <td class="py-2 pr-4 font-medium text-gray-700">{{tt.appraiser}}</td>
+                <td class="py-2 pr-4 font-medium text-gray-700">
+                  {{tt.appraiser}}
+                </td>
                 <td class="py-2 text-gray-900">{{appraiser_name}}</td>
               </tr>
               <tr>
-                <td class="py-2 pr-4 font-medium text-gray-700">{{tt.reportDate}}</td>
+                <td class="py-2 pr-4 font-medium text-gray-700">
+                  {{tt.reportDate}}
+                </td>
                 <td class="py-2 text-gray-900">{{formatDate report_date}}</td>
               </tr>
               <tr>
-                <td class="py-2 pr-4 font-medium text-gray-700">{{tt.fileNumber}}</td>
+                <td class="py-2 pr-4 font-medium text-gray-700">
+                  {{tt.fileNumber}}
+                </td>
                 <td class="py-2 text-gray-900">{{file_number}}</td>
               </tr>
               <tr>
-                <td class="py-2 pr-4 font-medium text-gray-700">{{tt.totalValue}}</td>
-                <td class="py-2 text-gray-900">{{currencyFormat valuation.fairMarketValue}}</td>
+                <td class="py-2 pr-4 font-medium text-gray-700">
+                  {{tt.totalValue}}
+                </td>
+                <td class="py-2 text-gray-900">
+                  {{currencyFormat valuation.fairMarketValue}}
+                </td>
               </tr>
             </tbody>
           </table>
@@ -139,7 +190,9 @@
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div class="lg:col-span-2">
           <div class="card">
-            <h2 class="text-2xl font-semibold section-title">{{tt.reportDetails}}</h2>
+            <h2 class="text-2xl font-semibold section-title">
+              {{tt.reportDetails}}
+            </h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
               <div class="detail-item">
                 <strong>{{tt.reportDate}}:</strong>
@@ -157,38 +210,52 @@
                 <strong>{{tt.fileNumber}}:</strong> <span>{{file_number}}</span>
               </div>
               <div class="detail-item">
-                <strong>{{tt.claimNumber}}:</strong> <span>{{claim_number}}</span>
+                <strong>{{tt.claimNumber}}:</strong>
+                <span>{{claim_number}}</span>
               </div>
               <div class="detail-item">
-                <strong>{{tt.policyNumber}}:</strong> <span>{{policy_number}}</span>
+                <strong>{{tt.policyNumber}}:</strong>
+                <span>{{policy_number}}</span>
               </div>
               <div class="detail-item">
-                <strong>{{tt.lossType}}:</strong> <span>{{reported_loss_type}}</span>
+                <strong>{{tt.lossType}}:</strong>
+                <span>{{reported_loss_type}}</span>
               </div>
             </div>
 
-            <h3 class="text-xl font-semibold section-title mt-6">{{tt.assetDetails}}</h3>
+            <h3 class="text-xl font-semibold section-title mt-6">
+              {{tt.assetDetails}}
+            </h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
               <div class="detail-item">
-                <strong>{{tt.itemType}}:</strong> <span>{{item_type}}</span>
+                <strong>{{tt.itemType}}:</strong>
+                <span>{{coalesce item_type aiExtractedDetails.item_type}}</span>
               </div>
               <div class="detail-item">
-                <strong>{{tt.year}}:</strong> <span>{{year}}</span>
+                <strong>{{tt.year}}:</strong>
+                <span>{{coalesce year aiExtractedDetails.year}}</span>
               </div>
               <div class="detail-item">
-                <strong>{{tt.make}}:</strong> <span>{{make}}</span>
+                <strong>{{tt.make}}:</strong>
+                <span>{{coalesce make aiExtractedDetails.make}}</span>
               </div>
               <div class="detail-item">
-                <strong>{{tt.model}}:</strong> <span>{{item_model}}</span>
+                <strong>{{tt.model}}:</strong>
+                <span
+                  >{{coalesce item_model aiExtractedDetails.item_model}}</span
+                >
               </div>
               <div class="detail-item">
-                <strong>{{tt.vin}}:</strong> <span>{{vin}}</span>
+                <strong>{{tt.vin}}:</strong>
+                <span>{{coalesce vin aiExtractedDetails.vin}}</span>
               </div>
             </div>
           </div>
 
           <div class="card">
-            <h2 class="text-2xl font-semibold section-title">{{tt.damageRepairAnalysis}}</h2>
+            <h2 class="text-2xl font-semibold section-title">
+              {{tt.damageRepairAnalysis}}
+            </h2>
             <div class="mb-4 p-4 bg-red-50 rounded-lg">
               <h3 class="font-bold text-lg brand-red">{{tt.itemCondition}}</h3>
               <p>{{aiExtractedDetails.item_condition}}</p>
@@ -224,67 +291,116 @@
           </div>
 
           <div class="card">
-            <h2 class="text-2xl font-semibold section-title">{{tt.repairEstimate}}</h2>
+            <h2 class="text-2xl font-semibold section-title">
+              {{tt.repairEstimate}}
+            </h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
               <div class="detail-item">
                 <strong>{{tt.parts}}:</strong>
-                <span>{{currencyFormat aiExtractedDetails.repair_estimate.parts}}</span>
+                <span
+                  >{{currencyFormat
+                  aiExtractedDetails.repair_estimate.parts}}</span
+                >
               </div>
               <div class="detail-item">
                 <strong>{{tt.labour}}:</strong>
-                <span>{{currencyFormat aiExtractedDetails.repair_estimate.labour}}</span>
+                <span
+                  >{{currencyFormat
+                  aiExtractedDetails.repair_estimate.labour}}</span
+                >
               </div>
               <div class="detail-item">
                 <strong>{{tt.shopSupplies}}:</strong>
-                <span>{{currencyFormat aiExtractedDetails.repair_estimate.shop_supplies}}</span>
+                <span
+                  >{{currencyFormat
+                  aiExtractedDetails.repair_estimate.shop_supplies}}</span
+                >
               </div>
               <div class="detail-item">
                 <strong>{{tt.miscellaneous}}:</strong>
-                <span>{{currencyFormat aiExtractedDetails.repair_estimate.miscellaneous}}</span>
+                <span
+                  >{{currencyFormat
+                  aiExtractedDetails.repair_estimate.miscellaneous}}</span
+                >
               </div>
               <div class="detail-item">
                 <strong>{{tt.taxes}}:</strong>
-                <span>{{currencyFormat aiExtractedDetails.repair_estimate.taxes}}</span>
+                <span
+                  >{{currencyFormat
+                  aiExtractedDetails.repair_estimate.taxes}}</span
+                >
               </div>
               <div class="detail-item">
                 <strong>{{tt.lessBetterment}}:</strong>
-                <span class="text-red-600">-{{currencyFormat aiExtractedDetails.repair_estimate.less_betterment}}</span>
+                <span class="text-red-600"
+                  >-{{currencyFormat
+                  aiExtractedDetails.repair_estimate.less_betterment}}</span
+                >
               </div>
             </div>
             <div class="mt-4 pt-4 border-t-2 border-gray-300 text-right">
               <strong class="text-xl">{{tt.totalEstimate}}:</strong>
-              <span class="text-xl font-bold brand-red">{{currencyFormat aiExtractedDetails.repair_estimate.total}}</span>
-              </div>
+              <span class="text-xl font-bold brand-red"
+                >{{currencyFormat
+                aiExtractedDetails.repair_estimate.total}}</span
+              >
             </div>
+          </div>
 
           <div class="card">
-            <h2 class="text-2xl font-semibold section-title">{{tt.valuationSummary}}</h2>
+            <h2 class="text-2xl font-semibold section-title">
+              {{tt.valuationSummary}}
+            </h2>
             <div class="overflow-x-auto">
               <table class="min-w-full table-auto">
                 <tbody class="divide-y divide-gray-200">
                   <tr>
-                    <td class="py-2 pr-4 font-medium text-gray-700 w-1/3">{{tt.totalValue}}</td>
-                    <td class="py-2 text-gray-900">{{currencyFormat valuation.fairMarketValue}}</td>
+                    <td class="py-2 pr-4 font-medium text-gray-700 w-1/3">
+                      {{tt.totalValue}}
+                    </td>
+                    <td class="py-2 text-gray-900">
+                      {{currencyFormat valuation.fairMarketValue}}
+                    </td>
                   </tr>
                   <tr>
-                    <td class="py-2 pr-4 font-medium text-gray-700">{{tt.confidence}}</td>
-                    <td class="py-2 text-gray-900">{{valuation.confidence_level}}</td>
+                    <td class="py-2 pr-4 font-medium text-gray-700">
+                      {{tt.confidence}}
+                    </td>
+                    <td class="py-2 text-gray-900">
+                      {{valuation.confidence_level}}
+                    </td>
                   </tr>
                   <tr>
-                    <td class="py-2 pr-4 font-medium text-gray-700">{{tt.recommendedReserve}}</td>
-                    <td class="py-2 text-gray-900">{{currencyFormat aiExtractedDetails.recommended_reserve}}</td>
+                    <td class="py-2 pr-4 font-medium text-gray-700">
+                      {{tt.recommendedReserve}}
+                    </td>
+                    <td class="py-2 text-gray-900">
+                      {{currencyFormat aiExtractedDetails.recommended_reserve}}
+                    </td>
                   </tr>
                   <tr>
-                    <td class="py-2 pr-4 font-medium text-gray-700">{{tt.actualCashValue}}</td>
-                    <td class="py-2 text-gray-900">{{currencyFormat aiExtractedDetails.actual_cash_value}}</td>
+                    <td class="py-2 pr-4 font-medium text-gray-700">
+                      {{tt.actualCashValue}}
+                    </td>
+                    <td class="py-2 text-gray-900">
+                      {{currencyFormat aiExtractedDetails.actual_cash_value}}
+                    </td>
                   </tr>
                   <tr>
-                    <td class="py-2 pr-4 font-medium text-gray-700">{{tt.replacementCost}}</td>
-                    <td class="py-2 text-gray-900">{{currencyFormat aiExtractedDetails.replacement_cost}}</td>
+                    <td class="py-2 pr-4 font-medium text-gray-700">
+                      {{tt.replacementCost}}
+                    </td>
+                    <td class="py-2 text-gray-900">
+                      {{currencyFormat aiExtractedDetails.replacement_cost}}
+                    </td>
                   </tr>
                   <tr>
-                    <td class="py-2 pr-4 font-medium text-gray-700">{{tt.replacementCostReferences}}</td>
-                    <td class="py-2 text-gray-900">{{aiExtractedDetails.replacement_cost_references}}</td>
+                    <td class="py-2 pr-4 font-medium text-gray-700">
+                      {{tt.replacementCostReferences}}
+                    </td>
+                    <td class="py-2 text-gray-900">
+                      {{aiExtractedDetails.replacement_cost_references}}
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -298,7 +414,9 @@
           </div>
 
           <div class="card">
-            <h2 class="text-2xl font-semibold section-title">{{tt.lossSummaryComments}}</h2>
+            <h2 class="text-2xl font-semibold section-title">
+              {{tt.lossSummaryComments}}
+            </h2>
             <div>
               <h3 class="font-bold text-lg">{{tt.appraiserComments}}</h3>
               <p class="text-gray-700">{{appraiser_comments}}</p>
@@ -308,7 +426,9 @@
 
         <div class="lg:col-span-1">
           <div class="card">
-            <h2 class="text-2xl font-semibold section-title">{{tt.contactInformation}}</h2>
+            <h2 class="text-2xl font-semibold section-title">
+              {{tt.contactInformation}}
+            </h2>
             <div class="space-y-3">
               <div class="detail-item">
                 <strong>{{tt.insured}}:</strong> <span>{{insured_name}}</span>
@@ -317,7 +437,8 @@
                 <strong>{{tt.adjuster}}:</strong> <span>{{adjuster_name}}</span>
               </div>
               <div class="detail-item">
-                <strong>{{tt.appraiser}}:</strong> <span>{{appraiser_name}}</span>
+                <strong>{{tt.appraiser}}:</strong>
+                <span>{{appraiser_name}}</span>
               </div>
               <div class="detail-item">
                 <strong>{{tt.phone}}:</strong> <span>{{appraiser_phone}}</span>
@@ -337,10 +458,18 @@
           <table class="min-w-full table-auto">
             <thead>
               <tr class="bg-gray-50">
-                <th class="text-left font-semibold text-gray-700 py-2 px-3">{{tt.compsColumnsTitle}}</th>
-                <th class="text-left font-semibold text-gray-700 py-2 px-3">{{tt.compsColumnsPrice}}</th>
-                <th class="text-left font-semibold text-gray-700 py-2 px-3">{{tt.compsColumnsLocation}}</th>
-                <th class="text-left font-semibold text-gray-700 py-2 px-3">{{tt.compsColumnsLink}}</th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">
+                  {{tt.compsColumnsTitle}}
+                </th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">
+                  {{tt.compsColumnsPrice}}
+                </th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">
+                  {{tt.compsColumnsLocation}}
+                </th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">
+                  {{tt.compsColumnsLink}}
+                </th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
@@ -350,7 +479,12 @@
                 <td class="py-2 px-3">{{price}}</td>
                 <td class="py-2 px-3">{{location}}</td>
                 <td class="py-2 px-3">
-                  <a href="{{link}}" class="text-blue-600 hover:underline" target="_blank">{{tt.viewListing}}</a>
+                  <a
+                    href="{{link}}"
+                    class="text-blue-600 hover:underline"
+                    target="_blank"
+                    >{{tt.viewListing}}</a
+                  >
                 </td>
               </tr>
               {{/each}}
@@ -362,14 +496,20 @@
       <!-- Comparable Details matrix -->
       {{#if compDetailsLabels.length}}
       <section class="card">
-        <h2 class="text-2xl font-semibold section-title">{{tt.comparableDetails}}</h2>
+        <h2 class="text-2xl font-semibold section-title">
+          {{tt.comparableDetails}}
+        </h2>
         <div class="overflow-x-auto">
           <table class="min-w-full table-auto">
             <thead>
               <tr class="bg-gray-50">
-                <th class="text-left font-semibold text-gray-700 py-2 px-3">{{tt.specField}}</th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">
+                  {{tt.specField}}
+                </th>
                 {{#each comparableItems}}
-                <th class="text-left font-semibold text-gray-700 py-2 px-3">{{title}}</th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">
+                  {{title}}
+                </th>
                 {{/each}}
               </tr>
             </thead>
@@ -379,15 +519,9 @@
                 <td class="py-2 px-3">{{this}}</td>
                 {{#each ../comparableItems}}
                 <td class="py-2 px-3">
-                  {{#if details}}
-                    {{#if (lookup details ../this)}}
-                      {{lookup details ../this}}
-                    {{else}}
-                      {{../tt.notFound}}
-                    {{/if}}
-                  {{else}}
-                    {{../tt.notFound}}
-                  {{/if}}
+                  {{#if details}} {{#if (lookup details ../this)}} {{lookup
+                  details ../this}} {{else}} {{../tt.notFound}} {{/if}} {{else}}
+                  {{../tt.notFound}} {{/if}}
                 </td>
                 {{/each}}
               </tr>
@@ -400,15 +534,25 @@
 
       <!-- Specialty Valuation Data: Field | Client Vehicle | Comparable 1 | Adjustments -->
       <section class="card">
-        <h2 class="text-2xl font-semibold section-title">{{tt.specValuationHeader}}</h2>
+        <h2 class="text-2xl font-semibold section-title">
+          {{tt.specValuationHeader}}
+        </h2>
         <div class="overflow-x-auto">
           <table class="min-w-full table-auto">
             <thead>
               <tr class="bg-gray-50">
-                <th class="text-left font-semibold text-gray-700 py-2 px-3">{{tt.specField}}</th>
-                <th class="text-left font-semibold text-gray-700 py-2 px-3">{{tt.specClient}}</th>
-                <th class="text-left font-semibold text-gray-700 py-2 px-3">{{tt.specComp1}}</th>
-                <th class="text-left font-semibold text-gray-700 py-2 px-3">{{tt.specAdj}}</th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">
+                  {{tt.specField}}
+                </th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">
+                  {{tt.specClient}}
+                </th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">
+                  {{tt.specComp1}}
+                </th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">
+                  {{tt.specAdj}}
+                </th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
@@ -416,22 +560,20 @@
               <tr>
                 <td class="py-2 px-3">{{this}}</td>
                 <td class="py-2 px-3">
-                  {{#if specialty_data.client_vehicle}}
-                    {{#if (lookup specialty_data.client_vehicle this)}}
-                      {{lookup specialty_data.client_vehicle this}}
-                    {{else}}{{tt.notFound}}{{/if}}
-                  {{else}}{{tt.notFound}}{{/if}}
+                  {{#if specialty_data.client_vehicle}} {{#if (lookup
+                  specialty_data.client_vehicle this)}} {{lookup
+                  specialty_data.client_vehicle this}}
+                  {{else}}{{tt.notFound}}{{/if}} {{else}}{{tt.notFound}}{{/if}}
                 </td>
                 <td class="py-2 px-3">
-                  {{#if specialty_data.comparable_1}}
-                    {{#if (lookup specialty_data.comparable_1 this)}}
-                      {{lookup specialty_data.comparable_1 this}}
-                    {{else}}{{tt.notFound}}{{/if}}
-                  {{else}}{{tt.notFound}}{{/if}}
+                  {{#if specialty_data.comparable_1}} {{#if (lookup
+                  specialty_data.comparable_1 this)}} {{lookup
+                  specialty_data.comparable_1 this}}
+                  {{else}}{{tt.notFound}}{{/if}} {{else}}{{tt.notFound}}{{/if}}
                 </td>
                 <td class="py-2 px-3">
                   {{#if (lookup specialty_data.adjustments this)}}
-                    {{currencyFormat (lookup specialty_data.adjustments this)}}
+                  {{currencyFormat (lookup specialty_data.adjustments this)}}
                   {{else}}0{{/if}}
                 </td>
               </tr>
@@ -440,6 +582,230 @@
           </table>
         </div>
       </section>
+
+      <!-- Itemized Parts -->
+      <div class="card">
+        <h2 class="text-2xl font-semibold section-title">
+          {{tt.itemizedPartsHeading}}
+        </h2>
+        {{#if partsRows.length}}
+        <div class="overflow-x-auto">
+          <table class="min-w-full table-auto">
+            <thead>
+              <tr class="bg-gray-50">
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">
+                  {{tt.partsColumns.item}}
+                </th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">
+                  {{tt.partsColumns.sku}}
+                </th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">
+                  {{tt.partsColumns.oem}}
+                </th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">
+                  {{tt.partsColumns.qty}}
+                </th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">
+                  {{tt.partsColumns.unitPrice}}
+                </th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">
+                  {{tt.partsColumns.lineTotal}}
+                </th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">
+                  {{tt.partsColumns.vendor}}
+                </th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">
+                  {{tt.partsColumns.link}}
+                </th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">
+                  {{tt.partsColumns.leadTime}}
+                </th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">
+                  {{tt.partsColumns.notes}}
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+              {{#each partsRows}}
+              <tr>
+                <td class="py-2 px-3">{{name}}</td>
+                <td class="py-2 px-3">{{sku}}</td>
+                <td class="py-2 px-3">{{oem_or_aftermarket}}</td>
+                <td class="py-2 px-3">{{_qty}}</td>
+                <td class="py-2 px-3">{{currencyFormat _unit}}</td>
+                <td class="py-2 px-3">{{currencyFormat _line}}</td>
+                <td class="py-2 px-3">{{vendor}}</td>
+                <td class="py-2 px-3">
+                  {{#if vendor_link}}
+                  <a
+                    href="{{vendor_link}}"
+                    target="_blank"
+                    class="text-blue-600 hover:underline"
+                    >{{tt.viewListing}}</a
+                  >
+                  {{/if}}
+                </td>
+                <td class="py-2 px-3">{{lead_time_days}}</td>
+                <td class="py-2 px-3">{{notes}}</td>
+              </tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
+        {{else}}
+        <div class="text-sm text-gray-500">—</div>
+        {{/if}}
+      </div>
+
+      <!-- Labour Breakdown -->
+      <div class="card">
+        <h2 class="text-2xl font-semibold section-title">
+          {{tt.labourBreakdownHeading}}
+        </h2>
+        {{#if labourRows.length}}
+        <div class="overflow-x-auto">
+          <table class="min-w-full table-auto">
+            <thead>
+              <tr class="bg-gray-50">
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">
+                  {{tt.labourColumns.task}}
+                </th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">
+                  {{tt.labourColumns.hours}}
+                </th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">
+                  {{tt.labourColumns.rate}}
+                </th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">
+                  {{tt.labourColumns.lineTotal}}
+                </th>
+                <th class="text-left font-semibold text-gray-700 py-2 px-3">
+                  {{tt.labourColumns.notes}}
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+              {{#each labourRows}}
+              <tr>
+                <td class="py-2 px-3">{{task}}</td>
+                <td class="py-2 px-3">{{_hours}}</td>
+                <td class="py-2 px-3">{{currencyFormat _rate}}</td>
+                <td class="py-2 px-3">{{currencyFormat _line}}</td>
+                <td class="py-2 px-3">{{notes}}</td>
+              </tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
+        {{else}}
+        <div class="text-sm text-gray-500">—</div>
+        {{/if}}
+      </div>
+
+      <!-- Estimate Composition -->
+      <div class="card">
+        <h2 class="text-2xl font-semibold section-title">
+          {{tt.estimateComposition}}
+        </h2>
+        <div class="overflow-x-auto">
+          <table class="min-w-full table-auto">
+            <tbody class="divide-y divide-gray-200">
+              <tr>
+                <td class="py-2 pr-4 font-medium text-gray-700 w-1/3">
+                  {{tt.compositionRows.partsSubtotal}}
+                </td>
+                <td class="py-2 text-gray-900">
+                  {{currencyFormat partsSubtotal}}
+                </td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-4 font-medium text-gray-700">
+                  {{tt.compositionRows.labourTotal}}
+                </td>
+                <td class="py-2 text-gray-900">
+                  {{currencyFormat labourTotal}}
+                </td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-4 font-medium text-gray-700">
+                  {{tt.compositionRows.totalHours}}
+                </td>
+                <td class="py-2 text-gray-900">{{totalHours}}</td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-4 font-medium text-gray-700">
+                  {{tt.compositionRows.lessBetterment}}
+                </td>
+                <td class="py-2 text-gray-900">
+                  {{currencyFormat lessBetterment}}
+                </td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-4 font-medium text-gray-700">
+                  {{tt.compositionRows.shopSupplies}}
+                </td>
+                <td class="py-2 text-gray-900">
+                  {{currencyFormat shopSupplies}}
+                </td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-4 font-medium text-gray-700">
+                  {{tt.compositionRows.miscellaneous}}
+                </td>
+                <td class="py-2 text-gray-900">
+                  {{currencyFormat miscellaneous}}
+                </td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-4 font-medium text-gray-700">
+                  {{tt.compositionRows.taxes}}
+                </td>
+                <td class="py-2 text-gray-900">{{currencyFormat taxes}}</td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-4 font-medium text-gray-700">
+                  {{tt.compositionRows.grandTotal}}
+                </td>
+                <td class="py-2 font-bold brand-red">
+                  {{currencyFormat grandTotal}}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Manager Notes -->
+      {{#if hasManagerNotes}}
+      <div class="card">
+        <h2 class="text-2xl font-semibold section-title">
+          {{tt.managerNotesHeading}}
+        </h2>
+        <div class="space-y-3">
+          {{#if procurementNotes}}
+          <div>
+            <h3 class="font-bold text-lg">{{tt.procurementNotes}}</h3>
+            <p class="text-gray-700">{{procurementNotes}}</p>
+          </div>
+          {{/if}} {{#if safetyConcerns}}
+          <div>
+            <h3 class="font-bold text-lg">{{tt.safetyConcerns}}</h3>
+            <p class="text-gray-700">{{safetyConcerns}}</p>
+          </div>
+          {{/if}} {{#if assumptions}}
+          <div>
+            <h3 class="font-bold text-lg">{{tt.assumptions}}</h3>
+            <p class="text-gray-700">{{assumptions}}</p>
+          </div>
+          {{/if}} {{#if priorityLevel}}
+          <div>
+            <h3 class="font-bold text-lg">{{tt.priorityLevel}}</h3>
+            <p class="text-gray-700">{{priorityLevel}}</p>
+          </div>
+          {{/if}}
+        </div>
+      </div>
+      {{/if}}
 
       <div class="card">
         <h2 class="text-2xl font-semibold section-title">{{tt.images}}</h2>

@@ -15,6 +15,19 @@ handlebars.registerHelper("formatDate", function (this: any, dateString: any) {
   });
 });
 
+// Helper: coalesce - returns first non-empty arg
+handlebars.registerHelper("coalesce", function (...args: any[]) {
+  const opts = args.pop();
+  for (const v of args) {
+    if (v === 0) return 0;
+    if (v !== null && v !== undefined) {
+      const s = typeof v === "string" ? v.trim() : v;
+      if (s !== "") return v;
+    }
+  }
+  return "";
+});
+
 // Numeric formatting helper with locale based on language
 handlebars.registerHelper("numberFormat", function (this: any, value: any) {
   if (value == null || value === "") return "";
@@ -82,6 +95,43 @@ export async function generateSalvagePdfFromReport(reportData: any): Promise<Buf
         reportSummary: "Report Summary",
         assetDetails: "Asset Details",
         repairEstimate: "Repair Estimate",
+        itemizedPartsHeading: "Itemized Parts",
+        labourBreakdownHeading: "Labour Breakdown",
+        estimateComposition: "Estimate Composition",
+        managerNotesHeading: "Manager Notes",
+        procurementNotes: "Procurement Notes",
+        safetyConcerns: "Safety Concerns",
+        assumptions: "Assumptions",
+        priorityLevel: "Priority Level",
+        partsColumns: {
+          item: "Item",
+          sku: "SKU",
+          oem: "OEM/Aftermarket",
+          qty: "Qty",
+          unitPrice: "Unit Price",
+          lineTotal: "Line Total",
+          vendor: "Vendor",
+          link: "Link",
+          leadTime: "Lead Time (days)",
+          notes: "Notes",
+        },
+        labourColumns: {
+          task: "Task",
+          hours: "Hours",
+          rate: "Rate/hour",
+          lineTotal: "Line Total",
+          notes: "Notes",
+        },
+        compositionRows: {
+          partsSubtotal: "Parts Subtotal",
+          labourTotal: "Labour Total",
+          totalHours: "Total Labour Hours",
+          lessBetterment: "Less Betterment",
+          shopSupplies: "Shop Supplies",
+          miscellaneous: "Miscellaneous",
+          taxes: "Taxes",
+          grandTotal: "Grand Total",
+        },
         comparables: "Comparable Salvage Listings",
         comparableDetails: "Comparable Details",
         valuationSummary: "Valuation Summary",
@@ -146,6 +196,43 @@ export async function generateSalvagePdfFromReport(reportData: any): Promise<Buf
         reportSummary: "Résumé du rapport",
         assetDetails: "Détails de l'actif",
         repairEstimate: "Estimation des réparations",
+        itemizedPartsHeading: "Pièces détaillées",
+        labourBreakdownHeading: "Répartition de la main-d'œuvre",
+        estimateComposition: "Composition de l'estimation",
+        managerNotesHeading: "Notes du gestionnaire",
+        procurementNotes: "Notes d'approvisionnement",
+        safetyConcerns: "Préoccupations de sécurité",
+        assumptions: "Hypothèses",
+        priorityLevel: "Niveau de priorité",
+        partsColumns: {
+          item: "Article",
+          sku: "SKU",
+          oem: "OEM/Après-vente",
+          qty: "Qté",
+          unitPrice: "Prix unitaire",
+          lineTotal: "Total de ligne",
+          vendor: "Fournisseur",
+          link: "Lien",
+          leadTime: "Délai (jours)",
+          notes: "Notes",
+        },
+        labourColumns: {
+          task: "Tâche",
+          hours: "Heures",
+          rate: "Taux/heure",
+          lineTotal: "Total de ligne",
+          notes: "Notes",
+        },
+        compositionRows: {
+          partsSubtotal: "Sous-total pièces",
+          labourTotal: "Total main-d'œuvre",
+          totalHours: "Total d'heures",
+          lessBetterment: "Moins plus-value",
+          shopSupplies: "Fournitures d'atelier",
+          miscellaneous: "Divers",
+          taxes: "Taxes",
+          grandTotal: "Total général",
+        },
         comparables: "Annonces de récupération comparables",
         comparableDetails: "Détails comparables",
         valuationSummary: "Résumé de l’évaluation",
@@ -210,6 +297,43 @@ export async function generateSalvagePdfFromReport(reportData: any): Promise<Buf
         reportSummary: "Resumen del informe",
         assetDetails: "Detalles del activo",
         repairEstimate: "Estimación de reparación",
+        itemizedPartsHeading: "Piezas detalladas",
+        labourBreakdownHeading: "Desglose de mano de obra",
+        estimateComposition: "Composición de la estimación",
+        managerNotesHeading: "Notas del gerente",
+        procurementNotes: "Notas de compras",
+        safetyConcerns: "Preocupaciones de seguridad",
+        assumptions: "Suposiciones",
+        priorityLevel: "Nivel de prioridad",
+        partsColumns: {
+          item: "Artículo",
+          sku: "SKU",
+          oem: "OEM/Posventa",
+          qty: "Cant.",
+          unitPrice: "Precio unitario",
+          lineTotal: "Total de línea",
+          vendor: "Proveedor",
+          link: "Enlace",
+          leadTime: "Plazo (días)",
+          notes: "Notas",
+        },
+        labourColumns: {
+          task: "Tarea",
+          hours: "Horas",
+          rate: "Tarifa/hora",
+          lineTotal: "Total de línea",
+          notes: "Notas",
+        },
+        compositionRows: {
+          partsSubtotal: "Subtotal de piezas",
+          labourTotal: "Total de mano de obra",
+          totalHours: "Horas totales",
+          lessBetterment: "Menos mejoramiento",
+          shopSupplies: "Suministros de taller",
+          miscellaneous: "Misceláneos",
+          taxes: "Impuestos",
+          grandTotal: "Total general",
+        },
         comparables: "Anuncios de salvamento comparables",
         comparableDetails: "Detalles comparables",
         valuationSummary: "Resumen de la valoración",
@@ -280,6 +404,62 @@ export async function generateSalvagePdfFromReport(reportData: any): Promise<Buf
     if (specLabels.length === 0) specLabels.push("YEAR");
     const compDetailsLabels = Array.from(new Set<string>((Array.isArray((reportData as any)?.comparableItems) ? (reportData as any).comparableItems : []).flatMap((c: any) => Object.keys((c && typeof c.details === 'object' && c.details) || {}))));
 
+    // Derive itemized parts/labour and composition values for the template
+    const toNum = (v: any): number => {
+      try {
+        if (typeof v === "number" && Number.isFinite(v)) return v;
+        if (typeof v === "string") {
+          const p = Number(v.replace(/[^0-9.\-]/g, ""));
+          return Number.isFinite(p) ? p : 0;
+        }
+        return 0;
+      } catch {
+        return 0;
+      }
+    };
+    const re = ((reportData as any)?.aiExtractedDetails?.repair_estimate || (reportData as any)?.repair_estimate || {}) as any;
+    const partsItems: any[] = Array.isArray((reportData as any)?.repair_items)
+      ? ((reportData as any)?.repair_items as any[])
+      : (Array.isArray((re as any)?.parts_items) ? (re as any)?.parts_items : []);
+    const labourBreakdown: any[] = Array.isArray((reportData as any)?.labour_breakdown)
+      ? ((reportData as any)?.labour_breakdown as any[])
+      : (Array.isArray((re as any)?.labour_breakdown) ? (re as any)?.labour_breakdown : []);
+    const labourRateDefault = toNum((reportData as any)?.labour_rate_default ?? (re as any)?.labour_rate_default);
+    const partsSubtotalCalc = partsItems.reduce((sum, it: any) => sum + toNum(it?.line_total ?? (toNum(it?.quantity) * toNum(it?.unit_price))), 0);
+    const labourTotalCalc = labourBreakdown.reduce((sum, it: any) => {
+      const rate = toNum(it?.rate_per_hour ?? labourRateDefault);
+      const hours = toNum(it?.hours);
+      const line = toNum(it?.line_total ?? hours * rate);
+      return sum + line;
+    }, 0);
+    const totalHoursCalc = labourBreakdown.reduce((sum, it: any) => sum + toNum(it?.hours), 0);
+    const partsSubtotal = toNum((reportData as any)?.parts_subtotal ?? (re as any)?.parts_subtotal ?? partsSubtotalCalc);
+    const labourTotal = toNum((reportData as any)?.labour_total ?? (re as any)?.labour_total ?? labourTotalCalc);
+    const lessBetterment = toNum((re as any)?.less_betterment);
+    const shopSupplies = toNum((re as any)?.shop_supplies);
+    const miscellaneous = toNum((re as any)?.miscellaneous);
+    const taxes = toNum((re as any)?.taxes);
+    const grandTotal = toNum((re as any)?.total ?? (partsSubtotal + labourTotal + shopSupplies + miscellaneous + taxes - lessBetterment));
+    const procurementNotes = (reportData as any)?.procurement_notes || (reportData as any)?.aiExtractedDetails?.procurement_notes || "";
+    const safetyConcerns = (reportData as any)?.safety_concerns || (reportData as any)?.aiExtractedDetails?.safety_concerns || "";
+    const assumptions = (reportData as any)?.assumptions || (reportData as any)?.aiExtractedDetails?.assumptions || "";
+    const priorityLevel = (reportData as any)?.priority_level || (reportData as any)?.aiExtractedDetails?.priority_level || "";
+    const hasManagerNotes = Boolean(procurementNotes || safetyConcerns || assumptions || priorityLevel);
+
+    // Build computed rows for template rendering
+    const partsRows = partsItems.map((it: any) => {
+      const _qty = toNum(it?.quantity);
+      const _unit = toNum(it?.unit_price);
+      const _line = toNum(it?.line_total ?? _qty * _unit);
+      return { ...it, _qty, _unit, _line };
+    });
+    const labourRows = labourBreakdown.map((it: any) => {
+      const _hours = toNum(it?.hours);
+      const _rate = toNum(it?.rate_per_hour ?? labourRateDefault);
+      const _line = toNum(it?.line_total ?? _hours * _rate);
+      return { ...it, _hours, _rate, _line };
+    });
+
     const dataForPdf = {
       logo_url: logoUrl,
       language: lang,
@@ -287,6 +467,24 @@ export async function generateSalvagePdfFromReport(reportData: any): Promise<Buf
       currency: (reportData as any)?.currency || 'CAD',
       specLabels,
       compDetailsLabels,
+      partsItems,
+      labourBreakdown,
+      partsRows,
+      labourRows,
+      labourRateDefault,
+      partsSubtotal,
+      labourTotal,
+      totalHours: totalHoursCalc,
+      lessBetterment,
+      shopSupplies,
+      miscellaneous,
+      taxes,
+      grandTotal,
+      procurementNotes,
+      safetyConcerns,
+      assumptions,
+      priorityLevel,
+      hasManagerNotes,
       ...sanitizedData,
     };
 
