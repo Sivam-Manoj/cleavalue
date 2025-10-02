@@ -61,7 +61,7 @@ export const getSalvageReports = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const uploadMiddleware = upload.array("images", 10);
+export const uploadMiddleware = upload.array("images", 30);
 
 export const getSalvageProgress = async (req: AuthRequest, res: Response) => {
   try {
