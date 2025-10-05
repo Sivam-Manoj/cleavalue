@@ -171,6 +171,64 @@ export async function buildAssetLots(
       );
     }
 
+    // Extra images (report-only, not processed by AI)
+    let extraUrls: string[] = [];
+    if (Array.isArray(lot?.extra_image_urls) && lot.extra_image_urls.length) {
+      extraUrls = lot.extra_image_urls.filter(Boolean);
+    } else if (Array.isArray(lot?.extra_image_indexes) && lot.extra_image_indexes.length) {
+      extraUrls = lot.extra_image_indexes
+        .map((i: number) => (Number.isFinite(i) && i >= 0 ? rootImageUrls[i] : undefined))
+        .filter(Boolean) as string[];
+    }
+
+    if (extraUrls.length) {
+      children.push(new Paragraph({ text: "Additional Images", heading: HeadingLevel.HEADING_3, spacing: { before: 120, after: 80 } }));
+      
+      const extraBufs = await Promise.all(extraUrls.map((u) => fetchImageBuffer(u)));
+      const validExtra: (Buffer | null)[] = extraBufs;
+      const extraRows: TableRow[] = [];
+      for (let i = 0; i < validExtra.length; i += gridCols) {
+        const slice = validExtra.slice(i, i + gridCols);
+        extraRows.push(
+          new TableRow({
+            cantSplit: true,
+            children: Array.from({ length: gridCols }, (_, col) => {
+              const b = slice[col];
+              return new TableCell({
+                width: { size: cellW, type: WidthType.DXA },
+                margins: imgCellMargins,
+                children: b
+                  ? [
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        children: [new ImageRun({ data: b as any, transformation: { width: 160, height: 120 } } as any)],
+                      }),
+                    ]
+                  : [new Paragraph({ text: "" })],
+              });
+            }),
+          })
+        );
+      }
+
+      children.push(
+        new Table({
+          width: { size: contentWidthTw, type: WidthType.DXA },
+          layout: TableLayoutType.FIXED,
+          columnWidths: Array.from({ length: gridCols }).map(() => cellW),
+          borders: {
+            top: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
+            bottom: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
+            left: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
+            right: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
+            insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
+            insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
+          },
+          rows: extraRows,
+        })
+      );
+    }
+
     // Spacing between lots
     children.push(new Paragraph({ text: "", spacing: { before: 40, after: 120 } }));
   }

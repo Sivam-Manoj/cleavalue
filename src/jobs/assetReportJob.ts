@@ -327,7 +327,12 @@ export async function runAssetReportJob({
       endStep("ai_analysis");
     } else if (groupingMode === "mixed") {
       // Mixed mode: multiple lots with specified sub-mode each
-      type MixedMap = { count: number; cover_index?: number; mode: "single_lot" | "per_item" | "per_photo" };
+      type MixedMap = { 
+        count: number; 
+        extraCount: number;
+        cover_index?: number; 
+        mode: "single_lot" | "per_item" | "per_photo" 
+      };
       const rawLots: any[] = Array.isArray(details?.mixed_lots)
         ? details.mixed_lots
         : [];
@@ -337,6 +342,7 @@ export async function runAssetReportJob({
           const mode = m === "per_item" || m === "per_photo" || m === "single_lot" ? (m as any) : undefined;
           return {
             count: Math.max(0, parseInt(String(x?.count ?? 0), 10) || 0),
+            extraCount: Math.max(0, parseInt(String(x?.extra_count ?? 0), 10) || 0),
             cover_index:
               typeof x?.cover_index === "number"
                 ? x.cover_index
@@ -365,16 +371,21 @@ export async function runAssetReportJob({
       let base = 0;
       let lotCounter = 0;
       for (let lotIdx = 0; lotIdx < useMappings.length; lotIdx++) {
-        const { count, cover_index, mode: subMode } = useMappings[lotIdx];
+        const { count, extraCount, cover_index, mode: subMode } = useMappings[lotIdx];
         const end = Math.min(imageUrls.length, base + Math.max(0, count));
+        const extraEnd = Math.min(imageUrls.length, end + Math.max(0, extraCount));
 
-        // For AI cost/perf: analyze up to 20 images per lot (the client UI enforces 20 max per lot)
-        const aiEnd = Math.min(end, base + Math.max(0, Math.min(20, count)));
+        // For AI cost/perf: analyze up to 30 images per lot (main images only, not extra)
+        const aiEnd = Math.min(end, base + Math.max(0, Math.min(30, count)));
         const aiLocalIdxs = Array.from({ length: Math.max(0, aiEnd - base) }, (_, i) => base + i);
         const subUrls = aiLocalIdxs.map((i) => imageUrls[i]);
+        
+        // Collect extra images (not sent to AI)
+        const extraImageIdxs = Array.from({ length: Math.max(0, extraEnd - end) }, (_, i) => end + i);
+        const extraImageUrls = extraImageIdxs.map((i) => imageUrls[i]).filter(Boolean);
 
         if (subUrls.length === 0 || !subMode) {
-          base = end;
+          base = extraEnd;
           continue;
         }
 
@@ -427,6 +438,8 @@ export async function runAssetReportJob({
               image_url: coverUrl || lot?.image_url || urls[0] || undefined,
               image_indexes: idxs,
               image_urls: urls,
+              extra_image_indexes: extraImageIdxs,
+              extra_image_urls: extraImageUrls,
               // For traceability, include sub-mode tag
               tags: Array.isArray(lot?.tags)
                 ? Array.from(new Set([...(lot.tags as any[]).map(String), `mode:${subMode}`]))
@@ -446,7 +459,7 @@ export async function runAssetReportJob({
           setServerProg01(current);
         }
 
-        base = end;
+        base = extraEnd; // Advance past both main and extra images
       }
       if (useMappings.length > 0) endStep("ai_analysis");
     } else if (groupingMode === "combined") {
