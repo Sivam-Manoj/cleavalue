@@ -1,8 +1,4 @@
-export type AssetGroupingModeUtil =
-  | "single_lot"
-  | "per_item"
-  | "per_photo"
-  | "catalogue";
+export type AssetGroupingModeUtil = "single_lot" | "per_item" | "per_photo";
 
 /**
  * Returns a system prompt tailored to the desired grouping mode.
@@ -38,73 +34,6 @@ export function getAssetSystemPrompt(
     };
     return map[ccy] || `${ccy} `;
   })();
-  const commonOutputRules = `
-You are an expert inventory/loss appraisal assistant. Analyze provided images and produce coherent "lots".
-
-Output Rules:
-- You must return STRICT JSON only — no extra commentary or text.
-- JSON must have this exact structure (unless noted for a specific mode below):
-  {
-    "lots": [
-      {
-        "lot_id": "string (unique ID for the lot, e.g., lot-001)",
-        "title": "short but specific title",
-        "description": "summary of key details",
-        "condition": "string describing the item's condition (e.g., 'Used - Good', 'New', 'Damaged')",
-        "estimated_value": "string in ${ccy} with the correct prefix (e.g., '${ccyPrefix}12,500' or '${ccy} 12,500'); ALWAYS include thousands separators and NO decimals (round to the nearest whole unit)",
-        "tags": ["optional", "keywords"],
-        "image_indexes": [array of integers starting at 0]
-      }
-    ],
-    "summary": "string summarizing all lots",
-    "language": "${lang}",
-    "currency": "${ccy}",
-    "excel_rows_json": {
-      "rows": [
-        {
-          "lot_number": "string or number",
-          "description": "string",
-          "quantity": 1,
-          "must_take": false,
-          "contract_number": "string",
-          "categories": "one of allowedCategories",
-          "serial_number": "VIN: 1HGCM82633A004352 or other SN or null",
-          "show_on_website": true,
-          "close_date": "YYYY-MM-DD or null",
-          "bid_increment": 25,
-          "location": "800 North Service Road, Emerald Park, SK",
-          "opening_bid": 100,
-          "latitude": 50.471,
-          "longitude": -104.365,
-          "item_condition": "Unverified Working Condition"
-        }
-      ]
-    }
-  }
-- All fields except 'tags' are REQUIRED for each lot.
- - All fields except 'tags' are REQUIRED for each lot.
-- 'tags', if included, must be an array of strings.
-- 'estimated_value' must always be in ${ccy} (use proper prefix like '${ccyPrefix}' or leading code '${ccy} '), even if estimated. Do NOT convert currencies — use the currency provided in the system instructions.
-- Format rules for 'estimated_value':
-  - Use thousands separators (e.g., 12,500; 235,000)
-  - No decimal places (round to nearest whole unit)
-  - Use the appropriate currency prefix: '${ccyPrefix}' is preferred when available; otherwise, prefix with '${ccy} '
-- Titles must be concise yet descriptive and unique across lots; for same-type items, append a differentiator like "(#1)", "(#2)".
-- 'image_indexes' must reference the provided images by 0-based index. Sort indexes ascending and do not repeat an index within a lot.
-
-Localization Rules:
-- Selected output language code: ${lang}
-- IMPORTANT: Only localize JSON values (e.g., title, description, condition, details, summary). DO NOT translate JSON field names (keys) — keys must remain English.
-- Include a top-level field "language": "${lang}" in the returned JSON to indicate the language used for values.
-
-VIN and Serial Handling:
-- Keep all serial numbers and VINs OUTSIDE of the description. Use 'serial_no_or_label' (per_item, per_photo, single_lot) or 'sn_vin' (catalogue items).
-- When a VIN is visible, label it EXACTLY as: "VIN: <VIN>" (17 characters, no I/O/Q). If characters are missing (partial VIN), you may use '*' placeholders for unknown characters.
-- If a VIN is not visible or unknown: per_item/per_photo/single_lot -> use null in 'serial_no_or_label'; catalogue items -> set 'sn_vin' to the localized phrase for "not found" in the selected language:
-  - en: "not found"
-  - fr: "introuvable"
-  - es: "no encontrado"
-`;
 
   // New: Excel export fields guidance
   const allowedCategories = [
@@ -194,35 +123,116 @@ VIN and Serial Handling:
     "Storage Wars",
     "Yard Care And Lawn Equipment / Lumber",
   ];
+  const commonOutputRules = `
+You are an expert inventory/loss appraisal assistant. Analyze provided images and produce coherent "lots".
+
+Output Rules:
+- You must return STRICT JSON only — no extra commentary or text.
+- JSON structure:
+  {
+    "lots": [
+      {
+        "lot_id": "unique ID (e.g., lot-001)",
+        "title": "short but specific title",
+        "description": "summary of key details",
+        "condition": "item condition (e.g., 'Used - Good', 'New', 'Damaged')",
+        "estimated_value": "${ccyPrefix}12,500",
+        "tags": ["optional", "keywords"],
+        "image_indexes": [0, 1],
+        "lot_number": "101",
+        "quantity": 1,
+        "must_take": false,
+        "categories": "General Merchandise",
+        "serial_number": "VIN: 1HGCM82633A004352",
+        "show_on_website": true,
+        "close_date": "2025-12-31",
+        "bid_increment": 25,
+        "location": "800 North Service Road, Emerald Park, SK",
+        "opening_bid": 100,
+        "latitude": 50.471,
+        "longitude": -104.365,
+        "item_condition": "Unverified Working Condition"
+      }
+    ],
+    "summary": "string summarizing all lots",
+    "language": "${lang}",
+    "currency": "${ccy}"
+  }
+
+Required fields for each lot (for Excel export):
+- lot_id: unique identifier
+- lot_number: lot number for Excel
+- title: short, specific title
+- description: detailed description
+- condition: item's physical condition
+- estimated_value: FMV in ${ccy} format (e.g., '${ccyPrefix}12,500')
+- quantity: number of items (default 1)
+- categories: MUST be one from ${allowedCategories} list below
+- item_condition: MUST be one of: "Unverified Working Condition", "Untested", or "Unused"
+- location: MUST be one from location list below (or default to first)
+- image_indexes: 0-based array of image indexes
+
+Optional but recommended for Excel:
+- serial_number: VIN or serial (null if not visible)
+- must_take: boolean (default false)
+- show_on_website: boolean (default true)
+- close_date: ISO date string (YYYY-MM-DD)
+- bid_increment: numeric amount
+- opening_bid: numeric amount
+- latitude: decimal degrees
+- longitude: decimal degrees
+- tags: array of keywords
+
+Formatting rules:
+- estimated_value: Use ${ccy} with prefix '${ccyPrefix}', thousands separators, NO decimals (e.g., '${ccyPrefix}12,500')
+- Titles must be concise and unique; append "(#1)", "(#2)" for duplicates
+- image_indexes: 0-based array, sorted ascending, no duplicates within a lot
+
+Localization Rules:
+- Selected output language code: ${lang}
+- IMPORTANT: Only localize JSON values (e.g., title, description, condition, details, summary). DO NOT translate JSON field names (keys) — keys must remain English.
+- Include a top-level field "language": "${lang}" in the returned JSON to indicate the language used for values.
+
+VIN and Serial Handling:
+- Keep all serial numbers and VINs OUTSIDE of the description
+- Use 'serial_number' field in the lot object
+- When a VIN is visible, label it EXACTLY as: "VIN: <VIN>" (17 characters, no I/O/Q)
+- For partial VINs, use '*' placeholders for unknown characters
+- If not visible, set to null
+`;
 
   const excelFieldsGuidance = `
-Excel Fields (optional but include when inferable for EACH lot; for catalogue, also allowed per item):
-- lot_number: string | number — maps to "Lot #".
-- quantity: integer — default 1 when not specified.
-- must_take: boolean — true if the lot must be sold together.
-- contract_number: string — maps to "Contract #".
-- categories: string — choose EXACTLY ONE from this list: ${allowedCategories.map((c) => `"${c}"`).join(", ")}
-- show_on_website: boolean — whether to show this item online.
-- close_date: string — ISO date (YYYY-MM-DD). Leave empty if unknown.
-- bid_increment: number — numeric amount (no currency symbol).
-- location: string — choose EXACTLY ONE from this list: "800 North Service Road, Emerald Park, SK", "203 60th Street East, Saskatoon, SK", "5221 Portage Ave, Headingley, MB", "8761 Wilkes Ave, Saint Eustache, MB", "601 17th Street East, Brandon, MB", "1209 - 8A Street, Nisku, AB", "6270 Dorman Rd, Mississauga, ON", "175 Chem. Du Grand-Pre, Saint-Jean-Sur-Richelieu, QC", "4728 I-35W, Alvarado, TX 76009". If location cannot be inferred, default to the first address in the list.
-- opening_bid: number — numeric amount (no currency symbol).
-- latitude: number — decimal degrees.
-- longitude: number — decimal degrees.
-- item_condition: string — choose EXACTLY ONE of: "Unverified Working Condition", "Untested", "Unused". Prefer the best match based on description; if uncertain, use "Unverified Working Condition".
+Excel Export Fields - ALL fields listed below MUST be included in each lot for Excel generation:
 
-Rules:
-- Keep these as JSON fields (do not translate keys). Only include values you can infer; otherwise omit.
-- For booleans, use true/false (not strings). For numeric amounts, provide numbers (not formatted strings).
- 
- Excel Rows JSON (top-level "excel_rows_json"):
- - Provide a single object: { "rows": [ { ...row fields... } ] }.
- - per_item / per_photo / single_lot: include one row per lot. catalogue: one row per item in 'items'.
- - Use 'serial_number' for VIN as "VIN: <VIN>" (or other SN); do not repeat VIN/SN in description.
+CRITICAL Fields (always provide):
+- lot_number: string/number — Lot identifier for Excel "Lot #" column
+- title: string — Short, specific title (Excel "Title" column)
+- description: string — Detailed description (Excel "Description" column)
+- estimated_value: string — FMV with currency prefix (Excel "FMV" column), e.g., "${ccyPrefix}12,500"
+- quantity: number — Item count (Excel "Quantity" column), default 1 if unknown
+- categories: string — Choose EXACTLY ONE from allowedCategories: ${allowedCategories.map((c) => `"${c}"`).join(", ")}. Maps to Excel "Categories" column. Default to "General Merchandise" if uncertain.
+- item_condition: string — Choose EXACTLY ONE: "Unverified Working Condition", "Untested", "Unused". Maps to Excel "Item Condition" column. Default to "Unverified Working Condition" if uncertain.
+- location: string — Choose EXACTLY ONE: "800 North Service Road, Emerald Park, SK", "203 60th Street East, Saskatoon, SK", "5221 Portage Ave, Headingley, MB", "8761 Wilkes Ave, Saint Eustache, MB", "601 17th Street East, Brandon, MB", "1209 - 8A Street, Nisku, AB", "6270 Dorman Rd, Mississauga, ON", "175 Chem. Du Grand-Pre, Saint-Jean-Sur-Richelieu, QC", "4728 I-35W, Alvarado, TX 76009". Maps to Excel "Location" column. Default to first address if unknown.
+
+Optional Fields (provide when inferable):
+- serial_number: string/null — VIN or serial number (Excel "Serial Number (VIN/SN)" column). Use "VIN: <VIN>" format for VINs. Set to null if not visible.
+- must_take: boolean — Whether lot must be sold together (Excel "Must Take" column), default false
+- show_on_website: boolean — Show online (Excel "Show On Website" column), default true
+- close_date: string — ISO date YYYY-MM-DD (Excel "Close Date" column)
+- bid_increment: number — Bid increment amount (Excel "Bid Increment" column), e.g., 25
+- opening_bid: number — Starting bid amount (Excel "Opening Bid" column), e.g., 100
+- latitude: number — Decimal degrees (Excel "Latitude" column)
+- longitude: number — Decimal degrees (Excel "Longitude" column)
+
+Important Rules:
+- Use exact field names as shown above (do NOT translate JSON keys)
+- For booleans, use true/false (not strings)
+- For numbers, provide numeric values without currency symbols or formatting
+- Contract # will be added automatically at report level (do not include in lots)
 `;
 
   const exampleDefault = `
-Example Output (default modes):
+Example Output:
 {
   "lots": [
     {
@@ -232,42 +242,25 @@ Example Output (default modes):
       "condition": "Used - Good",
       "estimated_value": "${ccyPrefix}150",
       "tags": ["bike", "red", "mountain"],
-      "image_indexes": [0, 2]
-    },
-    {
-      "lot_id": "lot-002",
-      "title": "Wooden Dining Table",
-      "description": "4-seater oak dining table with light wear on edges.",
-      "condition": "Used - Fair",
-      "estimated_value": "${ccyPrefix}150",
-      "image_indexes": [1]
+      "image_indexes": [0, 2],
+      "lot_number": "101",
+      "quantity": 1,
+      "must_take": false,
+      "categories": "General Merchandise",
+      "serial_number": null,
+      "show_on_website": true,
+      "close_date": "2025-10-31",
+      "bid_increment": 25,
+      "location": "800 North Service Road, Emerald Park, SK",
+      "opening_bid": 100,
+      "item_condition": "Unverified Working Condition"
     }
   ],
-  "summary": "2 lots identified: a red mountain bike and a wooden dining table.",
+  "summary": "1 lot identified: red mountain bike.",
   "language": "${lang}",
-  "currency": "${ccy}",
-  "excel_rows_json": {
-    "rows": [
-      {
-        "lot_number": "101",
-        "description": "Adult-sized red mountain bike with front suspension and minor scratches.",
-        "quantity": 1,
-        "must_take": true,
-        "contract_number": "CN-12345",
-        "categories": "General Merchandise",
-        "serial_number": null,
-        "show_on_website": true,
-        "close_date": "2025-10-31",
-        "bid_increment": 25,
-        "location": "800 North Service Road, Emerald Park, SK",
-        "opening_bid": 100,
-        "latitude": 50.471,
-        "longitude": -104.365,
-        "item_condition": "Unverified Working Condition"
-      }
-    ]
-  }
-}`;
+  "currency": "${ccy}"
+}
+`;
 
   const vehicleAttributeFieldList = `
 Field Label,Section,Section Order,
@@ -579,104 +572,59 @@ Wedge: A/R Cab:
 Wheel Base:
 `;
 
-  const catalogue = `
-  Grouping mode: catalogue (sales catalogue style)
-  - Treat the provided images as one catalogue lot segment. Return exactly ONE lot that summarizes the set of images and also includes an 'items' array.
-  - Only include items that are fully visible in the images; do not include items that are partially visible or not visible.
-  - Each item represents a distinct saleable item within the lot segment.
-  - Identify EVERY distinct saleable item visible across ALL provided images for this segment. Do NOT omit any item. If uncertain, include the item and note uncertainty in 'details'.
-  - Lot-level fields: lot_id, title, description, condition, estimated_value, tags?, image_indexes (0-based indexes of the images for this lot).
-  - REQUIRED item fields (table row fields):
-    - title: concise and specific. For vehicles, use: "YYYY Make Model Trim" (e.g., "2018 Honda Civic EX-L").
-    - sn_vin: string. When a VIN is visible, label it EXACTLY as "VIN: <VIN>" (17 characters; use '*' for any unknown characters in a partial VIN). If VIN not visible or unknown, set to the literal text "not found".
-    - description: short description of the item using the vehicle attribute order below — order by Section Order ascending and within each section keep the exact label order. Output only labels and values (no section headers).
-    - condition: string describing the item's condition with clear explanation of how you determined it.
-    - estimated_value: string in ${ccy}, e.g., "${ccyPrefix}12,500".
-    - image_local_index: integer (0-based) referencing the SINGLE best image among the provided images for this catalogue segment that most clearly shows this item. Always include this. If unsure, pick the clearest view.
-    - image_url: OPTIONAL direct URL for that image if and only if it is explicitly provided to you (do not fabricate). Base64 inputs will not have URLs.
-  - OPTIONAL item fields:
-    - details: compact attributes (e.g., Mileage, Transmission, Drivetrain, Extras like winter tires). Do not duplicate the price/value here; that belongs in 'estimated_value'.
-  - Additional guidance:
-  - Titles must be concise and attention-grabbing; avoid repetition across items in the same lot.
-  - If an item appears in multiple frames, do not duplicate the item; list it once.
-  - Item description formatting (for each item.description):
-    - Start with YEAR MAKE MODEL [TRIM/TYPE], followed by concise attributes separated by commas.
-    - Extract as many of the following attribute labels as are clearly visible; do NOT fabricate; omit unknowns. Keep serial/VIN in 'sn_vin' and do not repeat it in the description.
-    - If the item is a VEHICLE, strictly follow the vehicle attribute order below — order by Section Order ascending and within each section keep the exact label order. Output only labels and values (no section headers):
-    - ${vehicleAttributeFieldList}
-    - For non-vehicle items, use the general attributes:
-  - Keep all output strictly valid JSON.
-`;
-
-  const exampleCatalogue = `
-  Example Output (catalogue):
-  {
-    "lots": [
-      {
-        "lot_id": "lot-101",
-        "title": "Vehicle Listings — Two Sedans",
-        "description": "Two compact sedans with clean interiors; light exterior wear noted.",
-        "condition": "Mixed — Used",
-        "estimated_value": "${ccyPrefix}23,500",
-        "tags": ["vehicles", "sedans"],
-        "image_indexes": [0,1,2,3],
-        "items": [
-          {
-            "title": "2018 Honda Civic EX-L",
-            "sn_vin": "2HGFC1F97JH012345",
-            "description": "White exterior, black leather; clean interior.",
-            "condition": "Used - Good",
-            "details": "Mileage: 82,000 km; Transmission: Automatic; Drivetrain: FWD; Extras: winter tires included",
-            "estimated_value": "${ccyPrefix}12,500",
-            "image_local_index": 1
-          },
-          {
-            "title": "2017 Toyota Corolla LE",
-            "sn_vin": "not found",
-            "description": "Silver exterior; minor scuffs on rear bumper.",
-            "condition": "Used - Fair",
-            "details": "Mileage: 95,500 km; Transmission: Automatic; Drivetrain: FWD",
-            "estimated_value": "${ccyPrefix}11,000",
-            "image_local_index": 2
-          }
-        ]
-      }
-    ],
-    "summary": "Catalogue lot with 2 vehicles identified from 4 images.",
-    "language": "${lang}",
-    "currency": "${ccy}"
-  };
-`;
-
   const examplePerItem = `
-  Example Output (per_item):
-  {
-    "lots": [
-      {
-        "lot_id": "lot-001",
-        "title": "Canon EOS 80D DSLR Camera Body",
-        "serial_no_or_label": "SN: 12345678",
-        "description": "24MP DSLR camera body; light cosmetic wear.",
-        "details": "Includes battery and strap; shutter count unknown.",
-        "estimated_value": "${ccyPrefix}520",
-        "image_indexes": [0],
-        "image_url": null
-      },
-      {
-        "lot_id": "lot-002",
-        "title": "Canon EF-S 18-135mm Lens",
-        "serial_no_or_label": null,
-        "description": "Zoom lens attached in the same frame; no visible damage.",
-        "details": "Optical stabilization; standard zoom range.",
-        "estimated_value": "${ccyPrefix}180",
-        "image_indexes": [0],
-        "image_url": null
-      }
-    ],
-    "summary": "2 distinct items identified in a single image: camera body and lens.",
-    "language": "${lang}",
-    "currency": "${ccy}"
-  };
+Example Output (per_item):
+{
+  "lots": [
+    {
+      "lot_id": "lot-001",
+      "lot_number": "101",
+      "title": "Canon EOS 80D DSLR Camera Body",
+      "description": "24MP DSLR camera body; light cosmetic wear. Includes battery and strap; shutter count unknown.",
+      "condition": "Used - Good",
+      "estimated_value": "${ccyPrefix}520",
+      "quantity": 1,
+      "must_take": false,
+      "categories": "Computers / Electronics / Photocopiers / Office Equipment",
+      "serial_number": "SN: 12345678",
+      "show_on_website": true,
+      "close_date": null,
+      "bid_increment": 25,
+      "location": "800 North Service Road, Emerald Park, SK",
+      "opening_bid": 50,
+      "latitude": null,
+      "longitude": null,
+      "item_condition": "Untested",
+      "tags": ["camera", "electronics"],
+      "image_indexes": [0]
+    },
+    {
+      "lot_id": "lot-002",
+      "lot_number": "102",
+      "title": "Canon EF-S 18-135mm Lens",
+      "description": "Zoom lens with optical stabilization; standard zoom range. No visible damage.",
+      "condition": "Used - Good",
+      "estimated_value": "${ccyPrefix}180",
+      "quantity": 1,
+      "must_take": false,
+      "categories": "Computers / Electronics / Photocopiers / Office Equipment",
+      "serial_number": null,
+      "show_on_website": true,
+      "close_date": null,
+      "bid_increment": 25,
+      "location": "800 North Service Road, Emerald Park, SK",
+      "opening_bid": 20,
+      "latitude": null,
+      "longitude": null,
+      "item_condition": "Untested",
+      "tags": ["lens", "electronics"],
+      "image_indexes": [0]
+    }
+  ],
+  "summary": "2 distinct items identified in a single image: camera body and lens.",
+  "language": "${lang}",
+  "currency": "${ccy}"
+}
 `;
 
   const perPhoto = `
@@ -734,29 +682,17 @@ Grouping mode: single_lot
     3. 2006 Kenworth T800 T/A Fuel Truck, CAT C11 Diesel Engine, 13 Spd Trans, Chalmers Susp., Advanced 2 Compartment Steel Tank, 2,273 L & 13,683 L, (2) MID Com Pumps, Hoses, & Reels, PTO, Aluminum Wheels, Front Tires 385/65R22.5, Rear Tires 11R24.5, New CVI
 `;
 
-  let modeSection = perItem; // sensible default
-  switch (groupingMode) {
-    case "per_photo":
-      modeSection = perPhoto;
-      break;
-    case "single_lot":
-      modeSection = singleLot;
-      break;
-    case "catalogue":
-      modeSection = catalogue;
-      break;
-    case "per_item":
-    default:
-      modeSection = perItem;
-      break;
+  let modeSection = perItem;
+  if (groupingMode === "per_photo") {
+    modeSection = perPhoto;
+  } else if (groupingMode === "single_lot") {
+    modeSection = singleLot;
+  } else {
+    modeSection = perItem;
   }
 
   const exampleBlock =
-    groupingMode === "per_item"
-      ? examplePerItem
-      : groupingMode === "catalogue"
-        ? exampleCatalogue
-        : exampleDefault;
+    groupingMode === "per_item" ? examplePerItem : exampleDefault;
 
   return `
 ${commonOutputRules}
@@ -767,8 +703,8 @@ Assignment Constraints:
 - per_item: Include image indexes that best represent each unique item (distinct views). Deduplicate near-identical frames/angles of the SAME view. Avoid overlaps between lots.
 - single_lot: Return exactly ONE lot. For duplicate/near-identical frames of the same shot, include only ONE representative index per duplicate group.
 
-Tagging for Excel Mode column:
-- For every returned lot, include a tag 'mode:<MODE>' in 'tags' to indicate the grouping used for that lot. Use one of: 'single_lot', 'per_item', 'per_photo', 'catalogue'.
+Tagging:
+- For every lot, include a tag 'mode:<MODE>' in 'tags'. Use one of: 'single_lot', 'per_item', 'per_photo'.
 
 ${exampleBlock}
 

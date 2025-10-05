@@ -9,10 +9,12 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
     reportData?.contract_no || reportData?.contract_number || ""
   );
 
-  // Define headers (ONLY requested fields)
+  // Define headers
   const headers: string[] = [
     "Lot #",
+    "Title",
     "Description",
+    "FMV",
     "Quantity",
     "Must Take",
     "Contract #",
@@ -201,8 +203,10 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
   const toStrCell = (v: any) => (v === undefined || v === null ? "" : String(v));
   const mapExcelRow = (rec: any): any[] => [
     toStrCell(rec?.lot_number),
+    toStrCell(rec?.title),
     toStrCell(rec?.description),
-    toNumCell(rec?.quantity),
+    toStrCell(rec?.estimated_value),
+    toNumCell(rec?.quantity ?? 1),
     toBoolCell(rec?.must_take),
     toStrCell(defaultContractNo),
     toStrCell(normalizeCategory(rec?.categories)),
@@ -217,25 +221,13 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
     toStrCell(normalizeCondition(rec?.item_condition)),
   ];
 
-  // Prefer explicit excel rows from report JSON object, then array; otherwise derive from lots/items
-  const excelRowsJsonRows: any[] | null = Array.isArray((reportData as any)?.excel_rows_json?.rows)
-    ? (reportData as any).excel_rows_json.rows
-    : null;
-  const excelRowsArray: any[] | null = Array.isArray((reportData as any)?.excel_rows)
-    ? (reportData as any).excel_rows
-    : null;
-  if (excelRowsJsonRows && excelRowsJsonRows.length > 0) {
-    rows = excelRowsJsonRows.map(mapExcelRow);
-  } else if (excelRowsArray && excelRowsArray.length > 0) {
-    rows = excelRowsArray.map(mapExcelRow);
-  } else {
-    for (const lot of lots) {
-      const items: any[] = Array.isArray(lot?.items) ? lot.items : [];
-      if (items.length > 0) {
-        for (const it of items) rows.push(mapExcelRow({ ...lot, ...it }));
-      } else {
-        rows.push(mapExcelRow(lot));
-      }
+  // Map lots directly to Excel rows
+  for (const lot of lots) {
+    const items: any[] = Array.isArray(lot?.items) ? lot.items : [];
+    if (items.length > 0) {
+      for (const it of items) rows.push(mapExcelRow({ ...lot, ...it }));
+    } else {
+      rows.push(mapExcelRow(lot));
     }
   }
 
@@ -261,17 +253,23 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
 
   // Build Lists sheet for data validation sources
   const listsWs = XLSX.utils.aoa_to_sheet([]);
-  // Fill column A with CONDITION_LIST
+  // Column A: Item Condition
   for (let i = 0; i < CONDITION_LIST.length; i++) {
     const addr = XLSX.utils.encode_cell({ r: i, c: 0 });
     (listsWs as any)[addr] = { t: "s", v: CONDITION_LIST[i] };
   }
-  // Fill column B with LOCATION_LIST
+  // Column B: Location
   for (let i = 0; i < LOCATION_LIST.length; i++) {
     const addr = XLSX.utils.encode_cell({ r: i, c: 1 });
     (listsWs as any)[addr] = { t: "s", v: LOCATION_LIST[i] };
   }
-  (listsWs as any)["!ref"] = `A1:B${Math.max(CONDITION_LIST.length, LOCATION_LIST.length)}`;
+  // Column C: Categories
+  for (let i = 0; i < CATEGORIES_LIST.length; i++) {
+    const addr = XLSX.utils.encode_cell({ r: i, c: 2 });
+    (listsWs as any)[addr] = { t: "s", v: CATEGORIES_LIST[i] };
+  }
+  const maxListLen = Math.max(CONDITION_LIST.length, LOCATION_LIST.length, CATEGORIES_LIST.length);
+  (listsWs as any)["!ref"] = `A1:C${maxListLen}`;
 
   // Define named ranges for lists
   (wb as any).Workbook = (wb as any).Workbook || {};
@@ -279,18 +277,20 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
     ...(((wb as any).Workbook.Names as any[]) || []),
     { Name: "ItemConditionList", Ref: `Lists!$A$1:$A$${CONDITION_LIST.length}` },
     { Name: "LocationList", Ref: `Lists!$B$1:$B$${LOCATION_LIST.length}` },
+    { Name: "CategoriesList", Ref: `Lists!$C$1:$C$${CATEGORIES_LIST.length}` },
   ];
 
-  // Append sheets (Lists can be visible; Excel users can change later)
+  // Append sheets
   XLSX.utils.book_append_sheet(wb, ws, "Results");
   XLSX.utils.book_append_sheet(wb, listsWs, "Lists");
 
-  // Attempt to add data validation for Item Condition (col O) and Location (col K)
+  // Data validation: Item Condition (col Q), Location (col M), Categories (col H)
   try {
     const dvAny: any = (ws as any);
     const validations: any[] = dvAny["!dataValidation"] || [];
-    validations.push({ type: "list", allowBlank: true, sqref: "O2:O1048576", formulae: ["ItemConditionList"] });
-    validations.push({ type: "list", allowBlank: true, sqref: "K2:K1048576", formulae: ["LocationList"] });
+    validations.push({ type: "list", allowBlank: true, sqref: "Q2:Q1048576", formulae: ["ItemConditionList"] });
+    validations.push({ type: "list", allowBlank: true, sqref: "M2:M1048576", formulae: ["LocationList"] });
+    validations.push({ type: "list", allowBlank: true, sqref: "H2:H1048576", formulae: ["CategoriesList"] });
     dvAny["!dataValidation"] = validations;
   } catch {}
   const out: any = XLSX.write(wb, { bookType: "xlsx", type: "buffer" });

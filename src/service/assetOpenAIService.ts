@@ -119,8 +119,6 @@ export interface AssetAnalysisResult {
   summary?: string;
   language?: "en" | "fr" | "es";
   currency?: string;
-  excel_rows?: ExcelRow[];
-  excel_rows_json?: { rows?: ExcelRow[] };
 }
 
 export interface ExcelRow {
@@ -461,18 +459,11 @@ export async function analyzeAssetImages(
         if (content) {
           const parsed = JSON.parse(content) as AssetAnalysisResult;
           const fallbackLots = addModeTag(Array.isArray(parsed?.lots) ? parsed.lots : [], 'per_photo');
-          const excelRowsFromJson = (parsed as any)?.excel_rows_json?.rows;
-          const excel_rows = Array.isArray(excelRowsFromJson) && excelRowsFromJson.length
-            ? (excelRowsFromJson as ExcelRow[])
-            : (Array.isArray((parsed as any)?.excel_rows) && (parsed as any).excel_rows.length
-              ? ((parsed as any).excel_rows as ExcelRow[])
-              : buildExcelRowsFromLots(fallbackLots, undefined));
           return {
             lots: fallbackLots,
             summary: `${fallbackLots.length} items identified via fallback per_photo analysis of ${imageUrls.length} images.`,
             language: parsed.language || lang,
             currency: parsed.currency || ccy,
-            excel_rows,
           };
         }
       } catch (e) {
@@ -484,14 +475,12 @@ export async function analyzeAssetImages(
     const dedupedLots = await deduplicateAssetLotsAI(imageUrls, combinedLots);
     const finalLotsRaw = dedupedLots.length > 0 ? dedupedLots : combinedLots; // safeguard against over-aggressive dedup
     const finalLots = addModeTag(finalLotsRaw, 'per_item');
-    const excel_rows = buildExcelRowsFromLots(finalLots, undefined);
 
     return {
       lots: finalLots,
       summary: `${finalLots.length} unique items identified from ${imageUrls.length} images (per_item, deduped).`,
       language: lang,
       currency: ccy,
-      excel_rows,
     };
   }
 
@@ -525,13 +514,7 @@ export async function analyzeAssetImages(
     console.log("content", content);
     const parsed = JSON.parse(content) as AssetAnalysisResult;
     const lotsTagged = addModeTag(Array.isArray(parsed?.lots) ? parsed.lots : [], groupingMode);
-    const excelRowsFromJson = (parsed as any)?.excel_rows_json?.rows;
-    const excel_rows = Array.isArray(excelRowsFromJson) && excelRowsFromJson.length
-      ? (excelRowsFromJson as ExcelRow[])
-      : (Array.isArray(parsed?.excel_rows) && parsed.excel_rows.length
-        ? parsed.excel_rows
-        : buildExcelRowsFromLots(lotsTagged, undefined));
-    return { ...parsed, lots: lotsTagged, excel_rows, language: parsed.language || lang, currency: parsed.currency || ccy };
+    return { ...parsed, lots: lotsTagged, language: parsed.language || lang, currency: parsed.currency || ccy };
   } catch (err) {
     console.error("Invalid JSON from model:", content);
     throw new Error("Failed to parse JSON from AI response.");
