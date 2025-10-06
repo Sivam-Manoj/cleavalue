@@ -10,9 +10,16 @@ import {
   Paragraph,
   Packer,
   Table,
+  TableLayoutType,
   TableOfContents,
   TextRun,
   convertInchesToTwip,
+  // Additional types for extra images grid
+  ImageRun,
+  TableCell,
+  TableRow,
+  WidthType,
+  BorderStyle,
 } from "docx";
 import { buildHeaderTable } from "./builders/header.js";
 import { buildAppendixPhotoGallery } from "./builders/appendix.js";
@@ -29,6 +36,7 @@ import {
   formatDateUS,
   formatMonthYear,
   goldDivider,
+  fetchImageBuffer,
 } from "./builders/utils.js";
 
 export async function generateMixedDocx(reportData: any): Promise<Buffer> {
@@ -1127,6 +1135,77 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
           label
         ))
       );
+      // Render extra images once for this mixed group (report-only)
+      try {
+        const first = items[0] || {};
+        let extraUrls: string[] = Array.isArray((first as any)?.extra_image_urls)
+          ? ((first as any).extra_image_urls as string[]).filter(Boolean)
+          : [];
+        if (!extraUrls.length && Array.isArray((first as any)?.extra_image_indexes)) {
+          extraUrls = ((first as any).extra_image_indexes as number[])
+            .map((i) => (Number.isFinite(i) && i >= 0 ? rootImageUrls[i] : undefined))
+            .filter(Boolean) as string[];
+        }
+        extraUrls = Array.from(new Set(extraUrls));
+        if (extraUrls.length) {
+          children.push(
+            new Paragraph({
+              text: "Additional Images",
+              heading: HeadingLevel.HEADING_3,
+              spacing: { before: 120, after: 80 },
+            })
+          );
+          const gridCols = 4;
+          const cellW = Math.round(contentWidthTw / gridCols);
+          const imgCellMargins = { top: 60, bottom: 60, left: 60, right: 60 } as const;
+          const bufs = await Promise.all(extraUrls.map((u) => fetchImageBuffer(u)));
+          const rows: TableRow[] = [];
+          for (let i = 0; i < bufs.length; i += gridCols) {
+            const slice = bufs.slice(i, i + gridCols);
+            rows.push(
+              new TableRow({
+                cantSplit: true,
+                children: Array.from({ length: gridCols }, (_, col) => {
+                  const b = slice[col];
+                  return new TableCell({
+                    width: { size: cellW, type: WidthType.DXA },
+                    margins: imgCellMargins,
+                    children: b
+                      ? [
+                          new Paragraph({
+                            alignment: AlignmentType.CENTER,
+                            children: [
+                              new ImageRun({
+                                data: b as any,
+                                transformation: { width: 160, height: 120 },
+                              } as any),
+                            ],
+                          }),
+                        ]
+                      : [new Paragraph({ text: "" })],
+                  });
+                }),
+              })
+            );
+          }
+          children.push(
+            new Table({
+              width: { size: contentWidthTw, type: WidthType.DXA },
+              layout: TableLayoutType.FIXED,
+              columnWidths: Array.from({ length: gridCols }).map(() => cellW),
+              borders: {
+                top: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
+                bottom: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
+                left: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
+                right: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
+                insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
+                insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
+              },
+              rows,
+            })
+          );
+        }
+      } catch {}
     } else if (subMode === "per_photo") {
       children.push(
         ...(await buildPerPhotoTable(
@@ -1137,6 +1216,77 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
           (reportData as any)?.currency
         ))
       );
+      // Render extra images once for this mixed group (report-only)
+      try {
+        const first = items[0] || {};
+        let extraUrls: string[] = Array.isArray((first as any)?.extra_image_urls)
+          ? ((first as any).extra_image_urls as string[]).filter(Boolean)
+          : [];
+        if (!extraUrls.length && Array.isArray((first as any)?.extra_image_indexes)) {
+          extraUrls = ((first as any).extra_image_indexes as number[])
+            .map((i) => (Number.isFinite(i) && i >= 0 ? rootImageUrls[i] : undefined))
+            .filter(Boolean) as string[];
+        }
+        extraUrls = Array.from(new Set(extraUrls));
+        if (extraUrls.length) {
+          children.push(
+            new Paragraph({
+              text: "Additional Images",
+              heading: HeadingLevel.HEADING_3,
+              spacing: { before: 120, after: 80 },
+            })
+          );
+          const gridCols = 4;
+          const cellW = Math.round(contentWidthTw / gridCols);
+          const imgCellMargins = { top: 60, bottom: 60, left: 60, right: 60 } as const;
+          const bufs = await Promise.all(extraUrls.map((u) => fetchImageBuffer(u)));
+          const rows: TableRow[] = [];
+          for (let i = 0; i < bufs.length; i += gridCols) {
+            const slice = bufs.slice(i, i + gridCols);
+            rows.push(
+              new TableRow({
+                cantSplit: true,
+                children: Array.from({ length: gridCols }, (_, col) => {
+                  const b = slice[col];
+                  return new TableCell({
+                    width: { size: cellW, type: WidthType.DXA },
+                    margins: imgCellMargins,
+                    children: b
+                      ? [
+                          new Paragraph({
+                            alignment: AlignmentType.CENTER,
+                            children: [
+                              new ImageRun({
+                                data: b as any,
+                                transformation: { width: 160, height: 120 },
+                              } as any),
+                            ],
+                          }),
+                        ]
+                      : [new Paragraph({ text: "" })],
+                  });
+                }),
+              })
+            );
+          }
+          children.push(
+            new Table({
+              width: { size: contentWidthTw, type: WidthType.DXA },
+              layout: (Table as any).LayoutType?.FIXED || undefined,
+              columnWidths: Array.from({ length: gridCols }).map(() => cellW),
+              borders: {
+                top: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
+                bottom: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
+                left: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
+                right: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
+                insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
+                insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
+              },
+              rows,
+            })
+          );
+        }
+      } catch {}
     } else {
       const pseudo = { ...reportData, lots: items };
       children.push(

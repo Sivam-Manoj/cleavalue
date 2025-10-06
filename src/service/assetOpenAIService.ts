@@ -254,7 +254,7 @@ async function deduplicateAssetLotsAI(
 
   try {
     const response = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || "gpt-5",
+      model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
       messages: [
         { role: "system", content: system },
         {
@@ -395,7 +395,7 @@ export async function analyzeAssetImages(
       ];
 
       const response = await openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || "gpt-5",
+        model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
         messages,
         response_format: { type: "json_object" },
       });
@@ -451,7 +451,7 @@ export async function analyzeAssetImages(
         ];
 
         const resp = await openai.chat.completions.create({
-          model: process.env.OPENAI_MODEL || "gpt-5",
+          model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
           messages,
           response_format: { type: "json_object" },
         });
@@ -502,7 +502,7 @@ export async function analyzeAssetImages(
   ];
 
   const response = await openai.chat.completions.create({
-    model: process.env.OPENAI_MODEL || "gpt-5",
+    model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
     messages,
     response_format: { type: "json_object" },
   });

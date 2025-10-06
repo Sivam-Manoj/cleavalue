@@ -88,7 +88,22 @@ export async function buildAssetLots(
     if (badges.length) children.push(new Paragraph({ text: badges.join("  •  "), spacing: { after: 80 } }));
 
     // Description
-    if (lot?.description) children.push(new Paragraph({ text: String(lot.description), spacing: { after: 100 } }));
+    if (lot?.description)
+      children.push(
+        new Paragraph({
+          text: String(lot.description),
+          spacing: { after: 80 },
+        })
+      );
+
+    // Details (attributes/specs)
+    if (lot?.details)
+      children.push(
+        new Paragraph({
+          text: String(lot.details),
+          spacing: { after: 100 },
+        })
+      );
 
     // Vehicle Details (structured) if VIN decoded data exists
     const vd: any = (lot as any)?.vinDecoded;

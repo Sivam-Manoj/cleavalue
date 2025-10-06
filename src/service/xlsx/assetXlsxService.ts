@@ -14,6 +14,7 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
     "Lot #",
     "Title",
     "Description",
+    "Details",
     "FMV",
     "Quantity",
     "Must Take",
@@ -205,6 +206,7 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
     toStrCell(rec?.lot_number),
     toStrCell(rec?.title),
     toStrCell(rec?.description),
+    toStrCell(rec?.details),
     toStrCell(rec?.estimated_value),
     toNumCell(rec?.quantity ?? 1),
     toBoolCell(rec?.must_take),
@@ -288,9 +290,10 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
   try {
     const dvAny: any = (ws as any);
     const validations: any[] = dvAny["!dataValidation"] || [];
-    validations.push({ type: "list", allowBlank: true, sqref: "Q2:Q1048576", formulae: ["ItemConditionList"] });
-    validations.push({ type: "list", allowBlank: true, sqref: "M2:M1048576", formulae: ["LocationList"] });
-    validations.push({ type: "list", allowBlank: true, sqref: "H2:H1048576", formulae: ["CategoriesList"] });
+    // After adding Details column, these columns shift by +1
+    validations.push({ type: "list", allowBlank: true, sqref: "R2:R1048576", formulae: ["ItemConditionList"] });
+    validations.push({ type: "list", allowBlank: true, sqref: "N2:N1048576", formulae: ["LocationList"] });
+    validations.push({ type: "list", allowBlank: true, sqref: "I2:I1048576", formulae: ["CategoriesList"] });
     dvAny["!dataValidation"] = validations;
   } catch {}
   const out: any = XLSX.write(wb, { bookType: "xlsx", type: "buffer" });
