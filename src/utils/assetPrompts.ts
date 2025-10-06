@@ -142,7 +142,7 @@ Output Rules:
         "lot_number": "101",
         "quantity": 1,
         "must_take": false,
-        "categories": " from ${allowedCategories} eg: 'Tractors' or 'Cars / SUVs / Vans'",
+        "categories": "from allowedCategories eg: 'Tractors' or 'Cars / SUVs / Vans'",
         "serial_number": "VIN: 1HGCM82633A004352",
         "show_on_website": true,
         "close_date": "2025-12-31",
