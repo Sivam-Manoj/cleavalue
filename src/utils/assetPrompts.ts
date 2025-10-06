@@ -88,7 +88,6 @@ export function getAssetSystemPrompt(
     "Chipping / Shredding",
     "Self Propelled Clearing",
     "Skidder",
-    "General Merchandise",
     "Heavy Trucks",
     "Jewellery",
     "Boom And Scissor Lifts",
