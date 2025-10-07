@@ -1,6 +1,5 @@
 import * as XLSX from "xlsx";
 import { extractVinFromText } from "../vehicleApiService.js";
-import { allowedCategories as ALLOWED_CATEGORIES } from "../../utils/assetPrompts.js";
 
 // Build a flat results table based on grouping mode and lot/item structures
 export async function generateAssetXlsxFromReport(reportData: any): Promise<Buffer> {
@@ -66,31 +65,7 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
   ];
   const DEFAULT_LOCATION = LOCATION_LIST[0];
 
-  // Allowed Categories sourced from prompts (no "General Merchandise")
-  const CATEGORIES_LIST = ALLOWED_CATEGORIES;
-  const DEFAULT_CATEGORY = ""; // no defaulting to General Merchandise
-
-  // Normalization helpers
-  const normalizeCategory = (v: any): string => {
-    try {
-      if (v === undefined || v === null) return DEFAULT_CATEGORY;
-      const s = String(v).trim();
-      if (!s) return DEFAULT_CATEGORY;
-      const sl = s.toLowerCase();
-      // exact case-insensitive match
-      const exact = CATEGORIES_LIST.find((c) => c.toLowerCase() === sl);
-      if (exact) return exact;
-      // partial includes (both directions)
-      const partial = CATEGORIES_LIST.find((c) => c.toLowerCase().includes(sl) || sl.includes(c.toLowerCase()));
-      if (partial) return partial;
-      // naive plural/singular flip
-      const alt = sl.endsWith("s") ? sl.slice(0, -1) : sl + "s";
-      const fuzzy = CATEGORIES_LIST.find((c) => c.toLowerCase() === alt || c.toLowerCase().includes(alt) || alt.includes(c.toLowerCase()));
-      return fuzzy || DEFAULT_CATEGORY;
-    } catch {
-      return DEFAULT_CATEGORY;
-    }
-  };
+  // Categories: use as provided by AI (no dropdown/normalization)
 
   const normalizeCondition = (v: any): string => {
     try {
@@ -126,7 +101,7 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
     toNumCell(rec?.quantity ?? 1),
     toBoolCell(rec?.must_take),
     toStrCell(defaultContractNo),
-    toStrCell(normalizeCategory(rec?.categories)),
+    toStrCell(rec?.categories),
     toStrCell(rec?.serial_number ?? deriveSerial(rec)),
     toBoolCell(rec?.show_on_website),
     toStrCell(rec?.close_date),
@@ -168,7 +143,7 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
   const colWidths = headers.map((h) => ({ wch: Math.max(12, Math.min(48, String(h).length + 6)) }));
   (ws as any)["!cols"] = colWidths;
 
-  // Build Lists sheet for data validation sources
+  // Build Lists sheet for data validation sources (Categories removed; use AI value as-is)
   const listsWs = XLSX.utils.aoa_to_sheet([]);
   // Column A: Item Condition
   for (let i = 0; i < CONDITION_LIST.length; i++) {
@@ -180,13 +155,8 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
     const addr = XLSX.utils.encode_cell({ r: i, c: 1 });
     (listsWs as any)[addr] = { t: "s", v: LOCATION_LIST[i] };
   }
-  // Column C: Categories
-  for (let i = 0; i < CATEGORIES_LIST.length; i++) {
-    const addr = XLSX.utils.encode_cell({ r: i, c: 2 });
-    (listsWs as any)[addr] = { t: "s", v: CATEGORIES_LIST[i] };
-  }
-  const maxListLen = Math.max(CONDITION_LIST.length, LOCATION_LIST.length, CATEGORIES_LIST.length);
-  (listsWs as any)["!ref"] = `A1:C${maxListLen}`;
+  const maxListLen = Math.max(CONDITION_LIST.length, LOCATION_LIST.length);
+  (listsWs as any)["!ref"] = `A1:B${maxListLen}`;
 
   // Define named ranges for lists
   (wb as any).Workbook = (wb as any).Workbook || {};
@@ -194,21 +164,19 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
     ...(((wb as any).Workbook.Names as any[]) || []),
     { Name: "ItemConditionList", Ref: `Lists!$A$1:$A$${CONDITION_LIST.length}` },
     { Name: "LocationList", Ref: `Lists!$B$1:$B$${LOCATION_LIST.length}` },
-    { Name: "CategoriesList", Ref: `Lists!$C$1:$C$${CATEGORIES_LIST.length}` },
   ];
 
   // Append sheets
   XLSX.utils.book_append_sheet(wb, ws, "Results");
   XLSX.utils.book_append_sheet(wb, listsWs, "Lists");
 
-  // Data validation: Item Condition (col Q), Location (col M), Categories (col H)
+  // Data validation: Item Condition (col Q), Location (col M). Categories validation removed.
   try {
     const dvAny: any = (ws as any);
     const validations: any[] = dvAny["!dataValidation"] || [];
     // After adding Details column, these columns shift by +1
     validations.push({ type: "list", allowBlank: true, sqref: "R2:R1048576", formulae: ["ItemConditionList"] });
     validations.push({ type: "list", allowBlank: true, sqref: "N2:N1048576", formulae: ["LocationList"] });
-    validations.push({ type: "list", allowBlank: true, sqref: "I2:I1048576", formulae: ["CategoriesList"] });
     dvAny["!dataValidation"] = validations;
   } catch {}
   const out: any = XLSX.write(wb, { bookType: "xlsx", type: "buffer" });
