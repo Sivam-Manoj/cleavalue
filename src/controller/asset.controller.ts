@@ -16,7 +16,16 @@ export type AssetGroupingMode =
 export const createAssetReport = async (req: AuthRequest, res: Response) => {
   try {
     const details = JSON.parse(req.body.details || "{}");
-    const images = req.files as Express.Multer.File[];
+    // Support both array-style (single field) and fields-style (images/videos)
+    let images: Express.Multer.File[] = [];
+    let videos: Express.Multer.File[] = [];
+    const anyFiles = req.files as any;
+    if (Array.isArray(anyFiles)) {
+      images = anyFiles as Express.Multer.File[];
+    } else if (anyFiles && typeof anyFiles === "object") {
+      images = Array.isArray(anyFiles.images) ? (anyFiles.images as Express.Multer.File[]) : [];
+      videos = Array.isArray(anyFiles.videos) ? (anyFiles.videos as Express.Multer.File[]) : [];
+    }
 
     const providedId: string | undefined =
       (typeof details?.progress_id === "string" && details.progress_id) ||
@@ -31,6 +40,7 @@ export const createAssetReport = async (req: AuthRequest, res: Response) => {
     queueAssetReportJob({
       user: { id: String(user?._id), email: String(user?.email || ""), name: (user as any)?.name || (user as any)?.username || undefined },
       images,
+      videos,
       details,
       progressId: jobId,
     });
@@ -93,4 +103,8 @@ export const getAssetProgress = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const uploadMiddleware = upload.array("images", 500);
+// Accept both images and videos in memory; images are used for AI and reports, videos are zipped with originals only
+export const uploadMiddleware = upload.fields([
+  { name: "images", maxCount: 500 },
+  { name: "videos", maxCount: 50 },
+]);

@@ -32,6 +32,7 @@ export type AssetGroupingMode =
 export type AssetJobInput = {
   user: { id: string; email: string; name?: string | null };
   images: Express.Multer.File[];
+  videos?: Express.Multer.File[]; // optional: user-provided videos to include in zip only
   details: any;
   progressId?: string;
 };
@@ -50,6 +51,7 @@ export function queueAssetReportJob(input: AssetJobInput) {
 export async function runAssetReportJob({
   user,
   images,
+  videos = [],
   details,
   progressId,
 }: AssetJobInput) {
@@ -747,10 +749,10 @@ export async function runAssetReportJob({
       }),
     ]);
 
-    // Save original uploaded images into a folder and zip it
+    // Save original uploaded media (images + videos) into a folder and zip it
     await withStep(
       "save_images_folder",
-      "Saving original images to folder",
+      "Saving original images/videos to folder",
       async () => {
         await fs.mkdir(imagesDirPath, { recursive: true });
         const extFromMime = (m?: string) => {
@@ -763,26 +765,42 @@ export async function runAssetReportJob({
           if (m.includes("gif")) return ".gif";
           if (m.includes("bmp")) return ".bmp";
           if (m.includes("tiff")) return ".tiff";
+          // videos
+          if (m.includes("mp4")) return ".mp4";
+          if (m.includes("quicktime")) return ".mov";
+          if (m.includes("webm")) return ".webm";
+          if (m.includes("x-matroska")) return ".mkv";
+          if (m.includes("x-msvideo")) return ".avi";
+          if (m.includes("x-m4v")) return ".m4v";
+          if (m.includes("3gpp")) return ".3gp";
           return "";
         };
         const sanitize = (name: string) =>
           name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        // Save images
         for (let i = 0; i < images.length; i++) {
           const file = images[i];
           const orig = file.originalname || "";
           const fallback = `image-${String(i + 1).padStart(3, "0")}`;
-          const ext =
-            path.extname(orig) || extFromMime((file as any)?.mimetype) || "";
-          const base = sanitize(
-            (orig && orig.split("/").pop()!) || fallback + ext
-          );
+          const ext = path.extname(orig) || extFromMime((file as any)?.mimetype) || "";
+          const base = sanitize((orig && orig.split("/").pop()!) || fallback + ext);
+          const filePath = path.join(imagesDirPath, base);
+          await fs.writeFile(filePath, file.buffer);
+        }
+        // Save videos
+        for (let i = 0; i < videos.length; i++) {
+          const file = videos[i];
+          const orig = file.originalname || "";
+          const fallback = `video-${String(i + 1).padStart(3, "0")}`;
+          const ext = path.extname(orig) || extFromMime((file as any)?.mimetype) || "";
+          const base = sanitize((orig && orig.split("/").pop()!) || fallback + ext);
           const filePath = path.join(imagesDirPath, base);
           await fs.writeFile(filePath, file.buffer);
         }
       }
     );
 
-    await withStep("zip_images", "Zipping images folder", async () => {
+    await withStep("zip_images", "Zipping media folder", async () => {
       await new Promise<void>((resolve, reject) => {
         const output = createWriteStream(imagesZipPath);
         const archive = archiver("zip", { zlib: { level: 9 } });
@@ -792,7 +810,7 @@ export async function runAssetReportJob({
         archive.directory(imagesDirPath, false);
         archive.finalize();
       });
-      console.log(`[AssetReportJob] Images zipped to ${imagesZipPath}`);
+      console.log(`[AssetReportJob] Media zipped to ${imagesZipPath}`);
     });
 
     const parseEstimated = (val: unknown): number => {

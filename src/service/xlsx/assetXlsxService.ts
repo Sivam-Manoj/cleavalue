@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import { extractVinFromText } from "../vehicleApiService.js";
+import { allowedCategories as ALLOWED_CATEGORIES } from "../../utils/assetPrompts.js";
 
 // Build a flat results table based on grouping mode and lot/item structures
 export async function generateAssetXlsxFromReport(reportData: any): Promise<Buffer> {
@@ -65,95 +66,9 @@ export async function generateAssetXlsxFromReport(reportData: any): Promise<Buff
   ];
   const DEFAULT_LOCATION = LOCATION_LIST[0];
 
-  // Allowed Categories (mirrors prompt's allowedCategories)
-  const CATEGORIES_LIST = [
-    "Buyer Return",
-    "Cleaning And Repair",
-    "Commissions",
-    "Storage",
-    "Conveyors",
-    "Crushers",
-    "Feeders",
-    "Material Washing Equipment",
-    "Power Stations",
-    "Screening Equipment",
-    "Applicators",
-    "Grain Handling",
-    "Harvest",
-    "Hay & Forage",
-    "Landscape Equipment",
-    "Livestock Handling",
-    "Seeding And Tilling",
-    "Tractor Attachments",
-    "Tractors",
-    "Trailers",
-    "Air Support",
-    "Airplane",
-    "Crawler Tractor Attachments",
-    "Demolition Attachments",
-    "Excavator Attachments",
-    "Loader Backhoe Attachments",
-    "Motor Grader Attachments",
-    "Skid Steer Attachments",
-    "Truck Attachments",
-    "Wheel Loader Attachments",
-    "Cars / SUVs / Vans",
-    "Computers / Electronics / Photocopiers / Office Equipment",
-    "Articulated Dump Trucks",
-    "Compactors",
-    "Cranes",
-    "Dozers",
-    "Drill",
-    "Excavators",
-    "Generators",
-    "Haul Trucks",
-    "Loader Backhoes",
-    "Loaders",
-    "Motor Graders",
-    "RTMove Homes / Mobile Homes / Sheds / Skid Shacks",
-    "Scrapers",
-    "Skid Steers",
-    "Water Wagons",
-    "Firearms And Accessories",
-    "Chipping / Shredding",
-    "Self Propelled Clearing",
-    "Skidder",
-    "General Merchandise",
-    "Heavy Trucks",
-    "Jewellery",
-    "Boom And Scissor Lifts",
-    "Forklift",
-    "Telehandler",
-    "Light Duty Freight Trailers",
-    "Light Duty Trucks (1 Ton And Under)",
-    "Asphalt Trucks",
-    "Concrete Mixer Truck",
-    "Concrete Mixing",
-    "Concrete Paving",
-    "Concrete Plant / Components",
-    "Concrete Pump",
-    "Concrete Pump Trucks",
-    "Oil & Gas",
-    "Paving Equipment",
-    "Rail Road Equipment",
-    "Commercial",
-    "Farm Land",
-    "Residential",
-    "ATVs / UTVs",
-    "Camper Trailer",
-    "Golf Cart",
-    "Motorcycles",
-    "Motorhome",
-    "Snowmobiles",
-    "Watercraft",
-    "Restaurant Equipment",
-    "Salvage And Seized Vehicles",
-    "Semi Tractors",
-    "Semi Trailers",
-    "Storage Wars",
-    "Yard Care And Lawn Equipment / Lumber",
-  ];
-  const DEFAULT_CATEGORY = "General Merchandise";
+  // Allowed Categories sourced from prompts (no "General Merchandise")
+  const CATEGORIES_LIST = ALLOWED_CATEGORIES;
+  const DEFAULT_CATEGORY = ""; // no defaulting to General Merchandise
 
   // Normalization helpers
   const normalizeCategory = (v: any): string => {
