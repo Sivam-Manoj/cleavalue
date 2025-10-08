@@ -64,12 +64,21 @@ export interface AssetLotAI {
 }
 
 function extractSerial(lot: any): string | null {
-  const sv = (lot?.serial_no_or_label || lot?.sn_vin || lot?.serial_number || "").trim?.() || "";
+  const sv =
+    (
+      lot?.serial_no_or_label ||
+      lot?.sn_vin ||
+      lot?.serial_number ||
+      ""
+    ).trim?.() || "";
   if (!sv) return null;
   return sv;
 }
 
-function buildExcelRowsFromLots(lots: AssetLotAI[], defaultContract?: string): ExcelRow[] {
+function buildExcelRowsFromLots(
+  lots: AssetLotAI[],
+  defaultContract?: string
+): ExcelRow[] {
   const rows: ExcelRow[] = [];
   for (const lot of lots || []) {
     const base: ExcelRow = {
@@ -90,24 +99,39 @@ function buildExcelRowsFromLots(lots: AssetLotAI[], defaultContract?: string): E
       item_condition: (lot as any)?.item_condition ?? null,
     };
     rows.push(base);
-    const items: any[] = Array.isArray((lot as any)?.items) ? (lot as any).items : [];
+    const items: any[] = Array.isArray((lot as any)?.items)
+      ? (lot as any).items
+      : [];
     for (const it of items) {
       rows.push({
         lot_number: (it as any)?.lot_number ?? (lot as any)?.lot_number ?? null,
-        description: (it as any)?.description ?? (lot as any)?.description ?? null,
+        description:
+          (it as any)?.description ?? (lot as any)?.description ?? null,
         quantity: (it as any)?.quantity ?? null,
         must_take: (it as any)?.must_take ?? (lot as any)?.must_take ?? null,
-        contract_number: (it as any)?.contract_number ?? (lot as any)?.contract_number ?? defaultContract ?? null,
+        contract_number:
+          (it as any)?.contract_number ??
+          (lot as any)?.contract_number ??
+          defaultContract ??
+          null,
         categories: (it as any)?.categories ?? (lot as any)?.categories ?? null,
-        serial_number: (it as any)?.serial_number ?? (it as any)?.sn_vin ?? extractSerial(it) ?? extractSerial(lot),
-        show_on_website: (it as any)?.show_on_website ?? (lot as any)?.show_on_website ?? null,
+        serial_number:
+          (it as any)?.serial_number ??
+          (it as any)?.sn_vin ??
+          extractSerial(it) ??
+          extractSerial(lot),
+        show_on_website:
+          (it as any)?.show_on_website ?? (lot as any)?.show_on_website ?? null,
         close_date: (it as any)?.close_date ?? (lot as any)?.close_date ?? null,
-        bid_increment: (it as any)?.bid_increment ?? (lot as any)?.bid_increment ?? null,
+        bid_increment:
+          (it as any)?.bid_increment ?? (lot as any)?.bid_increment ?? null,
         location: (it as any)?.location ?? (lot as any)?.location ?? null,
-        opening_bid: (it as any)?.opening_bid ?? (lot as any)?.opening_bid ?? null,
+        opening_bid:
+          (it as any)?.opening_bid ?? (lot as any)?.opening_bid ?? null,
         latitude: (it as any)?.latitude ?? (lot as any)?.latitude ?? null,
         longitude: (it as any)?.longitude ?? (lot as any)?.longitude ?? null,
-        item_condition: (it as any)?.item_condition ?? (lot as any)?.item_condition ?? null,
+        item_condition:
+          (it as any)?.item_condition ?? (lot as any)?.item_condition ?? null,
       });
     }
   }
@@ -163,13 +187,14 @@ async function deduplicateAssetLotsAI(
 
   const system =
     `You are an expert at deduplicating JSON records of physical assets described as 'lots'.\n\n` +
-    `Goal: REMOVE duplicate records that represent the SAME physical item across multiple photos, and return JSON with the SAME SCHEMA.\n\n` +
+    `Goal: REMOVE duplicate records that represent the SAME physical item across multiple photos, and return JSON with the SAME SCHEMA AND FIELDS as the input.\n\n` +
     `Rules:\n` +
     `- Output strictly valid JSON: { "lots": AssetLot[] }. No extra commentary.\n` +
-    `- AssetLot fields: lot_id (string), title (string), description (string), condition (string), estimated_value (string), tags (string[] optional), serial_no_or_label (string|null optional), details (string optional), image_url (string|null optional), image_indexes (number[]).\n` +
-    `- Do NOT modify any fields of remaining lots. Do NOT edit image_indexes or image_url. Do NOT merge data across lots.\n` +
-    `- Dedup heuristics: identical serial_no_or_label => same item; extremely similar titles + compatible details => likely same.\n` +
-    `- When duplicates exist, keep a single representative (prefer one with non-null serial_no_or_label); discard the rest.\n` +
+    `- IMPORTANT: Each lot object may contain MANY fields (e.g., lot_id, title, description, condition, estimated_value, tags, serial_no_or_label, serial_number, details, image_url, image_indexes, lot_number, quantity, must_take, contract_number, categories, show_on_website, close_date, bid_increment, location, opening_bid, latitude, longitude, item_condition, and others).\n` +
+    `- You MUST PRESERVE ALL FIELDS EXACTLY AS-IS for the lots you keep. Do NOT remove any fields. Do NOT rename fields. Do NOT change any values. Do NOT reformat strings.\n` +
+    `- Do NOT modify image_indexes or image_url. Do NOT merge or combine lots. Only remove duplicates.\n` +
+    `- Dedup heuristics: identical serial_no_or_label (or serial_number/VIN) => same item; extremely similar titles + compatible details => likely same.\n` +
+    `- When duplicates exist, keep a single representative (prefer one with a non-null serial_no_or_label or serial_number); discard the rest.\n` +
     `- Do not invent new lots. Do not discard genuinely distinct items.\n`;
 
   const user = {
@@ -458,7 +483,10 @@ export async function analyzeAssetImages(
         const content = resp.choices?.[0]?.message?.content?.trim();
         if (content) {
           const parsed = JSON.parse(content) as AssetAnalysisResult;
-          const fallbackLots = addModeTag(Array.isArray(parsed?.lots) ? parsed.lots : [], 'per_photo');
+          const fallbackLots = addModeTag(
+            Array.isArray(parsed?.lots) ? parsed.lots : [],
+            "per_photo"
+          );
           return {
             lots: fallbackLots,
             summary: `${fallbackLots.length} items identified via fallback per_photo analysis of ${imageUrls.length} images.`,
@@ -474,7 +502,7 @@ export async function analyzeAssetImages(
     // Deduplicate across images to remove the same physical item
     const dedupedLots = await deduplicateAssetLotsAI(imageUrls, combinedLots);
     const finalLotsRaw = dedupedLots.length > 0 ? dedupedLots : combinedLots; // safeguard against over-aggressive dedup
-    const finalLots = addModeTag(finalLotsRaw, 'per_item');
+    const finalLots = addModeTag(finalLotsRaw, "per_item");
 
     return {
       lots: finalLots,
@@ -491,8 +519,14 @@ export async function analyzeAssetImages(
     {
       role: "user",
       content: [
-        { type: "text", text: `Grouping mode: ${groupingMode}. Analyze these images and return valid JSON as instructed.` },
-        { type: "text", text: `Original image URLs (index -> URL):\n${imageUrls.map((u, idx) => `#${idx}: ${u}`).join("\n")}` },
+        {
+          type: "text",
+          text: `Grouping mode: ${groupingMode}. Analyze these images and return valid JSON as instructed.`,
+        },
+        {
+          type: "text",
+          text: `Original image URLs (index -> URL):\n${imageUrls.map((u, idx) => `#${idx}: ${u}`).join("\n")}`,
+        },
         ...imgs.map(({ base64, mime }) => ({
           type: "image_url" as const,
           image_url: { url: `data:${mime};base64,${base64}` },
@@ -513,8 +547,16 @@ export async function analyzeAssetImages(
   try {
     console.log("content", content);
     const parsed = JSON.parse(content) as AssetAnalysisResult;
-    const lotsTagged = addModeTag(Array.isArray(parsed?.lots) ? parsed.lots : [], groupingMode);
-    return { ...parsed, lots: lotsTagged, language: parsed.language || lang, currency: parsed.currency || ccy };
+    const lotsTagged = addModeTag(
+      Array.isArray(parsed?.lots) ? parsed.lots : [],
+      groupingMode
+    );
+    return {
+      ...parsed,
+      lots: lotsTagged,
+      language: parsed.language || lang,
+      currency: parsed.currency || ccy,
+    };
   } catch (err) {
     console.error("Invalid JSON from model:", content);
     throw new Error("Failed to parse JSON from AI response.");

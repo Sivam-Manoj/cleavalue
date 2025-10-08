@@ -15,6 +15,20 @@ export interface ICatalogueItem {
   condition?: string;
   details?: string;
   estimated_value?: string; // CA$...
+  // Excel-related optional fields (persist AI outputs for XLSX)
+  categories?: string;
+  lot_number?: string | number;
+  quantity?: number;
+  must_take?: boolean;
+  show_on_website?: boolean;
+  close_date?: string;
+  bid_increment?: number;
+  location?: string;
+  opening_bid?: number;
+  latitude?: number;
+  longitude?: number;
+  item_condition?: string;
+  serial_number?: string;
   // Optional per-item image reference (global index resolved by job)
   image_local_index?: number; // preferred local best image index within this lot's image set
   image_index?: number; // 0-based index into report-level imageUrls
@@ -28,6 +42,20 @@ export interface IAssetLot {
   condition?: string;
   estimated_value?: string;
   tags?: string[];
+  // Excel-related fields (persist AI outputs for XLSX)
+  lot_number?: string | number;
+  quantity?: number;
+  must_take?: boolean;
+  categories?: string;
+  serial_number?: string;
+  show_on_website?: boolean;
+  close_date?: string;
+  bid_increment?: number;
+  location?: string;
+  opening_bid?: number;
+  latitude?: number;
+  longitude?: number;
+  item_condition?: string;
   serial_no_or_label?: string | null;
   details?: string;
   image_url?: string | null;
@@ -67,6 +95,20 @@ const CatalogueItemSchema: Schema<ICatalogueItem> = new Schema(
     condition: { type: String },
     details: { type: String },
     estimated_value: { type: String },
+    // Excel-related optional fields
+    categories: { type: String },
+    lot_number: { type: Schema.Types.Mixed },
+    quantity: { type: Number },
+    must_take: { type: Boolean },
+    show_on_website: { type: Boolean },
+    close_date: { type: String },
+    bid_increment: { type: Number },
+    location: { type: String },
+    opening_bid: { type: Number },
+    latitude: { type: Number },
+    longitude: { type: Number },
+    item_condition: { type: String },
+    serial_number: { type: String },
     image_local_index: { type: Number },
     image_index: { type: Number },
     image_url: { type: String },
@@ -82,6 +124,20 @@ const AssetLotSchema: Schema<IAssetLot> = new Schema(
     condition: { type: String },
     estimated_value: { type: String },
     tags: [{ type: String }],
+    // Excel-related optional fields
+    lot_number: { type: Schema.Types.Mixed },
+    quantity: { type: Number },
+    must_take: { type: Boolean },
+    categories: { type: String },
+    serial_number: { type: String },
+    show_on_website: { type: Boolean },
+    close_date: { type: String },
+    bid_increment: { type: Number },
+    location: { type: String },
+    opening_bid: { type: Number },
+    latitude: { type: Number },
+    longitude: { type: Number },
+    item_condition: { type: String },
     serial_no_or_label: { type: String },
     details: { type: String },
     image_url: { type: String },
