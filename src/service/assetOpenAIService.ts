@@ -408,6 +408,10 @@ export async function analyzeAssetImages(
               text: `Grouping mode: per_item. Analyze THIS SINGLE IMAGE and return ALL distinct items visible as separate lots (do not collapse multiple items). If multiple identical units are visible, create separate lots and distinguish titles with "(#1)", "(#2)", etc. For each returned lot, include: (1) the exact original URL provided below in the 'image_url' field (do NOT fabricate), (2) the original image index ${i} in 'image_indexes' (and do NOT include any other index), and (3) 'serial_no_or_label' if visible else null, plus 'details' with concise attributes (color, material, size/dimensions, capacity, model/specs, inclusions/issues).`,
             },
             {
+              type: "text",
+              text: `Annotation Priority (if red boxes/ROIs are present): If one or more red-outline annotation boxes are present or described for this image, ONLY identify and return items clearly contained within those boxes (treat each box as a region-of-interest). Ignore objects outside of the boxes. If no boxes are present or described, analyze the entire image normally.`,
+            },
+            {
               type: "image_url" as const,
               image_url: { url: `data:${mime};base64,${b64}` },
             },
@@ -466,6 +470,10 @@ export async function analyzeAssetImages(
                 text: `Original image URLs (index -> URL):\n${imageUrls
                   .map((u, idx) => `#${idx}: ${u}`)
                   .join("\n")}`,
+              },
+              {
+                type: "text",
+                text: `Annotation Priority (if red boxes/ROIs are present): If one or more red-outline annotation boxes are present or described for any image, ONLY identify and return the item within each box for that image (treat each box as a region-of-interest). Ignore objects outside of boxes. If no boxes are present or described, analyze each image normally.`,
               },
               ...imgs.map(({ base64, mime }) => ({
                 type: "image_url" as const,
@@ -526,6 +534,10 @@ export async function analyzeAssetImages(
         {
           type: "text",
           text: `Original image URLs (index -> URL):\n${imageUrls.map((u, idx) => `#${idx}: ${u}`).join("\n")}`,
+        },
+        {
+          type: "text",
+          text: `Annotation Priority (if red boxes/ROIs are present): If one or more red-outline annotation boxes are present or described for any image, ONLY identify and return the item(s) within each box for that image (treat each box as a region-of-interest). Ignore objects outside of boxes. If no boxes are present or described, analyze each image normally.`,
         },
         ...imgs.map(({ base64, mime }) => ({
           type: "image_url" as const,
