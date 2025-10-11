@@ -92,3 +92,23 @@ export const uploadToR2 = async (
     throw new Error(`Error uploading to R2: ${error.message}`);
   }
 };
+
+/**
+ * Upload a raw Buffer directly to R2 with a provided content type.
+ */
+export const uploadBufferToR2 = async (
+  buffer: Buffer,
+  contentType: string,
+  bucketName: string,
+  fileName: string
+): Promise<string> => {
+  const params = {
+    Bucket: bucketName,
+    Key: fileName,
+    Body: buffer,
+    ContentType: contentType,
+    ACL: "public-read",
+  };
+  const data = await s3.upload(params).promise();
+  return data.Location;
+};

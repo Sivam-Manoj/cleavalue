@@ -1,4 +1,5 @@
-import { uploadToR2 } from "../utils/r2Storage/r2Upload.js";
+import { uploadToR2, uploadBufferToR2 } from "../utils/r2Storage/r2Upload.js";
+import { processImageWithLogo } from "../utils/imageProcessing.js";
 import AssetReport from "../models/asset.model.js";
 import PdfReport from "../models/pdfReport.model.js";
 import {
@@ -154,9 +155,41 @@ export async function runAssetReportJob({
       for (let idx = 0; idx < images.length; idx++) {
         const file = images[idx];
         const timestamp = Date.now();
-        const fileName = `uploads/asset/${timestamp}-${file.originalname}`;
-        await uploadToR2(file, process.env.R2_BUCKET_NAME!, fileName);
-        const fileUrl = `https://images.sellsnap.store/${fileName}`;
+        // Resolve original buffer robustly
+        const anyFile = file as any;
+        let inputBuffer: Buffer | null = null;
+        if (anyFile?.buffer && Buffer.isBuffer(anyFile.buffer)) {
+          inputBuffer = anyFile.buffer as Buffer;
+        } else if (typeof anyFile?.path === "string") {
+          try { inputBuffer = await fs.readFile(anyFile.path); } catch {}
+        }
+
+        let fileUrl: string;
+        if (inputBuffer) {
+          // Process: add logo + ensure <=1MB; fallback to original if anything fails
+          try {
+            const { buffer } = await processImageWithLogo(
+              inputBuffer,
+              "public/logo.jpg",
+              { maxBytes: 1024 * 1024 }
+            );
+            const safeBase = String(file.originalname || `image-${idx + 1}`)
+              .replace(/[^a-zA-Z0-9._-]/g, "-")
+              .replace(/\.[^./\\]+$/, "");
+            const fileName = `uploads/asset/${timestamp}-${safeBase}.jpg`;
+            await uploadBufferToR2(buffer, "image/jpeg", process.env.R2_BUCKET_NAME!, fileName);
+            fileUrl = `https://images.sellsnap.store/${fileName}`;
+          } catch (procErr) {
+            const fileName = `uploads/asset/${timestamp}-${file.originalname}`;
+            await uploadToR2(file, process.env.R2_BUCKET_NAME!, fileName);
+            fileUrl = `https://images.sellsnap.store/${fileName}`;
+          }
+        } else {
+          // Fallback to original upload method
+          const fileName = `uploads/asset/${timestamp}-${file.originalname}`;
+          await uploadToR2(file, process.env.R2_BUCKET_NAME!, fileName);
+          fileUrl = `https://images.sellsnap.store/${fileName}`;
+        }
         imageUrls.push(fileUrl);
         if (progressId) {
           const partial = (idx + 1) / total;
@@ -777,7 +810,7 @@ export async function runAssetReportJob({
         };
         const sanitize = (name: string) =>
           name.replace(/[^a-zA-Z0-9._-]/g, "_");
-        // Save images
+        // Save images (processed with logo, <=1MB); fallback to original if processing fails
         for (let i = 0; i < images.length; i++) {
           const file = images[i];
           const orig = file.originalname || "";
@@ -785,6 +818,27 @@ export async function runAssetReportJob({
           const ext = path.extname(orig) || extFromMime((file as any)?.mimetype) || "";
           const base = sanitize((orig && orig.split("/").pop()!) || fallback + ext);
           const filePath = path.join(imagesDirPath, base);
+
+          // Resolve input buffer
+          const anyFile = file as any;
+          let inputBuffer: Buffer | null = null;
+          if (anyFile?.buffer && Buffer.isBuffer(anyFile.buffer)) {
+            inputBuffer = anyFile.buffer as Buffer;
+          } else if (typeof anyFile?.path === "string") {
+            try { inputBuffer = await fs.readFile(anyFile.path); } catch {}
+          }
+
+          if (inputBuffer) {
+            try {
+              const { buffer } = await processImageWithLogo(inputBuffer, "public/logo.jpg", { maxBytes: 1024 * 1024 });
+              const nameNoExt = sanitize(((orig && orig.split("/").pop()!) || fallback).replace(/\.[^./\\]+$/, ""));
+              const outName = `${nameNoExt}.jpg`;
+              const outPath = path.join(imagesDirPath, outName);
+              await fs.writeFile(outPath, buffer);
+              continue;
+            } catch {}
+          }
+          // Fallback: write original file
           await fs.writeFile(filePath, file.buffer);
         }
         // Save videos
