@@ -141,13 +141,13 @@ export async function runAssetReportJob({
         : "single_lot";
 
     const imageUrls: string[] = [];
-    const selectedLanguage: 'en' | 'fr' | 'es' = ((): any => {
-      const l = String(details?.language || '').toLowerCase();
-      return (l === 'fr' || l === 'es') ? l : 'en';
+    const selectedLanguage: "en" | "fr" | "es" = ((): any => {
+      const l = String(details?.language || "").toLowerCase();
+      return l === "fr" || l === "es" ? l : "en";
     })();
     const selectedCurrency: string = ((): string => {
-      const c = String(details?.currency || '').toUpperCase();
-      return /^[A-Z]{3}$/.test(c) ? c : 'CAD';
+      const c = String(details?.currency || "").toUpperCase();
+      return /^[A-Z]{3}$/.test(c) ? c : "CAD";
     })();
     if (images?.length) {
       startStep("r2_upload", "Uploading images to storage");
@@ -161,7 +161,9 @@ export async function runAssetReportJob({
         if (anyFile?.buffer && Buffer.isBuffer(anyFile.buffer)) {
           inputBuffer = anyFile.buffer as Buffer;
         } else if (typeof anyFile?.path === "string") {
-          try { inputBuffer = await fs.readFile(anyFile.path); } catch {}
+          try {
+            inputBuffer = await fs.readFile(anyFile.path);
+          } catch {}
         }
 
         let fileUrl: string;
@@ -170,14 +172,19 @@ export async function runAssetReportJob({
           try {
             const { buffer } = await processImageWithLogo(
               inputBuffer,
-              "public/logo.jpg",
+              "public/logoNobg.png",
               { maxBytes: 1024 * 1024 }
             );
             const safeBase = String(file.originalname || `image-${idx + 1}`)
               .replace(/[^a-zA-Z0-9._-]/g, "-")
               .replace(/\.[^./\\]+$/, "");
             const fileName = `uploads/asset/${timestamp}-${safeBase}.jpg`;
-            await uploadBufferToR2(buffer, "image/jpeg", process.env.R2_BUCKET_NAME!, fileName);
+            await uploadBufferToR2(
+              buffer,
+              "image/jpeg",
+              process.env.R2_BUCKET_NAME!,
+              fileName
+            );
             fileUrl = `https://images.sellsnap.store/${fileName}`;
           } catch (procErr) {
             const fileName = `uploads/asset/${timestamp}-${file.originalname}`;
@@ -260,7 +267,12 @@ export async function runAssetReportJob({
         }
 
         try {
-          const aiRes = await analyzeAssetImages(subUrls, "catalogue", selectedLanguage, selectedCurrency);
+          const aiRes = await analyzeAssetImages(
+            subUrls,
+            "catalogue",
+            selectedLanguage,
+            selectedCurrency
+          );
           if (!analysis) analysis = { per_lot: [] };
           analysis.per_lot.push(aiRes);
 
@@ -362,11 +374,11 @@ export async function runAssetReportJob({
       endStep("ai_analysis");
     } else if (groupingMode === "mixed") {
       // Mixed mode: multiple lots with specified sub-mode each
-      type MixedMap = { 
-        count: number; 
+      type MixedMap = {
+        count: number;
         extraCount: number;
-        cover_index?: number; 
-        mode: "single_lot" | "per_item" | "per_photo" 
+        cover_index?: number;
+        mode: "single_lot" | "per_item" | "per_photo";
       };
       const rawLots: any[] = Array.isArray(details?.mixed_lots)
         ? details.mixed_lots
@@ -374,10 +386,16 @@ export async function runAssetReportJob({
       const mappings: MixedMap[] = rawLots
         .map((x: any) => {
           const m = String(x?.mode || "").trim();
-          const mode = m === "per_item" || m === "per_photo" || m === "single_lot" ? (m as any) : undefined;
+          const mode =
+            m === "per_item" || m === "per_photo" || m === "single_lot"
+              ? (m as any)
+              : undefined;
           return {
             count: Math.max(0, parseInt(String(x?.count ?? 0), 10) || 0),
-            extraCount: Math.max(0, parseInt(String(x?.extra_count ?? 0), 10) || 0),
+            extraCount: Math.max(
+              0,
+              parseInt(String(x?.extra_count ?? 0), 10) || 0
+            ),
             cover_index:
               typeof x?.cover_index === "number"
                 ? x.cover_index
@@ -387,7 +405,9 @@ export async function runAssetReportJob({
             mode,
           } as MixedMap;
         })
-        .filter((m: MixedMap) => Number.isFinite(m.count) && m.count > 0 && !!m.mode);
+        .filter(
+          (m: MixedMap) => Number.isFinite(m.count) && m.count > 0 && !!m.mode
+        );
 
       // Ensure mappings do not exceed available total images
       const totalImages = imageUrls.length;
@@ -402,22 +422,39 @@ export async function runAssetReportJob({
         if (last.count <= 0) useMappings.pop();
       }
 
-      if (useMappings.length > 0) startStep("ai_analysis", "AI analysis of images (mixed)");
+      if (useMappings.length > 0)
+        startStep("ai_analysis", "AI analysis of images (mixed)");
       let base = 0;
       let lotCounter = 0;
       for (let lotIdx = 0; lotIdx < useMappings.length; lotIdx++) {
-        const { count, extraCount, cover_index, mode: subMode } = useMappings[lotIdx];
+        const {
+          count,
+          extraCount,
+          cover_index,
+          mode: subMode,
+        } = useMappings[lotIdx];
         const end = Math.min(imageUrls.length, base + Math.max(0, count));
-        const extraEnd = Math.min(imageUrls.length, end + Math.max(0, extraCount));
+        const extraEnd = Math.min(
+          imageUrls.length,
+          end + Math.max(0, extraCount)
+        );
 
         // For AI cost/perf: analyze up to 30 images per lot (main images only, not extra)
         const aiEnd = Math.min(end, base + Math.max(0, Math.min(30, count)));
-        const aiLocalIdxs = Array.from({ length: Math.max(0, aiEnd - base) }, (_, i) => base + i);
+        const aiLocalIdxs = Array.from(
+          { length: Math.max(0, aiEnd - base) },
+          (_, i) => base + i
+        );
         const subUrls = aiLocalIdxs.map((i) => imageUrls[i]);
-        
+
         // Collect extra images (not sent to AI)
-        const extraImageIdxs = Array.from({ length: Math.max(0, extraEnd - end) }, (_, i) => end + i);
-        const extraImageUrls = extraImageIdxs.map((i) => imageUrls[i]).filter(Boolean);
+        const extraImageIdxs = Array.from(
+          { length: Math.max(0, extraEnd - end) },
+          (_, i) => end + i
+        );
+        const extraImageUrls = extraImageIdxs
+          .map((i) => imageUrls[i])
+          .filter(Boolean);
 
         if (subUrls.length === 0 || !subMode) {
           base = extraEnd;
@@ -425,7 +462,12 @@ export async function runAssetReportJob({
         }
 
         try {
-          const aiRes = await analyzeAssetImages(subUrls, subMode, selectedLanguage, selectedCurrency);
+          const aiRes = await analyzeAssetImages(
+            subUrls,
+            subMode,
+            selectedLanguage,
+            selectedCurrency
+          );
           if (!analysis) analysis = { mixed: [] };
           if (!Array.isArray(analysis.mixed)) analysis.mixed = [];
           analysis.mixed.push({ mode: subMode, result: aiRes });
@@ -438,7 +480,10 @@ export async function runAssetReportJob({
                   new Set<number>(
                     (lot.image_indexes as any[])
                       .map((n: any) => parseInt(String(n), 10))
-                      .filter((n: number) => Number.isFinite(n) && n >= 0 && n < aiLocalIdxs.length)
+                      .filter(
+                        (n: number) =>
+                          Number.isFinite(n) && n >= 0 && n < aiLocalIdxs.length
+                      )
                   )
                 )
               : [];
@@ -446,7 +491,9 @@ export async function runAssetReportJob({
 
             // Also include inferred global index from direct image_url when present
             const directUrl: string | undefined =
-              typeof lot?.image_url === "string" && lot.image_url ? lot.image_url : undefined;
+              typeof lot?.image_url === "string" && lot.image_url
+                ? lot.image_url
+                : undefined;
             if (directUrl) {
               const gi = imageUrls.indexOf(directUrl);
               if (gi >= 0) mappedIdxs.push(gi);
@@ -457,11 +504,20 @@ export async function runAssetReportJob({
             const urlsFromIdx = idxs.map((i) => imageUrls[i]).filter(Boolean);
 
             // Determine cover image within this segment
-            const coverLocal = Math.max(0, Math.min(Math.max(0, count) - 1, typeof cover_index === "number" ? cover_index : 0));
+            const coverLocal = Math.max(
+              0,
+              Math.min(
+                Math.max(0, count) - 1,
+                typeof cover_index === "number" ? cover_index : 0
+              )
+            );
             const coverGlobal = base + coverLocal;
             const coverUrl = imageUrls[coverGlobal];
 
-            const urlsSet = new Set<string>([...urlsFromIdx, ...(coverUrl ? [coverUrl] : [])]);
+            const urlsSet = new Set<string>([
+              ...urlsFromIdx,
+              ...(coverUrl ? [coverUrl] : []),
+            ]);
             const urls = Array.from(urlsSet);
 
             lotCounter += 1;
@@ -477,14 +533,22 @@ export async function runAssetReportJob({
               extra_image_urls: extraImageUrls,
               // For traceability, include sub-mode tag
               tags: Array.isArray(lot?.tags)
-                ? Array.from(new Set([...(lot.tags as any[]).map(String), `mode:${subMode}`]))
+                ? Array.from(
+                    new Set([
+                      ...(lot.tags as any[]).map(String),
+                      `mode:${subMode}`,
+                    ])
+                  )
                 : [`mode:${subMode}`],
               mixed_group_index: lotIdx + 1,
               sub_mode: subMode,
             });
           }
         } catch (e) {
-          console.error(`AI analysis failed for mixed lot #${lotIdx + 1} (${subMode}):`, e);
+          console.error(
+            `AI analysis failed for mixed lot #${lotIdx + 1} (${subMode}):`,
+            e
+          );
         }
 
         // Partial progress update within AI phase
@@ -502,26 +566,38 @@ export async function runAssetReportJob({
       const urlsForAI = imageUrls.slice(0, 50); // cap for cost/perf
       if (urlsForAI.length > 0) {
         try {
-          startStep("ai_analysis", "AI analysis of images (combined -> per_item primary)");
-          const perItemRes = await analyzeAssetImages(urlsForAI, "per_item", selectedLanguage, selectedCurrency);
+          startStep(
+            "ai_analysis",
+            "AI analysis of images (combined -> per_item primary)"
+          );
+          const perItemRes = await analyzeAssetImages(
+            urlsForAI,
+            "per_item",
+            selectedLanguage,
+            selectedCurrency
+          );
           endStep("ai_analysis");
           analysis = perItemRes;
           // Normalize items to include a canonical image_index if available (first index)
-          const perItemLots: any[] = (perItemRes?.lots || []).map((lot: any) => {
-            const firstIdx = Array.isArray(lot?.image_indexes) && lot.image_indexes.length
-              ? lot.image_indexes[0]
-              : undefined;
-            return {
-              ...lot,
-              image_index: Number.isFinite(firstIdx) ? firstIdx : undefined,
-            };
-          });
+          const perItemLots: any[] = (perItemRes?.lots || []).map(
+            (lot: any) => {
+              const firstIdx =
+                Array.isArray(lot?.image_indexes) && lot.image_indexes.length
+                  ? lot.image_indexes[0]
+                  : undefined;
+              return {
+                ...lot,
+                image_index: Number.isFinite(firstIdx) ? firstIdx : undefined,
+              };
+            }
+          );
 
           // Derive per_photo: one row per original image index, mapping to the first per_item lot referencing that image index
           const perPhotoLots: any[] = [];
           for (let i = 0; i < imageUrls.length; i++) {
-            const match = perItemLots.find((l: any) =>
-              Array.isArray(l?.image_indexes) && l.image_indexes.includes(i)
+            const match = perItemLots.find(
+              (l: any) =>
+                Array.isArray(l?.image_indexes) && l.image_indexes.includes(i)
             );
             if (match) {
               perPhotoLots.push({
@@ -538,16 +614,22 @@ export async function runAssetReportJob({
           const rawModes = Array.isArray(details?.combined_modes)
             ? (details.combined_modes as any[])
             : ["single_lot", "per_item", "per_photo"];
-          const selectedModes: ("single_lot" | "per_item" | "per_photo")[] = Array.from(
-            new Set(
-              rawModes
-                .map((m) => {
-                  const s = String(m);
-                  return s === "per_lot" ? "per_photo" : s;
-                })
-                .filter((m) => m === "single_lot" || m === "per_item" || m === "per_photo")
-            )
-          ) as any;
+          const selectedModes: ("single_lot" | "per_item" | "per_photo")[] =
+            Array.from(
+              new Set(
+                rawModes
+                  .map((m) => {
+                    const s = String(m);
+                    return s === "per_lot" ? "per_photo" : s;
+                  })
+                  .filter(
+                    (m) =>
+                      m === "single_lot" ||
+                      m === "per_item" ||
+                      m === "per_photo"
+                  )
+              )
+            ) as any;
           // Choose primary lots for totals depending on selection
           if (selectedModes.includes("per_item")) {
             lots = perItemLots;
@@ -577,7 +659,12 @@ export async function runAssetReportJob({
       if (urlsForAI.length > 0) {
         try {
           startStep("ai_analysis", "AI analysis of images");
-          analysis = await analyzeAssetImages(urlsForAI, groupingMode, selectedLanguage, selectedCurrency);
+          analysis = await analyzeAssetImages(
+            urlsForAI,
+            groupingMode,
+            selectedLanguage,
+            selectedCurrency
+          );
           endStep("ai_analysis");
         } catch (e) {
           console.error("Error during asset AI analysis:", e);
@@ -691,18 +778,19 @@ export async function runAssetReportJob({
           ...reportObject,
           inspector_name: user?.name || "",
           user_email: user?.email || "",
-          language: ((): 'en' | 'fr' | 'es' => {
-            const l = String((reportObject as any)?.language || details?.language || '').toLowerCase();
-            return (l === 'fr' || l === 'es') ? (l as any) : 'en';
+          language: ((): "en" | "fr" | "es" => {
+            const l = String(
+              (reportObject as any)?.language || details?.language || ""
+            ).toLowerCase();
+            return l === "fr" || l === "es" ? (l as any) : "en";
           })(),
           ...(groupingMode === "combined" && analysis?.combined
             ? {
                 grouping_mode: "combined",
                 combined: (analysis as any).combined,
-                combined_modes:
-                  Array.isArray((analysis as any).combined_modes)
-                    ? (analysis as any).combined_modes
-                    : undefined,
+                combined_modes: Array.isArray((analysis as any).combined_modes)
+                  ? (analysis as any).combined_modes
+                  : undefined,
               }
             : {}),
         });
@@ -720,7 +808,8 @@ export async function runAssetReportJob({
         const buf = await generateAssetXlsxFromReport({
           ...reportObject,
           inspector_name: user?.name || "",
-          language: (reportObject as any)?.language || details?.language || 'en',
+          language:
+            (reportObject as any)?.language || details?.language || "en",
         });
         const t1 = Date.now();
         console.log(
@@ -735,7 +824,9 @@ export async function runAssetReportJob({
 
     // Build filename base: asset-mixed-<contract>-<YYYYMMDD-HHMMSS>-<uniq>
     const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9._-]/g, "-");
-    const cnRaw = String((reportObject as any)?.contract_no || details?.contract_no || "nocn");
+    const cnRaw = String(
+      (reportObject as any)?.contract_no || details?.contract_no || "nocn"
+    );
     const cn = sanitize(cnRaw.trim() || "nocn");
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, "0");
@@ -815,8 +906,11 @@ export async function runAssetReportJob({
           const file = images[i];
           const orig = file.originalname || "";
           const fallback = `image-${String(i + 1).padStart(3, "0")}`;
-          const ext = path.extname(orig) || extFromMime((file as any)?.mimetype) || "";
-          const base = sanitize((orig && orig.split("/").pop()!) || fallback + ext);
+          const ext =
+            path.extname(orig) || extFromMime((file as any)?.mimetype) || "";
+          const base = sanitize(
+            (orig && orig.split("/").pop()!) || fallback + ext
+          );
           const filePath = path.join(imagesDirPath, base);
 
           // Resolve input buffer
@@ -825,13 +919,24 @@ export async function runAssetReportJob({
           if (anyFile?.buffer && Buffer.isBuffer(anyFile.buffer)) {
             inputBuffer = anyFile.buffer as Buffer;
           } else if (typeof anyFile?.path === "string") {
-            try { inputBuffer = await fs.readFile(anyFile.path); } catch {}
+            try {
+              inputBuffer = await fs.readFile(anyFile.path);
+            } catch {}
           }
 
           if (inputBuffer) {
             try {
-              const { buffer } = await processImageWithLogo(inputBuffer, "public/logo.jpg", { maxBytes: 1024 * 1024 });
-              const nameNoExt = sanitize(((orig && orig.split("/").pop()!) || fallback).replace(/\.[^./\\]+$/, ""));
+              const { buffer } = await processImageWithLogo(
+                inputBuffer,
+                "public/logoNobg.png",
+                { maxBytes: 1024 * 1024 }
+              );
+              const nameNoExt = sanitize(
+                ((orig && orig.split("/").pop()!) || fallback).replace(
+                  /\.[^./\\]+$/,
+                  ""
+                )
+              );
               const outName = `${nameNoExt}.jpg`;
               const outPath = path.join(imagesDirPath, outName);
               await fs.writeFile(outPath, buffer);
@@ -846,8 +951,11 @@ export async function runAssetReportJob({
           const file = videos[i];
           const orig = file.originalname || "";
           const fallback = `video-${String(i + 1).padStart(3, "0")}`;
-          const ext = path.extname(orig) || extFromMime((file as any)?.mimetype) || "";
-          const base = sanitize((orig && orig.split("/").pop()!) || fallback + ext);
+          const ext =
+            path.extname(orig) || extFromMime((file as any)?.mimetype) || "";
+          const base = sanitize(
+            (orig && orig.split("/").pop()!) || fallback + ext
+          );
           const filePath = path.join(imagesDirPath, base);
           await fs.writeFile(filePath, file.buffer);
         }
@@ -905,7 +1013,8 @@ export async function runAssetReportJob({
       reportModel: "AssetReport",
       address: `Asset Report (${lots.length} lots)`,
       fairMarketValue,
-      contract_no: (reportObject as any)?.contract_no || details?.contract_no || '',
+      contract_no:
+        (reportObject as any)?.contract_no || details?.contract_no || "",
     });
     const docxRec = new PdfReport({
       filename: docxFilename,
@@ -917,7 +1026,8 @@ export async function runAssetReportJob({
       reportModel: "AssetReport",
       address: `Asset Report (${lots.length} lots)`,
       fairMarketValue,
-      contract_no: (reportObject as any)?.contract_no || details?.contract_no || '',
+      contract_no:
+        (reportObject as any)?.contract_no || details?.contract_no || "",
     });
     const xlsxRec = new PdfReport({
       filename: xlsxFilename,
@@ -929,7 +1039,8 @@ export async function runAssetReportJob({
       reportModel: "AssetReport",
       address: `Asset Report (${lots.length} lots)`,
       fairMarketValue,
-      contract_no: (reportObject as any)?.contract_no || details?.contract_no || '',
+      contract_no:
+        (reportObject as any)?.contract_no || details?.contract_no || "",
     });
     const imagesRec = new PdfReport({
       filename: imagesZipFilename,
@@ -942,7 +1053,8 @@ export async function runAssetReportJob({
       reportModel: "AssetReport",
       address: `Asset Report (${lots.length} lots) - Images`,
       fairMarketValue,
-      contract_no: (reportObject as any)?.contract_no || details?.contract_no || '',
+      contract_no:
+        (reportObject as any)?.contract_no || details?.contract_no || "",
     });
     await Promise.all([
       withStep(
