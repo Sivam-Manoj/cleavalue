@@ -8,6 +8,8 @@ export type ProcessOptions = {
   qualityMin?: number; // minimum JPEG quality before resizing
   logoScale?: number; // portion of image width (e.g., 0.12 = 12%)
   logoMarginPx?: number; // margin from edges in px
+  logoMarginPct?: number; // optional, portion of min(imgW,imgH) for margin (e.g., 0.02 = 2%)
+  logoPosition?: "top_right" | "bottom_right"; // default top_right
 };
 
 export async function processImageWithLogo(
@@ -20,6 +22,8 @@ export async function processImageWithLogo(
   const qualityMin = options.qualityMin ?? 50;
   const logoScale = options.logoScale ?? 0.16;
   const logoMarginPx = options.logoMarginPx ?? 12;
+  const logoMarginPct = options.logoMarginPct ?? 0.02; // 2% of smaller side
+  const logoPosition = options.logoPosition ?? "top_right";
 
   // Read image (Jimp doesn't auto-rotate EXIF by default in core)
   const image = await Jimp.read(inputBuffer);
@@ -36,9 +40,17 @@ export async function processImageWithLogo(
   const lw = logo.getWidth();
   const lh = logo.getHeight();
 
-  // Position bottom-right with margin
-  const left = Math.max(0, imgW - lw - logoMarginPx);
-  const top = Math.max(0, imgH - lh - logoMarginPx);
+  // Dynamic margin combines pixel and percent-based margins
+  const dynMargin = Math.max(
+    logoMarginPx,
+    Math.round(Math.min(imgW, imgH) * Math.max(0, Math.min(0.1, logoMarginPct)))
+  );
+
+  // Position with margin (default: top-right)
+  const left = Math.max(0, imgW - lw - dynMargin);
+  const top = logoPosition === "bottom_right"
+    ? Math.max(0, imgH - lh - dynMargin)
+    : Math.max(0, dynMargin);
 
   // Composite logo
   const composed = image.clone().composite(logo, left, top, {
