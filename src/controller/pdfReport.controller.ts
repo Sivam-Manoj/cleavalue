@@ -32,15 +32,39 @@ export const downloadReport = async (req: AuthRequest, res: Response) => {
     }
 
     const preferred = (report as any).filePath as string | undefined;
-    const resolvedPath = preferred && preferred.trim().length > 0
-      ? path.resolve(process.cwd(), preferred)
-      : path.resolve(process.cwd(), "reports", report.filename);
-    try {
-      await fs.access(resolvedPath);
-    } catch {
+    const candidates: string[] = [];
+    if (preferred && preferred.trim().length > 0) {
+      candidates.push(path.resolve(process.cwd(), preferred));
+      const parts = preferred.split(/[\\/]+/).filter(Boolean);
+      candidates.push(path.resolve(process.cwd(), ...parts));
+    }
+    candidates.push(path.resolve(process.cwd(), "reports", report.filename));
+    if (process.env.REPORTS_DIR) {
+      candidates.push(path.resolve(process.env.REPORTS_DIR, report.filename));
+    }
+
+    let found: string | null = null;
+    for (const p of candidates) {
+      try {
+        await fs.access(p);
+        found = p;
+        break;
+      } catch {}
+    }
+    if (!found) {
       return res.status(404).json({ message: "File not found on server" });
     }
-    res.download(resolvedPath);
+    const origName = (report as any)?.filename || path.basename(found);
+    let ext = path.extname(origName);
+    if (!ext) {
+      const ft = ((report as any)?.fileType || "") as string;
+      ext = ft === "images" ? ".zip" : ft ? `.${ft}` : "";
+    }
+    const rt = String(((report as any)?.reportType || "report")).toLowerCase();
+    const prefix = rt === "realestate" ? "real-estate" : rt;
+    const cn = String(((report as any)?.contract_no || "")).trim();
+    const downloadName = cn ? `${prefix}-${cn}${ext}` : origName;
+    res.download(found, downloadName);
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
   }

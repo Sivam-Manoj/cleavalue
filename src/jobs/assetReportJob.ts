@@ -1003,6 +1003,8 @@ export async function runAssetReportJob({
         : "N/A";
 
     // Create approval records (pending by default)
+    const cnLabel = String((reportObject as any)?.contract_no || details?.contract_no || "").trim();
+    const displayAddress = cnLabel ? `Asset - ${cnLabel}` : `Asset`;
     const pdfRec = new PdfReport({
       filename: pdfFilename,
       fileType: "pdf",
@@ -1011,7 +1013,7 @@ export async function runAssetReportJob({
       report: newReport._id,
       reportType: "Asset",
       reportModel: "AssetReport",
-      address: `Asset Report (${lots.length} lots)`,
+      address: displayAddress,
       fairMarketValue,
       contract_no:
         (reportObject as any)?.contract_no || details?.contract_no || "",
@@ -1024,7 +1026,7 @@ export async function runAssetReportJob({
       report: newReport._id,
       reportType: "Asset",
       reportModel: "AssetReport",
-      address: `Asset Report (${lots.length} lots)`,
+      address: displayAddress,
       fairMarketValue,
       contract_no:
         (reportObject as any)?.contract_no || details?.contract_no || "",
@@ -1037,7 +1039,7 @@ export async function runAssetReportJob({
       report: newReport._id,
       reportType: "Asset",
       reportModel: "AssetReport",
-      address: `Asset Report (${lots.length} lots)`,
+      address: displayAddress,
       fairMarketValue,
       contract_no:
         (reportObject as any)?.contract_no || details?.contract_no || "",
@@ -1051,7 +1053,7 @@ export async function runAssetReportJob({
       report: newReport._id,
       reportType: "Asset",
       reportModel: "AssetReport",
-      address: `Asset Report (${lots.length} lots) - Images`,
+      address: displayAddress,
       fairMarketValue,
       contract_no:
         (reportObject as any)?.contract_no || details?.contract_no || "",
