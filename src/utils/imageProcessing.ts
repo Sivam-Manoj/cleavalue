@@ -23,7 +23,7 @@ export async function processImageWithLogo(
   const logoScale = options.logoScale ?? 0.16;
   const logoMarginPx = options.logoMarginPx ?? 12;
   const logoMarginPct = options.logoMarginPct ?? 0.02; // 2% of smaller side
-  const logoPosition = options.logoPosition ?? "top_right";
+  const logoPosition = options.logoPosition ?? "bottom_right";
 
   // Read image (Jimp doesn't auto-rotate EXIF by default in core)
   const image = await Jimp.read(inputBuffer);
