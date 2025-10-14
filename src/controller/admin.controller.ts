@@ -55,18 +55,21 @@ export const getMonthlyStats = async (_req: Request, res: Response) => {
       cursor.setMonth(cursor.getMonth() + 1);
     }
 
-    // Aggregate PdfReports by month and type
+    // Aggregate unique reports (grouped by underlying report) by month and type
     const reportsAgg = await (PdfReport as any).aggregate([
       { $match: { createdAt: { $gte: start, $lt: end } } },
+      { $project: { createdAt: 1, reportType: 1, grp: { $ifNull: ["$report", "$_id"] } } },
       {
         $group: {
           _id: {
             m: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
             t: "$reportType",
+            r: "$grp",
           },
           c: { $sum: 1 },
         },
       },
+      { $group: { _id: { m: "$_id.m", t: "$_id.t" }, c: { $sum: 1 } } },
     ]);
 
     const usersAgg = await (User as any).aggregate([
@@ -145,10 +148,18 @@ export const getAdminStats = async (_req: Request, res: Response) => {
     ] = await Promise.all([
       User.countDocuments({}),
       User.countDocuments({ role: { $in: ["admin", "superadmin"] } }),
-      PdfReport.countDocuments({}),
-      PdfReport.countDocuments({ reportType: "Asset" }),
-      PdfReport.countDocuments({ reportType: "RealEstate" }),
-      PdfReport.countDocuments({ reportType: "Salvage" }),
+      (PdfReport as any)
+        .aggregate([{ $group: { _id: { $ifNull: ["$report", "$_id"] } } }, { $count: "count" }])
+        .then((a: any[]) => (a?.[0]?.count || 0)),
+      (PdfReport as any)
+        .aggregate([{ $match: { reportType: "Asset" } }, { $group: { _id: { $ifNull: ["$report", "$_id"] } } }, { $count: "count" }])
+        .then((a: any[]) => (a?.[0]?.count || 0)),
+      (PdfReport as any)
+        .aggregate([{ $match: { reportType: "RealEstate" } }, { $group: { _id: { $ifNull: ["$report", "$_id"] } } }, { $count: "count" }])
+        .then((a: any[]) => (a?.[0]?.count || 0)),
+      (PdfReport as any)
+        .aggregate([{ $match: { reportType: "Salvage" } }, { $group: { _id: { $ifNull: ["$report", "$_id"] } } }, { $count: "count" }])
+        .then((a: any[]) => (a?.[0]?.count || 0)),
     ]);
 
     return res.status(200).json({
@@ -427,14 +438,16 @@ export const getAdminReports = async (req: Request, res: Response) => {
       }
     }
 
-    const [items, total] = await Promise.all([
+    const [items, totalAgg] = await Promise.all([
       PdfReport.find(filter)
         .populate("user", "email username")
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit),
-      PdfReport.countDocuments(filter),
+      (PdfReport as any)
+        .aggregate([{ $match: filter }, { $group: { _id: { $ifNull: ["$report", "$_id"] } } }, { $count: "count" }]),
     ]);
+    const total = (totalAgg?.[0]?.count || 0) as number;
 
     return res.status(200).json({ items, total, page, limit });
   } catch (e) {

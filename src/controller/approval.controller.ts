@@ -9,14 +9,17 @@ export const getPendingReports = async (req: Request, res: Response) => {
     const limit = Math.min(Math.max(parseInt((req.query.limit as string) || "20", 10) || 20, 1), 100);
 
     const filter: any = { approvalStatus: "pending" };
-    const [items, total] = await Promise.all([
+    const [items, totalAgg] = await Promise.all([
       PdfReport.find(filter)
         .populate("user", "email username")
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit),
-      PdfReport.countDocuments(filter),
+      (PdfReport as any)
+        .aggregate([{ $match: filter }, { $group: { _id: { $ifNull: ["$report", "$_id"] } } }, { $count: "count" }]),
     ]);
+
+    const total = (totalAgg?.[0]?.count || 0) as number;
 
     return res.status(200).json({ items, total, page, limit });
   } catch (e) {

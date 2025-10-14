@@ -140,34 +140,25 @@ export const getReportsByUser = async (req: AuthRequest, res: Response) => {
 // @access  Private
 export const getReportStats = async (req: AuthRequest, res: Response) => {
   try {
-    const reports = await PdfReport.find({ user: req.userId });
+    const reports = await PdfReport.find({ user: req.userId }).lean();
 
-    let totalReports = 0;
+    const groups = new Map<string, any>();
+    for (const r of reports || []) {
+      const key = String((r as any).report || (r as any)._id);
+      if (!groups.has(key)) groups.set(key, r);
+    }
+
+    const totalReports = groups.size;
+
     let totalFairMarketValue = 0;
-
-    if (reports && reports.length > 0) {
-      totalReports = reports.length;
-
-      for (const report of reports) {
-        if (
-          report.fairMarketValue &&
-          typeof report.fairMarketValue === "string"
-        ) {
-          try {
-            const numericString = report.fairMarketValue.replace(
-              /[^\d.-]/g,
-              ""
-            );
-            const value = parseFloat(numericString);
-            if (!isNaN(value)) {
-              totalFairMarketValue += value;
-            }
-          } catch (e) {
-            console.error(
-              `Could not parse fairMarketValue: ${report.fairMarketValue}`
-            );
-          }
-        }
+    for (const r of groups.values()) {
+      const fmv = (r as any)?.fairMarketValue;
+      if (fmv && typeof fmv === "string") {
+        try {
+          const numericString = fmv.replace(/[^\d.-]/g, "");
+          const value = parseFloat(numericString);
+          if (!isNaN(value)) totalFairMarketValue += value;
+        } catch {}
       }
     }
 
