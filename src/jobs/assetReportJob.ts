@@ -523,12 +523,33 @@ export async function runAssetReportJob({
             lotCounter += 1;
             const uniqueLotId = `lot-${String(lotCounter).padStart(3, "0")}`;
 
-            lots.push({
+            // Resolve primary image for this lot
+            const primaryIdx = Array.isArray(idxs) && idxs.length ? idxs[0] : undefined;
+            const primaryFromIdx = primaryIdx != null ? imageUrls[primaryIdx] : undefined;
+            const primaryUrl = directUrl || primaryFromIdx || urls[0] || coverUrl || undefined;
+
+            const out = {
               ...lot,
               lot_id: uniqueLotId,
-              image_url: coverUrl || lot?.image_url || urls[0] || undefined,
-              image_indexes: idxs,
-              image_urls: urls,
+              image_url:
+                subMode === "per_item"
+                  ? primaryUrl
+                  : coverUrl || directUrl || urls[0] || undefined,
+              image_indexes:
+                subMode === "per_item"
+                  ? ((): number[] => {
+                      if (primaryIdx != null && Number.isFinite(primaryIdx)) return [primaryIdx];
+                      if (directUrl) {
+                        const gi = imageUrls.indexOf(directUrl);
+                        if (gi >= 0) return [gi];
+                      }
+                      return [];
+                    })()
+                  : idxs,
+              image_urls:
+                subMode === "per_item"
+                  ? (primaryUrl ? [primaryUrl] : [])
+                  : urls,
               extra_image_indexes: extraImageIdxs,
               extra_image_urls: extraImageUrls,
               // For traceability, include sub-mode tag
@@ -542,7 +563,24 @@ export async function runAssetReportJob({
                 : [`mode:${subMode}`],
               mixed_group_index: lotIdx + 1,
               sub_mode: subMode,
-            });
+            } as any;
+
+            if (process.env.DEBUG_PER_ITEM === "1" && subMode === "per_item") {
+              try {
+                console.log("[PerItemDebug][mixed:lot:final]", {
+                  lot_id: out?.lot_id,
+                  title: typeof out?.title === "string" ? out.title : undefined,
+                  chosenUrl: out?.image_url,
+                  image_url_in: typeof lot?.image_url === "string" ? lot.image_url : undefined,
+                  mappedIdxs: idxs,
+                  primaryIdx,
+                  primaryFromIdx,
+                  directUrl,
+                });
+              } catch {}
+            }
+
+            lots.push(out);
           }
         } catch (e) {
           console.error(
@@ -685,6 +723,10 @@ export async function runAssetReportJob({
               )
             )
           : [];
+        // In per_item mode, each item should have only its own primary image index
+        if (groupingMode === "per_item" && idxs.length > 1) {
+          idxs.splice(1); // keep only the first index
+        }
         if (groupingMode === "per_photo" && idxs.length === 0 && imageUrls[idx])
           idxs.push(idx);
         const urlsFromIdx = idxs.map((i) => imageUrls[i]).filter(Boolean);
@@ -692,17 +734,51 @@ export async function runAssetReportJob({
           typeof lot?.image_url === "string" && lot.image_url
             ? lot.image_url
             : undefined;
+        if (groupingMode === "per_item" && directUrl) {
+          const inferred = imageUrls.indexOf(directUrl);
+          if (inferred >= 0) {
+            if (idxs.length === 0 || idxs[0] !== inferred) {
+              idxs.splice(0, idxs.length, inferred);
+            }
+          }
+        }
         if (idxs.length === 0 && directUrl) {
           const inferred = imageUrls.indexOf(directUrl);
           if (inferred >= 0) idxs.push(inferred);
         }
-        const urlsSet = new Set<string>([
-          ...urlsFromIdx,
-          ...(directUrl ? [directUrl] : []),
-        ]);
-        const urls = Array.from(urlsSet);
+        let urls: string[] = [];
+        if (groupingMode === "per_item") {
+          const primaryUrl = directUrl || urlsFromIdx[0] || undefined;
+          urls = primaryUrl ? [primaryUrl] : [];
+        } else {
+          const urlsSet = new Set<string>([
+            ...urlsFromIdx,
+            ...(directUrl ? [directUrl] : []),
+          ]);
+          urls = Array.from(urlsSet);
+        }
         return { ...lot, image_indexes: idxs, image_urls: urls };
       });
+
+      if (process.env.DEBUG_PER_ITEM === "1" && groupingMode === "per_item") {
+        try {
+          const dbgList = (lots as any[]).map((l: any) => ({
+            lot_id: l?.lot_id,
+            title: typeof l?.title === "string" ? l.title : undefined,
+            image_url: typeof l?.image_url === "string" ? l.image_url : undefined,
+            image_indexes: Array.isArray(l?.image_indexes) ? l.image_indexes : [],
+            image_urls: Array.isArray(l?.image_urls) ? l.image_urls : [],
+          }));
+          const previewImageUrls = imageUrls.slice(0, 20);
+          console.log("[PerItemDebug][job:final]", {
+            imageUrlsCount: imageUrls.length,
+            imageUrlsPreviewCount: previewImageUrls.length,
+            imageUrlsPreview: previewImageUrls,
+            lotsCount: dbgList.length,
+            lots: dbgList,
+          });
+        } catch {}
+      }
     }
 
     // VIN-based enrichment (uses NHTSA vPIC) — only if we have lots

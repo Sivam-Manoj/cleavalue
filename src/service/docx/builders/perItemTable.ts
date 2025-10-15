@@ -185,9 +185,13 @@ export async function buildPerItemTable(
 
   const bodyRows: TableRow[] = [];
   for (const it of items) {
-    // Resolve image using local index -> index -> url
+    // Resolve image preferring primary from image_urls[0], then explicit image_url, then indexes
     let imgUrl: string | undefined;
-    if (
+    if (Array.isArray(it?.image_urls) && typeof it.image_urls[0] === "string") {
+      imgUrl = it.image_urls[0];
+    } else if (typeof it?.image_url === "string" && it.image_url) {
+      imgUrl = it.image_url;
+    } else if (
       typeof it?.image_local_index === "number" &&
       rootImageUrls?.[it.image_local_index]
     ) {
@@ -197,10 +201,19 @@ export async function buildPerItemTable(
       rootImageUrls?.[it.image_index]
     ) {
       imgUrl = rootImageUrls[it.image_index];
-    } else if (typeof it?.image_url === "string") {
-      imgUrl = it.image_url;
-    } else if (Array.isArray(it?.image_urls) && it.image_urls[0]) {
-      imgUrl = it.image_urls[0];
+    }
+    if (process.env.DEBUG_PER_ITEM === "1") {
+      try {
+        console.log("[PerItemDebug][docx:perItemTable:row]", {
+          lot_id: it?.lot_id,
+          title: typeof it?.title === "string" ? it.title : undefined,
+          chosenUrl: imgUrl,
+          image_url: typeof it?.image_url === "string" ? it.image_url : undefined,
+          image_urls: Array.isArray(it?.image_urls) ? it.image_urls : undefined,
+          image_index: typeof it?.image_index === "number" ? it.image_index : undefined,
+          image_indexes: Array.isArray(it?.image_indexes) ? it.image_indexes : undefined,
+        });
+      } catch {}
     }
     const imgBuf = await fetchImageBuffer(imgUrl);
     const zebra = bodyRows.length % 2 === 1;

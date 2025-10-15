@@ -598,6 +598,7 @@ Example Output (per_item):
       "longitude": null,
       "item_condition": "Untested",
       "tags": ["camera", "electronics"],
+      "image_url": "https://example.com/img-0.jpg",
       "image_indexes": [0]
     },
     {
@@ -620,6 +621,7 @@ Example Output (per_item):
       "longitude": null,
       "item_condition": "Untested",
       "tags": ["lens", "electronics"],
+      "image_url": "https://example.com/img-0.jpg",
       "image_indexes": [0]
     }
   ],
@@ -660,8 +662,8 @@ Grouping mode: per_item ("everything you see")
 - Additional per_item fields to include for each lot:
   - serial_no_or_label: string | null — extract any visible serial/model numbers or label text. When a VIN is visible, include it labeled EXACTLY as "VIN: <VIN>" (17 characters; use '*' for any unknown characters in a partial VIN). Use null if not visible. For partial VINs, include the visible characters and '*' placeholders where unknown.
   - details: string — concise attributes like color, material, size/dimensions, capacity, or model/specs; also note inclusions or notable issues.
-  - image_url: OPTIONAL — only include the exact URL if you know it (do NOT fabricate). 'image_indexes' are authoritative.
-- If MULTIPLE images are provided at once (rare), treat each image independently. Do NOT merge items across images. It's acceptable if duplicates appear across images; a separate deduplication step will remove duplicates later.
+  - image_url: REQUIRED — set EXACTLY to the original URL for this image (from the provided list). Do NOT fabricate. Must match one of the provided image URLs.
+- If MULTIPLE images are provided at once, treat each image independently and return lots per image separately. For each lot, set 'image_indexes' to [CURRENT_INDEX] only and 'image_url' to that image's exact URL. Do NOT include indexes from other images.
 `;
 
   const singleLot = `
@@ -702,7 +704,7 @@ ${excelFieldsGuidance}
 ${modeSection}
 Assignment Constraints:
 - per_photo: With N images, return N lots and include each image index exactly once (one index per lot). No overlaps.
-- per_item: Include image indexes that best represent each unique item (distinct views). Deduplicate near-identical frames/angles of the SAME view. Avoid overlaps between lots.
+- per_item: For each lot, image_indexes must be exactly [CURRENT_INDEX] (single element). Do NOT include any other index. Do not merge or dedupe across images in this step. Include image_url equal to the exact original URL string for this image.
 - single_lot: Return exactly ONE lot. For duplicate/near-identical frames of the same shot, include only ONE representative index per duplicate group.
 
 Tagging:

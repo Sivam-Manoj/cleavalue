@@ -1,7 +1,8 @@
-import OpenAI from "openai";
-import openai from "../utils/openaiClient.js";
 import axios from "axios";
-import { getAssetSystemPrompt } from "../utils/assetPrompts.js";
+import { analyzePerItem } from "./assetOpenAIService/perItem.js";
+import { analyzePerPhoto } from "./assetOpenAIService/perPhoto.js";
+import { analyzeBundle } from "./assetOpenAIService/bundle.js";
+import { deduplicateAssetLotsAI } from "./assetOpenAIService/duplicate.js";
 
 export type AssetGroupingMode =
   | "single_lot"
@@ -75,69 +76,6 @@ function extractSerial(lot: any): string | null {
   return sv;
 }
 
-function buildExcelRowsFromLots(
-  lots: AssetLotAI[],
-  defaultContract?: string
-): ExcelRow[] {
-  const rows: ExcelRow[] = [];
-  for (const lot of lots || []) {
-    const base: ExcelRow = {
-      lot_number: (lot as any)?.lot_number ?? null,
-      description: (lot as any)?.description ?? null,
-      quantity: (lot as any)?.quantity ?? null,
-      must_take: (lot as any)?.must_take ?? null,
-      contract_number: (lot as any)?.contract_number ?? defaultContract ?? null,
-      categories: (lot as any)?.categories ?? null,
-      serial_number: extractSerial(lot),
-      show_on_website: (lot as any)?.show_on_website ?? null,
-      close_date: (lot as any)?.close_date ?? null,
-      bid_increment: (lot as any)?.bid_increment ?? null,
-      location: (lot as any)?.location ?? null,
-      opening_bid: (lot as any)?.opening_bid ?? null,
-      latitude: (lot as any)?.latitude ?? null,
-      longitude: (lot as any)?.longitude ?? null,
-      item_condition: (lot as any)?.item_condition ?? null,
-    };
-    rows.push(base);
-    const items: any[] = Array.isArray((lot as any)?.items)
-      ? (lot as any).items
-      : [];
-    for (const it of items) {
-      rows.push({
-        lot_number: (it as any)?.lot_number ?? (lot as any)?.lot_number ?? null,
-        description:
-          (it as any)?.description ?? (lot as any)?.description ?? null,
-        quantity: (it as any)?.quantity ?? null,
-        must_take: (it as any)?.must_take ?? (lot as any)?.must_take ?? null,
-        contract_number:
-          (it as any)?.contract_number ??
-          (lot as any)?.contract_number ??
-          defaultContract ??
-          null,
-        categories: (it as any)?.categories ?? (lot as any)?.categories ?? null,
-        serial_number:
-          (it as any)?.serial_number ??
-          (it as any)?.sn_vin ??
-          extractSerial(it) ??
-          extractSerial(lot),
-        show_on_website:
-          (it as any)?.show_on_website ?? (lot as any)?.show_on_website ?? null,
-        close_date: (it as any)?.close_date ?? (lot as any)?.close_date ?? null,
-        bid_increment:
-          (it as any)?.bid_increment ?? (lot as any)?.bid_increment ?? null,
-        location: (it as any)?.location ?? (lot as any)?.location ?? null,
-        opening_bid:
-          (it as any)?.opening_bid ?? (lot as any)?.opening_bid ?? null,
-        latitude: (it as any)?.latitude ?? (lot as any)?.latitude ?? null,
-        longitude: (it as any)?.longitude ?? (lot as any)?.longitude ?? null,
-        item_condition:
-          (it as any)?.item_condition ?? (lot as any)?.item_condition ?? null,
-      });
-    }
-  }
-  return rows;
-}
-
 export interface AssetAnalysisResult {
   lots: AssetLotAI[];
   summary?: string;
@@ -176,188 +114,6 @@ async function imageUrlToBase64WithMime(
   return { base64: buffer.toString("base64"), mime };
 }
 
-// Use OpenAI to deduplicate lots produced from per-image analysis.
-// IMPORTANT: This function ONLY REMOVES duplicate items. It does NOT merge fields, does NOT edit image_indexes, and does NOT change image_url.
-// It returns the same JSON structure { lots: AssetLotAI[] } with duplicates filtered out.
-async function deduplicateAssetLotsAI(
-  imageUrls: string[],
-  lots: AssetLotAI[]
-): Promise<AssetLotAI[]> {
-  if (!Array.isArray(lots) || lots.length === 0) return [];
-
-  const system =
-    `You are an expert at deduplicating JSON records of physical assets described as 'lots'.\n\n` +
-    `Goal: REMOVE duplicate records that represent the SAME physical item across multiple photos, and return JSON with the SAME SCHEMA AND FIELDS as the input.\n\n` +
-    `Rules:\n` +
-    `- Output strictly valid JSON: { "lots": AssetLot[] }. No extra commentary.\n` +
-    `- IMPORTANT: Each lot object may contain MANY fields (e.g., lot_id, title, description, condition, estimated_value, tags, serial_no_or_label, serial_number, details, image_url, image_indexes, lot_number, quantity, must_take, contract_number, categories, show_on_website, close_date, bid_increment, location, opening_bid, latitude, longitude, item_condition, and others).\n` +
-    `- You MUST PRESERVE ALL FIELDS EXACTLY AS-IS for the lots you keep. Do NOT remove any fields. Do NOT rename fields. Do NOT change any values. Do NOT reformat strings.\n` +
-    `- Do NOT modify image_indexes or image_url. Do NOT merge or combine lots. Only remove duplicates.\n` +
-    `- Dedup heuristics: identical serial_no_or_label (or serial_number/VIN) => same item; extremely similar titles + compatible details => likely same.\n` +
-    `- When duplicates exist, keep a single representative (prefer one with a non-null serial_no_or_label or serial_number); discard the rest.\n` +
-    `- Do not invent new lots. Do not discard genuinely distinct items.\n`;
-
-  const user = {
-    imageUrls,
-    lots,
-  } as const;
-
-  // Example payloads to guide the model (remove-only dedup; no field edits)
-  const exampleInput = `{
-  "imageUrls": [
-    "https://example.com/img-0.jpg",
-    "https://example.com/img-1.jpg"
-  ],
-  "lots": [
-    {
-      "lot_id": "lot-001",
-      "title": "Canon EOS 80D DSLR Camera Body",
-      "description": "24MP DSLR camera body; light cosmetic wear.",
-      "condition": "Used - Good",
-      "estimated_value": "CA$520",
-      "tags": ["camera", "dslr", "canon"],
-      "serial_no_or_label": "SN: 12345678",
-      "details": "Includes battery and strap; shutter count unknown.",
-      "image_url": "https://example.com/img-0.jpg",
-      "image_indexes": [0]
-    },
-    {
-      "lot_id": "lot-002",
-      "title": "Canon EOS 80D DSLR Camera Body",
-      "description": "24MP DSLR; similar unit view.",
-      "condition": "Used - Good",
-      "estimated_value": "CA$520",
-      "tags": ["camera", "dslr", "canon"],
-      "serial_no_or_label": "SN: 12345678",
-      "details": "Same serial as lot-001.",
-      "image_url": "https://example.com/img-1.jpg",
-      "image_indexes": [1]
-    },
-    {
-      "lot_id": "lot-003",
-      "title": "Canon EF-S 18-135mm Lens",
-      "description": "Zoom lens; no visible damage.",
-      "condition": "Used - Good",
-      "estimated_value": "CA$180",
-      "tags": ["lens", "canon", "18-135mm"],
-      "serial_no_or_label": null,
-      "details": "Optical stabilization; standard zoom range.",
-      "image_url": "https://example.com/img-0.jpg",
-      "image_indexes": [0]
-    }
-  ]
-}`;
-
-  const exampleOutput = `{
-  "lots": [
-    {
-      "lot_id": "lot-001",
-      "title": "Canon EOS 80D DSLR Camera Body",
-      "description": "24MP DSLR camera body; light cosmetic wear.",
-      "condition": "Used - Good",
-      "estimated_value": "CA$520",
-      "tags": ["camera", "dslr", "canon"],
-      "serial_no_or_label": "SN: 12345678",
-      "details": "Includes battery and strap; shutter count unknown.",
-      "image_url": "https://example.com/img-0.jpg",
-      "image_indexes": [0]
-    },
-    {
-      "lot_id": "lot-003",
-      "title": "Canon EF-S 18-135mm Lens",
-      "description": "Zoom lens; no visible damage.",
-      "condition": "Used - Good",
-      "estimated_value": "CA$180",
-      "tags": ["lens", "canon", "18-135mm"],
-      "serial_no_or_label": null,
-      "details": "Optical stabilization; standard zoom range.",
-      "image_url": "https://example.com/img-0.jpg",
-      "image_indexes": [0]
-    }
-  ]
-}`;
-
-  try {
-    const response = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || "gpt-5",
-      messages: [
-        { role: "system", content: system },
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `Here are the uploaded image URLs and the lots detected from each image individually. Deduplicate and return the same JSON shape.`,
-            },
-            {
-              type: "text",
-              text: `Example Input (with duplicates):`,
-            },
-            {
-              type: "text",
-              text: exampleInput,
-            },
-            {
-              type: "text",
-              text: `Example Output (duplicates removed; fields/indexes unchanged):`,
-            },
-            {
-              type: "text",
-              text: exampleOutput,
-            },
-            {
-              type: "text",
-              text: JSON.stringify(user),
-            },
-          ],
-        },
-      ],
-      response_format: { type: "json_object" },
-    });
-
-    const content = response.choices?.[0]?.message?.content?.trim();
-    if (!content) throw new Error("Empty response from AI dedupe");
-    const parsed = JSON.parse(content) as AssetAnalysisResult;
-    const resultLots = Array.isArray(parsed?.lots) ? parsed.lots : [];
-    // Return as-is (no field/index modifications)
-    return resultLots as AssetLotAI[];
-  } catch (e) {
-    // Fallback: simple heuristic dedupe by serial or (title+details), keeping the first representative intact
-    const norm = (s?: string | null) =>
-      (s || "")
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-
-    const out: AssetLotAI[] = [];
-    const chosenBySerial = new Map<string, number>();
-    const chosenByKey = new Map<string, number>();
-
-    for (const lot of lots) {
-      const serialKey = norm(lot.serial_no_or_label || undefined);
-      const titleKey = norm(lot.title);
-      const detailsKey = norm(lot.details || undefined);
-      const key = `${titleKey}|${detailsKey}`;
-
-      let existsIndex: number | undefined = undefined;
-      if (serialKey) existsIndex = chosenBySerial.get(serialKey);
-      if (existsIndex === undefined) existsIndex = chosenByKey.get(key);
-
-      if (existsIndex === undefined) {
-        chosenByKey.set(key, out.length);
-        if (serialKey) chosenBySerial.set(serialKey, out.length);
-        // push as-is (no modifications)
-        out.push(lot);
-      } else {
-        // already kept a representative; skip this duplicate
-      }
-    }
-
-    return out;
-  }
-}
-
 function addModeTag(lots: AssetLotAI[], mode: AssetGroupingMode): AssetLotAI[] {
   return (lots || []).map((lot) => {
     const tags = Array.isArray(lot.tags) ? [...lot.tags] : [];
@@ -365,6 +121,37 @@ function addModeTag(lots: AssetLotAI[], mode: AssetGroupingMode): AssetLotAI[] {
       tags.push(`mode:${mode}`);
     }
     lot.tags = tags;
+    return lot;
+  });
+}
+
+function normalizePerItemLotsImageMapping(
+  lots: AssetLotAI[],
+  imageUrls: string[]
+): AssetLotAI[] {
+  if (!Array.isArray(lots)) return [] as any;
+  const total = Array.isArray(imageUrls) ? imageUrls.length : 0;
+  return lots.map((lot: any) => {
+    const urlIdx =
+      typeof lot?.image_url === "string" && lot.image_url
+        ? imageUrls.indexOf(lot.image_url)
+        : -1;
+    let idxFromIndexes: number | undefined = undefined;
+    if (Array.isArray(lot?.image_indexes) && lot.image_indexes.length > 0) {
+      const n = parseInt(String(lot.image_indexes[0]), 10);
+      if (Number.isFinite(n) && n >= 0 && n < total) idxFromIndexes = n;
+    }
+    const resolvedIdx = urlIdx >= 0 ? urlIdx : idxFromIndexes;
+    if (resolvedIdx !== undefined) {
+      lot.image_indexes = [resolvedIdx];
+      lot.image_url = imageUrls[resolvedIdx] || lot.image_url;
+    }
+    // Ensure image_urls aligns to the primary URL for per_item display paths
+    if (typeof lot?.image_url === "string" && lot.image_url) {
+      lot.image_urls = [lot.image_url];
+    } else if (Array.isArray(lot?.image_urls) && lot.image_urls.length > 0) {
+      lot.image_urls = [lot.image_urls[0]];
+    }
     return lot;
   });
 }
@@ -387,131 +174,54 @@ export async function analyzeAssetImages(
     const c = String(currency || "").toUpperCase();
     return /^[A-Z]{3}$/.test(c) ? c : process.env.DEFAULT_CURRENCY || "CAD";
   })();
-  const systemPrompt = getAssetSystemPrompt(groupingMode as any, lang, ccy);
-
-  // Special handling: per_item should analyze each image individually and include image_url
+  // Modular handling by mode
   if (groupingMode === "per_item") {
-    const combinedLots: AssetLotAI[] = [];
+    const { lots: rawLots } = await analyzePerItem(imageUrls, lang, ccy);
 
-    for (let i = 0; i < imageUrls.length; i++) {
-      const url = imageUrls[i];
-      // Use base64 to ensure the model can always see the image content
-      const { base64: b64, mime } = await imageUrlToBase64WithMime(url);
-
-      const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-        { role: "system", content: systemPrompt },
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `Grouping mode: per_item. Analyze THIS SINGLE IMAGE and return ALL distinct items visible as separate lots (do not collapse multiple items). If multiple identical units are visible, create separate lots and distinguish titles with "(#1)", "(#2)", etc. For each returned lot, include: (1) the exact original URL provided below in the 'image_url' field (do NOT fabricate), (2) the original image index ${i} in 'image_indexes' (and do NOT include any other index), and (3) 'serial_no_or_label' if visible else null, plus 'details' with concise attributes (color, material, size/dimensions, capacity, model/specs, inclusions/issues).`,
-            },
-            {
-              type: "text",
-              text: `Annotation Priority (if red boxes/ROIs are present): If one or more red-outline annotation boxes are present or described for this image, ONLY identify and return items clearly contained within those boxes (treat each box as a region-of-interest). Ignore objects outside of the boxes. If no boxes are present or described, analyze the entire image normally.`,
-            },
-            {
-              type: "image_url" as const,
-              image_url: { url: `data:${mime};base64,${b64}` },
-            },
-            {
-              type: "text",
-              text: `Original image URL: ${url}`,
-            },
-          ],
-        },
-      ];
-
-      const response = await openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || "gpt-5",
-        messages,
-        response_format: { type: "json_object" },
-      });
-
-      const content = response.choices?.[0]?.message?.content?.trim();
-      if (!content) continue;
-
-      try {
-        const parsed = JSON.parse(content) as AssetAnalysisResult;
-        const lots = Array.isArray(parsed?.lots) ? parsed.lots : [];
-
-        for (const lot of lots as AssetLotAI[]) {
-          // Ensure image index reflects the original index for this image-by-image run
-          lot.image_indexes = [i];
-          // Ensure image_url is present and accurate
-          if (typeof lot.image_url !== "string" || !lot.image_url) {
-            lot.image_url = url;
-          }
-          combinedLots.push(lot);
-        }
-      } catch (err) {
-        console.error("Invalid JSON from model (per_item):", content);
-        // Skip this image on parse failure
-      }
+    if (!rawLots || rawLots.length === 0) {
+      // Fallback to per_photo
+      const fallback = await analyzePerPhoto(imageUrls, lang, ccy);
+      const fallbackLots = addModeTag(
+        Array.isArray(fallback.lots) ? fallback.lots : [],
+        "per_photo"
+      );
+      return {
+        lots: fallbackLots,
+        summary: `${fallbackLots.length} items identified via fallback per_photo analysis of ${imageUrls.length} images.`,
+        language: fallback.language || lang,
+        currency: fallback.currency || ccy,
+      };
     }
 
-    // If nothing was extracted in per_item pass, fallback to a per_photo-style analysis (one lot per image)
-    if (combinedLots.length === 0) {
+    if (process.env.DEBUG_PER_ITEM === "1") {
       try {
-        const fallbackPrompt = getAssetSystemPrompt("per_photo", lang, ccy);
-        const imgs = await Promise.all(imageUrls.map(imageUrlToBase64WithMime));
-        const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-          { role: "system", content: fallbackPrompt },
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: `Fallback invoked: per_item returned zero lots. Analyze these images per_photo (one lot per image).`,
-              },
-              {
-                type: "text",
-                text: `Original image URLs (index -> URL):\n${imageUrls
-                  .map((u, idx) => `#${idx}: ${u}`)
-                  .join("\n")}`,
-              },
-              {
-                type: "text",
-                text: `Annotation Priority (if red boxes/ROIs are present): If one or more red-outline annotation boxes are present or described for any image, ONLY identify and return the item within each box for that image (treat each box as a region-of-interest). Ignore objects outside of boxes. If no boxes are present or described, analyze each image normally.`,
-              },
-              ...imgs.map(({ base64, mime }) => ({
-                type: "image_url" as const,
-                image_url: { url: `data:${mime};base64,${base64}` },
-              })),
-            ],
-          },
-        ];
-
-        const resp = await openai.chat.completions.create({
-          model: process.env.OPENAI_MODEL || "gpt-5",
-          messages,
-          response_format: { type: "json_object" },
-        });
-        const content = resp.choices?.[0]?.message?.content?.trim();
-        if (content) {
-          const parsed = JSON.parse(content) as AssetAnalysisResult;
-          const fallbackLots = addModeTag(
-            Array.isArray(parsed?.lots) ? parsed.lots : [],
-            "per_photo"
-          );
-          return {
-            lots: fallbackLots,
-            summary: `${fallbackLots.length} items identified via fallback per_photo analysis of ${imageUrls.length} images.`,
-            language: parsed.language || lang,
-            currency: parsed.currency || ccy,
-          };
-        }
-      } catch (e) {
-        console.error("Fallback per_photo analysis failed:", e);
-      }
+        const dbgList = (rawLots as any[]).map((l: any) => ({
+          lot_id: l?.lot_id,
+          title: typeof l?.title === "string" ? l.title : undefined,
+          image_url: typeof l?.image_url === "string" ? l.image_url : undefined,
+          image_indexes: Array.isArray(l?.image_indexes) ? l.image_indexes : [],
+        }));
+        console.log("[PerItemDebug][per_item:raw]", { count: dbgList.length, list: dbgList });
+      } catch {}
     }
 
     // Deduplicate across images to remove the same physical item
-    const dedupedLots = await deduplicateAssetLotsAI(imageUrls, combinedLots);
-    const finalLotsRaw = dedupedLots.length > 0 ? dedupedLots : combinedLots; // safeguard against over-aggressive dedup
-    const finalLots = addModeTag(finalLotsRaw, "per_item");
-
+    const dedupedLots = await deduplicateAssetLotsAI(imageUrls, rawLots as any);
+    const finalLotsRaw =
+      dedupedLots && dedupedLots.length > 0 ? dedupedLots : (rawLots as any);
+    const normalized = normalizePerItemLotsImageMapping(finalLotsRaw as any, imageUrls);
+    if (process.env.DEBUG_PER_ITEM === "1") {
+      try {
+        const dbgList = (normalized as any[]).map((l: any) => ({
+          lot_id: l?.lot_id,
+          title: typeof l?.title === "string" ? l.title : undefined,
+          image_url: typeof l?.image_url === "string" ? l.image_url : undefined,
+          image_indexes: Array.isArray(l?.image_indexes) ? l.image_indexes : [],
+        }));
+        console.log("[PerItemDebug][normalize:after]", { count: dbgList.length, list: dbgList });
+      } catch {}
+    }
+    const finalLots = addModeTag(normalized as any, "per_item");
     return {
       lots: finalLots,
       summary: `${finalLots.length} unique items identified from ${imageUrls.length} images (per_item, deduped).`,
@@ -520,57 +230,31 @@ export async function analyzeAssetImages(
     };
   }
 
-  // Default handling for single_lot, per_photo, and catalogue: send all images together
-  const imgs = await Promise.all(imageUrls.map(imageUrlToBase64WithMime));
-  const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-    { role: "system", content: systemPrompt },
-    {
-      role: "user",
-      content: [
-        {
-          type: "text",
-          text: `Grouping mode: ${groupingMode}. Analyze these images and return valid JSON as instructed.`,
-        },
-        {
-          type: "text",
-          text: `Original image URLs (index -> URL):\n${imageUrls.map((u, idx) => `#${idx}: ${u}`).join("\n")}`,
-        },
-        {
-          type: "text",
-          text: `Annotation Priority (if red boxes/ROIs are present): If one or more red-outline annotation boxes are present or described for any image, ONLY identify and return the item(s) within each box for that image (treat each box as a region-of-interest). Ignore objects outside of boxes. If no boxes are present or described, analyze each image normally.`,
-        },
-        ...imgs.map(({ base64, mime }) => ({
-          type: "image_url" as const,
-          image_url: { url: `data:${mime};base64,${base64}` },
-        })),
-      ],
-    },
-  ];
-
-  const response = await openai.chat.completions.create({
-    model: process.env.OPENAI_MODEL || "gpt-5",
-    messages,
-    response_format: { type: "json_object" },
-  });
-
-  const content = response.choices?.[0]?.message?.content?.trim();
-  if (!content) throw new Error("OpenAI returned an empty response.");
-
-  try {
-    console.log("content", content);
-    const parsed = JSON.parse(content) as AssetAnalysisResult;
+  if (groupingMode === "per_photo") {
+    const res = await analyzePerPhoto(imageUrls, lang, ccy);
     const lotsTagged = addModeTag(
-      Array.isArray(parsed?.lots) ? parsed.lots : [],
-      groupingMode
+      Array.isArray(res.lots) ? res.lots : [],
+      "per_photo"
     );
     return {
-      ...parsed,
       lots: lotsTagged,
-      language: parsed.language || lang,
-      currency: parsed.currency || ccy,
+      summary: res.summary,
+      language: res.language || lang,
+      currency: res.currency || ccy,
     };
-  } catch (err) {
-    console.error("Invalid JSON from model:", content);
-    throw new Error("Failed to parse JSON from AI response.");
   }
+
+  // Default handling for single_lot and catalogue
+  const mode: any = groupingMode === "catalogue" ? "catalogue" : "single_lot";
+  const bundleRes = await analyzeBundle(imageUrls, mode, lang, ccy);
+  const lotsTagged = addModeTag(
+    Array.isArray(bundleRes.lots) ? bundleRes.lots : [],
+    mode
+  );
+  return {
+    lots: lotsTagged,
+    summary: bundleRes.summary,
+    language: bundleRes.language || lang,
+    currency: bundleRes.currency || ccy,
+  };
 }
