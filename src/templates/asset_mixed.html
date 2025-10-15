@@ -43,9 +43,9 @@
         height: 1px;
         background: linear-gradient(
           90deg,
-          rgba(251, 113, 133, 0.2),
-          rgba(251, 113, 133, 0.8),
-          rgba(251, 113, 133, 0.2)
+          rgba(225, 29, 72, 0.15),
+          rgba(225, 29, 72, 0.85),
+          rgba(225, 29, 72, 0.15)
         );
         border: 0;
         margin: 16px 0;
@@ -182,9 +182,50 @@
       .page-after {
         break-after: page;
       }
+      /* On-screen header to mirror DOCX branding; hidden in print (PDF uses its own header) */
+      .site-header {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background: #ffffff;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      .site-header .inner {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 6px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .site-header img {
+        height: 24px;
+        object-fit: contain;
+        display: block;
+      }
+      .site-header .line {
+        color: #6b7280;
+        font-size: 11px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      @media print {
+        .site-header { display: none; }
+      }
     </style>
   </head>
   <body>
+    <!-- On-screen header (hidden in print/PDF). Mirrors DOCX header branding. -->
+    <header class="site-header">
+      <div class="inner">
+        <img src="{{logo_url}}" alt="Logo" />
+        <div class="line">
+          P.O. Box 3081 Regina, SK S4P 3G7 · www.McDougallBay.com · (306)757-1747{{#if user_email}} · {{user_email}}{{/if}}
+        </div>
+      </div>
+    </header>
     <!-- Cover Page -->
     <section
       class="page-after"
