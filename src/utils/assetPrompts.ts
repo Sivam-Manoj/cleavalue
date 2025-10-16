@@ -637,15 +637,20 @@ Grouping mode: per_photo
 - Each lot must contain exactly one image index.
 - No overlaps across lots.
 - Ensure titles are concise and unique.
- - Description formatting for each lot:
-   - Start with YEAR MAKE MODEL [TRIM/TYPE], followed by concise attributes separated by commas.
-   - Extract only what is clearly visible; do NOT fabricate. Omit unknowns. Keep serial/VIN outside the description.
-   - If the item is a VEHICLE, strictly follow the vehicle attribute order below — order by Section Order ascending and within each section keep the exact label order. Output only labels and values (no section headers):
-   - ${vehicleAttributeFieldList}
-   - For non-vehicle items, use the general attributes:
- - Additional per_photo fields to include for each lot:\n   - serial_no_or_label: string | null — extract any visible serial/model numbers or label text. When a VIN is visible, include it labeled EXACTLY as "VIN: <VIN>" (use '*' for unknown characters in a partial VIN). Use null if nothing is visible.
+   - Description formatting for each lot:
+     - Start with YEAR MAKE MODEL [TRIM/TYPE], followed by concise attributes separated by commas.
+     - Extract only what is clearly visible; do NOT fabricate. Omit unknowns. Keep serial/VIN outside the description.
+     - If the item is a VEHICLE, strictly follow the vehicle attribute order below — order by Section Order ascending and within each section keep the exact label order. Output only labels and values (no section headers):
+     - ${vehicleAttributeFieldList}
+     - For non-vehicle items, use the general attributes:
+   - Additional per_photo fields to include for each lot:\n   - serial_no_or_label: string | null — extract any visible serial/model numbers or label text. When a VIN is visible, include it labeled EXACTLY as "VIN: <VIN>" (use '*' for unknown characters in a partial VIN). Use null if nothing is visible.
 
-`;
+  Focus Box Guidance:
+  - If the image contains a VISIBLE red rectangular focus box overlay (a red-stroked rectangle drawn on top of the image), treat that rectangle as the intended area of interest.
+  - Prioritize the subject INSIDE that rectangle. Choose the single lot that best represents the content within the box. If multiple candidates are visible, prefer the one most centered within the box.
+  - If nothing clear falls within the focus box, fall back to the primary central subject of the image.
+
+  `;
 
   const perItem = `
 Grouping mode: per_item ("everything you see")
@@ -653,18 +658,24 @@ Grouping mode: per_item ("everything you see")
 - If multiple identical units exist in the same image, create separate lots for each unit and distinguish titles with "(#1)", "(#2)", etc.
 - For single-image analysis, set 'image_indexes' to exactly the provided index for that image ONLY (the caller/user message will specify it). Do NOT include any other indexes.
 - Titles must be concise and unique across lots.
- - Description formatting for each lot:
-   - Each description MUST start with YEAR MAKE MODEL [TRIM/TYPE], followed by concise attributes separated by commas.
-   - Extract only what is clearly visible; do NOT fabricate. Omit unknowns. Keep serial/VIN outside the description (use 'serial_no_or_label' for that).
-   - If the item is a VEHICLE, strictly follow the vehicle attribute order below — order by Section Order ascending and within each section keep the exact label order. Output only labels and values (no section headers):
-   - ${vehicleAttributeFieldList}
-   - For non-vehicle items, use the general attributes:
-- Additional per_item fields to include for each lot:
-  - serial_no_or_label: string | null — extract any visible serial/model numbers or label text. When a VIN is visible, include it labeled EXACTLY as "VIN: <VIN>" (17 characters; use '*' for any unknown characters in a partial VIN). Use null if not visible. For partial VINs, include the visible characters and '*' placeholders where unknown.
-  - details: string — concise attributes like color, material, size/dimensions, capacity, or model/specs; also note inclusions or notable issues.
-  - image_url: REQUIRED — set EXACTLY to the original URL for this image (from the provided list). Do NOT fabricate. Must match one of the provided image URLs.
-- If MULTIPLE images are provided at once, treat each image independently and return lots per image separately. For each lot, set 'image_indexes' to [CURRENT_INDEX] only and 'image_url' to that image's exact URL. Do NOT include indexes from other images.
-`;
+   - Description formatting for each lot:
+     - Each description MUST start with YEAR MAKE MODEL [TRIM/TYPE], followed by concise attributes separated by commas.
+     - Extract only what is clearly visible; do NOT fabricate. Omit unknowns. Keep serial/VIN outside the description (use 'serial_no_or_label' for that).
+     - If the item is a VEHICLE, strictly follow the vehicle attribute order below — order by Section Order ascending and within each section keep the exact label order. Output only labels and values (no section headers):
+     - ${vehicleAttributeFieldList}
+     - For non-vehicle items, use the general attributes:
+  - Additional per_item fields to include for each lot:
+    - serial_no_or_label: string | null — extract any visible serial/model numbers or label text. When a VIN is visible, include it labeled EXACTLY as "VIN: <VIN>" (17 characters; use '*' for any unknown characters in a partial VIN). Use null if not visible. For partial VINs, include the visible characters and '*' placeholders where unknown.
+    - details: string — concise attributes like color, material, size/dimensions, capacity, or model/specs; also note inclusions or notable issues.
+    - image_url: REQUIRED — set EXACTLY to the original URL for this image (from the provided list). Do NOT fabricate. Must match one of the provided image URLs.
+  - If MULTIPLE images are provided at once, treat each image independently and return lots per image separately. For each lot, set 'image_indexes' to [CURRENT_INDEX] only and 'image_url' to that image's exact URL. Do NOT include indexes from other images.
+
+  Focus Box Guidance:
+  - If the image contains a VISIBLE red rectangular focus box overlay (a red-stroked rectangle drawn on top of the image), treat that rectangle as the intended area of interest.
+  - PRIORITIZE detecting and returning items that are fully within or clearly intersect that rectangle.
+  - If multiple items are inside, return each as its own lot (per_item). Deprioritize items entirely outside the box unless needed to complete an item that is only partially outside/inside.
+  - If no focus box is visible, analyze the entire image normally.
+  `;
 
   const singleLot = `
 Grouping mode: single_lot
