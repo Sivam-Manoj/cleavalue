@@ -207,7 +207,7 @@ VIN and Serial Handling:
 Excel Export Fields - ALL fields listed below MUST be included in each lot for Excel generation:
 
 CRITICAL Fields (always provide):
-- lot_number: string/number — Lot identifier for Excel "Lot #" column
+- lot_number: string/number/null — Lot identifier for Excel "Lot #" column. If a visible lot sticker/label is present, set to that numeric value; otherwise set to null (server will assign sequential default).
 - title: string — Short, specific title (Excel "Title" column)
 - description: string — Detailed description (Excel "Description" column)
 - estimated_value: string — FMV with currency prefix (Excel "FMV" column), e.g., "${ccyPrefix}12,500"
@@ -645,12 +645,16 @@ Grouping mode: per_photo
      - For non-vehicle items, use the general attributes:
    - Additional per_photo fields to include for each lot:\n   - serial_no_or_label: string | null — extract any visible serial/model numbers or label text. When a VIN is visible, include it labeled EXACTLY as "VIN: <VIN>" (use '*' for unknown characters in a partial VIN). Use null if nothing is visible.
 
+  Lot Number Guidance:
+  - Detect any visible numeric lot sticker/label in the image(s). Examples include: "Lot 12", "Lot #12", "#105", or a prominent numeric sticker. If clearly present, set 'lot_number' to the numeric value only (no prefixes like 'Lot' or '#').
+  - Avoid confusing years (e.g., 2008), prices, phone numbers, horsepower, or model numbers with lot numbers. Prefer numbers adjacent to "Lot"/"LOT" or printed tags/stickers.
+  - If no clear lot sticker/label is visible, set 'lot_number' to null. The server will auto-assign sequential lot numbers and order.
+
   Focus Box Guidance:
   - If the image contains a VISIBLE red rectangular focus box overlay (a red-stroked rectangle drawn on top of the image), treat that rectangle as the intended area of interest.
   - Prioritize the subject INSIDE that rectangle. Choose the single lot that best represents the content within the box. If multiple candidates are visible, prefer the one most centered within the box.
   - If nothing clear falls within the focus box, fall back to the primary central subject of the image.
-
-  `;
+`;
 
   const perItem = `
 Grouping mode: per_item ("everything you see")
@@ -660,22 +664,27 @@ Grouping mode: per_item ("everything you see")
 - Titles must be concise and unique across lots.
    - Description formatting for each lot:
      - Each description MUST start with YEAR MAKE MODEL [TRIM/TYPE], followed by concise attributes separated by commas.
-     - Extract only what is clearly visible; do NOT fabricate. Omit unknowns. Keep serial/VIN outside the description (use 'serial_no_or_label' for that).
+     - Extract only what is clearly visible; do NOT fabricate. If unknown, omit. Keep serial/VIN outside the description.
      - If the item is a VEHICLE, strictly follow the vehicle attribute order below — order by Section Order ascending and within each section keep the exact label order. Output only labels and values (no section headers):
      - ${vehicleAttributeFieldList}
      - For non-vehicle items, use the general attributes:
   - Additional per_item fields to include for each lot:
-    - serial_no_or_label: string | null — extract any visible serial/model numbers or label text. When a VIN is visible, include it labeled EXACTLY as "VIN: <VIN>" (17 characters; use '*' for any unknown characters in a partial VIN). Use null if not visible. For partial VINs, include the visible characters and '*' placeholders where unknown.
+    - serial_no_or_label: string | null — extract any visible serial/model numbers or label text. When a VIN is visible, include it labeled EXACTLY as "VIN: <VIN>" (17 characters; use '*' for partial VINs). Use null if not visible. For partial VINs, include the visible characters and '*' placeholders where unknown.
     - details: string — concise attributes like color, material, size/dimensions, capacity, or model/specs; also note inclusions or notable issues.
     - image_url: REQUIRED — set EXACTLY to the original URL for this image (from the provided list). Do NOT fabricate. Must match one of the provided image URLs.
   - If MULTIPLE images are provided at once, treat each image independently and return lots per image separately. For each lot, set 'image_indexes' to [CURRENT_INDEX] only and 'image_url' to that image's exact URL. Do NOT include indexes from other images.
+
+  Lot Number Guidance:
+  - Detect any visible numeric lot sticker/label in the image(s). Examples include: "Lot 12", "Lot #12", "#105", or a prominent numeric sticker. If clearly present, set 'lot_number' to the numeric value only (no prefixes like 'Lot' or '#').
+  - Avoid confusing years (e.g., 2008), prices, phone numbers, horsepower, or model numbers with lot numbers. Prefer numbers adjacent to "Lot"/"LOT" or printed tags/stickers.
+  - If no clear lot sticker/label is visible, set 'lot_number' to null. The server will auto-assign sequential lot numbers and order.
 
   Focus Box Guidance:
   - If the image contains a VISIBLE red rectangular focus box overlay (a red-stroked rectangle drawn on top of the image), treat that rectangle as the intended area of interest.
   - PRIORITIZE detecting and returning items that are fully within or clearly intersect that rectangle.
   - If multiple items are inside, return each as its own lot (per_item). Deprioritize items entirely outside the box unless needed to complete an item that is only partially outside/inside.
   - If no focus box is visible, analyze the entire image normally.
-  `;
+`;
 
   const singleLot = `
 Grouping mode: single_lot
@@ -691,6 +700,11 @@ Grouping mode: single_lot
   - ${vehicleAttributeFieldList}
   - For non-vehicle items, use the general attributes:
  - Optional additional field at lot level:\n   - serial_no_or_label: string | null — if one or more serials/VINs are clearly visible for the primary subject(s), include them. When a VIN is visible, label it EXACTLY as "VIN: <VIN>" (use '*' for partial VINs). For multiple items, separate entries with "; ". Use null if nothing is visible.
+  Lot Number Guidance:
+  - Detect any visible numeric lot sticker/label in the image(s). Examples include: "Lot 12", "Lot #12", "#105", or a prominent numeric sticker. If clearly present, set 'lot_number' to the numeric value only (no prefixes like 'Lot' or '#').
+  - Avoid confusing years (e.g., 2008), prices, phone numbers, horsepower, or model numbers with lot numbers. Prefer numbers adjacent to "Lot"/"LOT" or printed tags/stickers.
+  - If no clear lot sticker/label is visible, set 'lot_number' to null. The server will auto-assign sequential lot numbers and order.
+
   - Example numbered lines:
     1. 2002 Kenworth T800 T/A Truck Tractor, CAT C15 475 HP Diesel Engine, 18 Spd Trans, A/R Susp., WetKit, Sliding 5th Wheel, 16,000 lb Front, 46,000 lb Rear, Aluminum Wheels, Front Tires 385/65R22.5, Rear Tires 11R24.5, New CVI
     2. 2004 Kenworth T800 T/A Truck Tractor, CAT C15 Diesel Engine, 18 Spd Trans, 16,000 lb / 46,000 lb Front/Rears, A/R Susp., Alum Headache Rack, Sliding 5th Wheel, Aluminum Wheels, Front Tires 315/80R22.5, Rear 11R24.5, New CVI

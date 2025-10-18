@@ -781,6 +781,36 @@ export async function runAssetReportJob({
       }
     }
 
+    // Lot-number ordering (sticker first):
+    // If a lot has a visible numeric lot sticker captured as lot_number, sort by that number asc.
+    // Lots without a sticker-provided number keep their default relative order and come after.
+    if (
+      groupingMode === "per_item" ||
+      groupingMode === "per_photo" ||
+      groupingMode === "single_lot"
+    ) {
+      try {
+        const decorated = (Array.isArray(lots) ? lots : []).map((lot: any, idx: number) => {
+          const raw = lot?.lot_number;
+          let num: number | null = null;
+          if (typeof raw === "number" && Number.isFinite(raw)) num = raw;
+          else if (typeof raw === "string") {
+            const m = raw.match(/\d+/);
+            if (m) {
+              const n = parseInt(m[0], 10);
+              if (Number.isFinite(n)) num = n;
+            }
+          }
+          return { idx, num, lot };
+        });
+        const sticker = decorated.filter((d) => d.num != null);
+        const others = decorated.filter((d) => d.num == null);
+        sticker.sort((a, b) => (a.num as number) - (b.num as number) || a.idx - b.idx);
+        const merged = [...sticker, ...others];
+        lots = merged.map((d) => d.lot);
+      } catch {}
+    }
+
     // VIN-based enrichment (uses NHTSA vPIC) — only if we have lots
     if (Array.isArray(lots) && lots.length > 0) {
       try {
