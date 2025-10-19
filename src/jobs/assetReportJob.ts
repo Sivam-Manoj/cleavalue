@@ -77,8 +77,9 @@ export async function runAssetReportJob({
     updateProgress(progressId, { serverProgress01: clamped });
   };
   const SERVER_WEIGHTS = {
-    r2_upload: 0.2,
-    ai_analysis: 0.5,
+    r2_upload: 0.18,
+    ai_analysis: 0.48,
+    rename_images_by_lot: 0.04,
     generate_pdf: 0.12,
     generate_docx: 0.12,
     generate_xlsx: 0.06,
@@ -826,6 +827,131 @@ export async function runAssetReportJob({
       }
     }
 
+    // Rename images based on lot numbers (e.g., 1.1, 1.2, 1.3 for lot 1)
+    if (Array.isArray(lots) && lots.length > 0 && imageUrls.length > 0) {
+      try {
+        await withStep(
+          "rename_images_by_lot",
+          "Renaming images based on lot numbers",
+          async () => {
+            // Build mapping: oldURL -> {newName, lotNumber, imageIndexInLot}
+            type ImageRenameInfo = {
+              oldUrl: string;
+              newName: string; // e.g., "1.1.jpg"
+              lotNumber: string | number;
+              imageIndexInLot: number;
+              globalIndex: number;
+            };
+            const renameMap: ImageRenameInfo[] = [];
+
+            // Assign sequential lot numbers if not present
+            for (let lotIdx = 0; lotIdx < lots.length; lotIdx++) {
+              const lot = lots[lotIdx];
+              let lotNum: string | number = lot?.lot_number;
+              
+              // If lot_number is null/undefined, assign sequential number
+              if (lotNum == null || String(lotNum).trim() === "") {
+                lotNum = lotIdx + 1;
+                lot.lot_number = lotNum;
+              }
+
+              const lotImages: number[] = Array.isArray(lot?.image_indexes)
+                ? lot.image_indexes
+                : [];
+              
+              // For each image in this lot, create rename mapping
+              for (let i = 0; i < lotImages.length; i++) {
+                const globalIdx = lotImages[i];
+                if (globalIdx >= 0 && globalIdx < imageUrls.length) {
+                  const oldUrl = imageUrls[globalIdx];
+                  const newName = `${lotNum}.${i + 1}.jpg`; // e.g., "1.1.jpg", "1.2.jpg"
+                  renameMap.push({
+                    oldUrl,
+                    newName,
+                    lotNumber: lotNum,
+                    imageIndexInLot: i + 1,
+                    globalIndex: globalIdx,
+                  });
+                }
+              }
+            }
+
+            // Copy images to new names in R2 storage
+            const timestamp = Date.now();
+            const newImageUrls: string[] = [...imageUrls]; // Clone
+            
+            for (const info of renameMap) {
+              try {
+                // Download old image from R2
+                const response = await fetch(info.oldUrl);
+                if (!response.ok) {
+                  console.warn(`Failed to fetch image for rename: ${info.oldUrl}`);
+                  continue;
+                }
+                const buffer = Buffer.from(await response.arrayBuffer());
+                
+                // Upload with new lot-based name
+                const newFileName = `uploads/asset/${timestamp}-${info.newName}`;
+                await uploadBufferToR2(
+                  buffer,
+                  "image/jpeg",
+                  process.env.R2_BUCKET_NAME!,
+                  newFileName
+                );
+                const newUrl = `https://images.sellsnap.store/${newFileName}`;
+                
+                // Update imageUrls array at global index
+                newImageUrls[info.globalIndex] = newUrl;
+                
+                console.log(
+                  `Renamed image: ${info.oldUrl.split("/").pop()} -> ${info.newName}`
+                );
+              } catch (err) {
+                console.error(
+                  `Failed to rename image ${info.oldUrl} to ${info.newName}:`,
+                  err
+                );
+              }
+            }
+
+            // Update imageUrls array
+            imageUrls.length = 0;
+            imageUrls.push(...newImageUrls);
+
+            // Update all lots with new image URLs
+            for (const lot of lots) {
+              if (Array.isArray(lot?.image_indexes)) {
+                // Update image_urls array
+                lot.image_urls = lot.image_indexes
+                  .map((idx: number) => imageUrls[idx])
+                  .filter(Boolean);
+                
+                // Update single image_url (first image)
+                if (lot.image_urls.length > 0) {
+                  lot.image_url = lot.image_urls[0];
+                }
+
+                // Update catalogue items if present
+                if (Array.isArray(lot?.items)) {
+                  for (const item of lot.items) {
+                    if (typeof item?.image_index === "number") {
+                      item.image_url = imageUrls[item.image_index];
+                    }
+                  }
+                }
+              }
+            }
+
+            console.log(
+              `Successfully renamed ${renameMap.length} images based on lot numbers`
+            );
+          }
+        );
+      } catch (e) {
+        console.error("Image renaming failed:", e);
+      }
+    }
+
     const parseDate = (val: any): Date | undefined => {
       if (!val) return undefined;
       const d = new Date(val);
@@ -1005,19 +1131,29 @@ export async function runAssetReportJob({
           if (m.includes("3gpp")) return ".3gp";
           return "";
         };
-        const sanitize = (name: string) =>
-          name.replace(/[^a-zA-Z0-9._-]/g, "_");
-        // Save images (processed with logo, <=1MB); fallback to original if processing fails
+        
+        // Build lot-based name mapping: globalImageIndex -> lotBasedName (e.g., "1.1.jpg")
+        const imageLotNames = new Map<number, string>();
+        for (let lotIdx = 0; lotIdx < lots.length; lotIdx++) {
+          const lot = lots[lotIdx];
+          const lotNum = lot?.lot_number ?? (lotIdx + 1);
+          const lotImages: number[] = Array.isArray(lot?.image_indexes)
+            ? lot.image_indexes
+            : [];
+          
+          for (let i = 0; i < lotImages.length; i++) {
+            const globalIdx = lotImages[i];
+            imageLotNames.set(globalIdx, `${lotNum}.${i + 1}.jpg`);
+          }
+        }
+
+        // Save images with lot-based names (processed with logo, <=1MB)
         for (let i = 0; i < images.length; i++) {
           const file = images[i];
-          const orig = file.originalname || "";
-          const fallback = `image-${String(i + 1).padStart(3, "0")}`;
-          const ext =
-            path.extname(orig) || extFromMime((file as any)?.mimetype) || "";
-          const base = sanitize(
-            (orig && orig.split("/").pop()!) || fallback + ext
-          );
-          const filePath = path.join(imagesDirPath, base);
+          // Use lot-based name if available, otherwise fallback to sequential
+          const lotBasedName = imageLotNames.get(i);
+          const finalName = lotBasedName || `image-${String(i + 1).padStart(3, "0")}.jpg`;
+          const filePath = path.join(imagesDirPath, finalName);
 
           // Resolve input buffer
           const anyFile = file as any;
@@ -1037,22 +1173,17 @@ export async function runAssetReportJob({
                 "public/logoNobg.png",
                 { maxBytes: 1024 * 1024 }
               );
-              const nameNoExt = sanitize(
-                ((orig && orig.split("/").pop()!) || fallback).replace(
-                  /\.[^./\\]+$/,
-                  ""
-                )
-              );
-              const outName = `${nameNoExt}.jpg`;
-              const outPath = path.join(imagesDirPath, outName);
-              await fs.writeFile(outPath, buffer);
+              // Use lot-based name
+              await fs.writeFile(filePath, buffer);
               continue;
             } catch {}
           }
-          // Fallback: write original file
+          // Fallback: write original file with lot-based name
           await fs.writeFile(filePath, file.buffer);
         }
-        // Save videos
+        // Save videos with sanitized names
+        const sanitize = (name: string) =>
+          name.replace(/[^a-zA-Z0-9._-]/g, "_");
         for (let i = 0; i < videos.length; i++) {
           const file = videos[i];
           const orig = file.originalname || "";
