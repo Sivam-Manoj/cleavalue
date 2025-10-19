@@ -827,7 +827,7 @@ export async function runAssetReportJob({
       }
     }
 
-    // Rename images based on lot numbers (e.g., 1.1, 1.2, 1.3 for lot 1)
+    // Rename images based on lot numbers with mode prefix (e.g., bundle-1.1.jpg, peritem-2.1.jpg)
     if (Array.isArray(lots) && lots.length > 0 && imageUrls.length > 0) {
       try {
         await withStep(
@@ -837,10 +837,11 @@ export async function runAssetReportJob({
             // Build mapping: oldURL -> {newName, lotNumber, imageIndexInLot}
             type ImageRenameInfo = {
               oldUrl: string;
-              newName: string; // e.g., "1.1.jpg"
+              newName: string; // e.g., "bundle-1.1.jpg"
               lotNumber: string | number;
               imageIndexInLot: number;
               globalIndex: number;
+              modePrefix: string;
             };
             const renameMap: ImageRenameInfo[] = [];
 
@@ -855,6 +856,34 @@ export async function runAssetReportJob({
                 lot.lot_number = lotNum;
               }
 
+              // Determine mode prefix based on grouping mode
+              let modePrefix = "";
+              if (groupingMode === "mixed" && lot?.sub_mode) {
+                // For mixed mode, use the sub_mode (single_lot, per_item, per_photo)
+                const subMode = String(lot.sub_mode).toLowerCase();
+                if (subMode === "single_lot") modePrefix = "bundle";
+                else if (subMode === "per_item") modePrefix = "peritem";
+                else if (subMode === "per_photo") modePrefix = "perphoto";
+              } else if (groupingMode === "combined") {
+                // For combined mode, could have different lots from different modes
+                // Check tags for mode information
+                const modeTags = Array.isArray(lot?.tags)
+                  ? lot.tags.filter((t: any) => String(t).startsWith("mode:"))
+                  : [];
+                if (modeTags.length > 0) {
+                  const modeTag = String(modeTags[0]).replace("mode:", "");
+                  if (modeTag === "single_lot") modePrefix = "bundle";
+                  else if (modeTag === "per_item") modePrefix = "peritem";
+                  else if (modeTag === "per_photo") modePrefix = "perphoto";
+                }
+              } else {
+                // For single mode reports, use the main grouping mode
+                if (groupingMode === "single_lot") modePrefix = "bundle";
+                else if (groupingMode === "per_item") modePrefix = "peritem";
+                else if (groupingMode === "per_photo") modePrefix = "perphoto";
+                else if (groupingMode === "catalogue") modePrefix = "catalogue";
+              }
+
               const lotImages: number[] = Array.isArray(lot?.image_indexes)
                 ? lot.image_indexes
                 : [];
@@ -864,13 +893,17 @@ export async function runAssetReportJob({
                 const globalIdx = lotImages[i];
                 if (globalIdx >= 0 && globalIdx < imageUrls.length) {
                   const oldUrl = imageUrls[globalIdx];
-                  const newName = `${lotNum}.${i + 1}.jpg`; // e.g., "1.1.jpg", "1.2.jpg"
+                  // Format: mode-lotNum.imageNum.jpg (e.g., "bundle-1.1.jpg", "peritem-2.1.jpg")
+                  const newName = modePrefix
+                    ? `${modePrefix}-${lotNum}.${i + 1}.jpg`
+                    : `${lotNum}.${i + 1}.jpg`;
                   renameMap.push({
                     oldUrl,
                     newName,
                     lotNumber: lotNum,
                     imageIndexInLot: i + 1,
                     globalIndex: globalIdx,
+                    modePrefix,
                   });
                 }
               }
@@ -1132,18 +1165,46 @@ export async function runAssetReportJob({
           return "";
         };
         
-        // Build lot-based name mapping: globalImageIndex -> lotBasedName (e.g., "1.1.jpg")
+        // Build lot-based name mapping with mode prefix: globalImageIndex -> lotBasedName (e.g., "bundle-1.1.jpg")
         const imageLotNames = new Map<number, string>();
         for (let lotIdx = 0; lotIdx < lots.length; lotIdx++) {
           const lot = lots[lotIdx];
           const lotNum = lot?.lot_number ?? (lotIdx + 1);
+          
+          // Determine mode prefix (same logic as above)
+          let modePrefix = "";
+          if (groupingMode === "mixed" && lot?.sub_mode) {
+            const subMode = String(lot.sub_mode).toLowerCase();
+            if (subMode === "single_lot") modePrefix = "bundle";
+            else if (subMode === "per_item") modePrefix = "peritem";
+            else if (subMode === "per_photo") modePrefix = "perphoto";
+          } else if (groupingMode === "combined") {
+            const modeTags = Array.isArray(lot?.tags)
+              ? lot.tags.filter((t: any) => String(t).startsWith("mode:"))
+              : [];
+            if (modeTags.length > 0) {
+              const modeTag = String(modeTags[0]).replace("mode:", "");
+              if (modeTag === "single_lot") modePrefix = "bundle";
+              else if (modeTag === "per_item") modePrefix = "peritem";
+              else if (modeTag === "per_photo") modePrefix = "perphoto";
+            }
+          } else {
+            if (groupingMode === "single_lot") modePrefix = "bundle";
+            else if (groupingMode === "per_item") modePrefix = "peritem";
+            else if (groupingMode === "per_photo") modePrefix = "perphoto";
+            else if (groupingMode === "catalogue") modePrefix = "catalogue";
+          }
+          
           const lotImages: number[] = Array.isArray(lot?.image_indexes)
             ? lot.image_indexes
             : [];
           
           for (let i = 0; i < lotImages.length; i++) {
             const globalIdx = lotImages[i];
-            imageLotNames.set(globalIdx, `${lotNum}.${i + 1}.jpg`);
+            const fileName = modePrefix
+              ? `${modePrefix}-${lotNum}.${i + 1}.jpg`
+              : `${lotNum}.${i + 1}.jpg`;
+            imageLotNames.set(globalIdx, fileName);
           }
         }
 
