@@ -438,16 +438,30 @@ export const getAdminReports = async (req: Request, res: Response) => {
       }
     }
 
-    const [items, totalAgg] = await Promise.all([
-      PdfReport.find(filter)
-        .populate("user", "email username")
-        .sort({ createdAt: -1 })
-        .skip((page - 1) * limit)
-        .limit(limit),
-      (PdfReport as any)
-        .aggregate([{ $match: filter }, { $group: { _id: { $ifNull: ["$report", "$_id"] } } }, { $count: "count" }]),
+    // First, get unique report groups with pagination
+    const groupsAgg = await (PdfReport as any).aggregate([
+      { $match: filter },
+      { $group: { _id: { $ifNull: ["$report", "$_id"] }, maxCreatedAt: { $max: "$createdAt" } } },
+      { $sort: { maxCreatedAt: -1 } },
+      { $facet: {
+        total: [{ $count: "count" }],
+        groups: [
+          { $skip: (page - 1) * limit },
+          { $limit: limit }
+        ]
+      }}
     ]);
-    const total = (totalAgg?.[0]?.count || 0) as number;
+
+    const total = groupsAgg?.[0]?.total?.[0]?.count || 0;
+    const reportIds = (groupsAgg?.[0]?.groups || []).map((g: any) => g._id);
+
+    // Then fetch all records for these report groups
+    const items = reportIds.length > 0 ? await PdfReport.find({
+      ...filter,
+      $or: reportIds.map((id: any) => id ? { report: id } : { _id: id, report: { $exists: false } })
+    })
+      .populate("user", "email username")
+      .sort({ createdAt: -1 }) : [];
 
     return res.status(200).json({ items, total, page, limit });
   } catch (e) {
