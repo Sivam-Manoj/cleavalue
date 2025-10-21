@@ -410,7 +410,7 @@ export const getAdminReports = async (req: Request, res: Response) => {
     );
     const limit = Math.min(
       Math.max(parseInt((req.query.limit as string) || "20", 10) || 20, 1),
-      100
+      200
     );
 
     const filter: any = {};

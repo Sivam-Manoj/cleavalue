@@ -6,7 +6,7 @@ import { sendEmail } from "../utils/sendVerificationEmail.js";
 export const getPendingReports = async (req: Request, res: Response) => {
   try {
     const page = Math.max(parseInt((req.query.page as string) || "1", 10) || 1, 1);
-    const limit = Math.min(Math.max(parseInt((req.query.limit as string) || "20", 10) || 20, 1), 100);
+    const limit = Math.min(Math.max(parseInt((req.query.limit as string) || "20", 10) || 20, 1), 200);
 
     const filter: any = { approvalStatus: "pending" };
     
