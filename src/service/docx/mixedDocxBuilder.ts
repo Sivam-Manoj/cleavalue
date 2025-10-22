@@ -1470,7 +1470,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
         headers: { default: new Header({ children: [] }) },
         footers: { default: new Footer({ children: [footerTable] }) },
         children: [
-          buildCover(
+          await buildCover(
             reportData,
             logoBuffer,
             contentWidthTw,

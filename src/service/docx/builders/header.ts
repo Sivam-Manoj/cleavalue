@@ -9,6 +9,7 @@ import {
   TableRow,
   TextRun,
   WidthType,
+  PageNumber,
 } from "docx";
 
 // Enhanced: Logo-only header as per client request
@@ -110,23 +111,39 @@ export function buildFooterTable(
     );
   }
 
+  // Add page number at the very bottom
+  footerLines.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 60 },
+      children: [
+        new TextRun({ text: "Page ", size: 18, color: "6B7280" }),
+        new TextRun({
+          children: [PageNumber.CURRENT],
+          size: 18,
+          color: "6B7280",
+        }),
+      ],
+    })
+  );
+
   return new Table({
     width: { size: contentWidthTw, type: WidthType.DXA },
     layout: TableLayoutType.FIXED,
     columnWidths: [contentWidthTw],
     borders: {
       top: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
-      bottom: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      left: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      right: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
+      bottom: { style: BorderStyle.NONE },
+      left: { style: BorderStyle.NONE },
+      right: { style: BorderStyle.NONE },
+      insideHorizontal: { style: BorderStyle.NONE },
+      insideVertical: { style: BorderStyle.NONE },
     },
     rows: [
       new TableRow({
         children: [
           new TableCell({
-            margins: { top: 40, bottom: 20, left: 40, right: 40 },
+            margins: { top: 20, bottom: 10, left: 40, right: 40 },
             children: footerLines,
           }),
         ],

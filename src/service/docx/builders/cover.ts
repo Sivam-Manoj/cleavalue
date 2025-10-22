@@ -1,9 +1,10 @@
 import {
   AlignmentType,
   BorderStyle,
-  HeadingLevel,
+  HeightRule,
   ImageRun,
   Paragraph,
+  ShadingType,
   Table,
   TableCell,
   TableLayoutType,
@@ -12,19 +13,18 @@ import {
   VerticalAlign,
   WidthType,
   convertInchesToTwip,
-  ShadingType,
-  HeightRule,
 } from "docx";
-import { formatDateUS, goldDivider } from "./utils.js";
+import { formatDateUS } from "./utils.js";
 import { getLang, t } from "./i18n.js";
+import { generateCoverPageImage } from "../../htmlToImage.js";
 
-export function buildCover(
+export async function buildCover(
   reportData: any,
   logoBuffer: Buffer | null,
   contentWidthTw: number,
   titleText: string = "Asset Report",
   heroImageBuffer: Buffer | null = null
-): Table {
+): Promise<Table> {
   const lang = getLang(reportData);
   const tr = t(lang);
   const preparedFor =
@@ -36,6 +36,91 @@ export function buildCover(
   );
   const coverCellMarginTw = 60;
   const coverInnerWidthTw = contentWidthTw - coverCellMarginTw * 2;
+
+  // Calculate additional info line
+  const lotsOrAddr = (() => {
+    const addr = String(
+      (reportData as any)?.property_details?.address || ""
+    ).trim();
+    const muni = String(
+      (reportData as any)?.property_details?.municipality || ""
+    ).trim();
+    if (addr) return muni ? `${addr}, ${muni}` : addr;
+    const lotsCount = Array.isArray((reportData as any)?.lots)
+      ? (reportData as any).lots.length
+      : 0;
+    const gm = String((reportData as any)?.grouping_mode || "catalogue");
+    if (!lotsCount) return "";
+    const lotSuffix = lotsCount > 1 ? "Lots" : "Lot";
+    const gmDisplay =
+      gm === "catalogue"
+        ? "Catalogue Format"
+        : gm === "per_item"
+          ? "Per-Item Format"
+          : gm === "per_photo"
+            ? "Per-Photo Format"
+            : gm === "single_lot"
+              ? "Single Lot Format"
+              : "";
+    return `${lotsCount} ${lotSuffix}${gmDisplay ? ` • ${gmDisplay}` : ""}`;
+  })();
+
+  // Generate beautiful cover page image from HTML
+  let coverImageBuffer: Buffer | null = null;
+  try {
+    coverImageBuffer = await generateCoverPageImage({
+      companyName: "McDougall Auctioneers",
+      title: titleText || tr.assetReport,
+      subtitle: "Professional Valuation Report",
+      clientName: preparedFor || "—",
+      reportDate: reportDate || "—",
+      additionalInfo: lotsOrAddr || "",
+    });
+  } catch (error) {
+    console.error("Failed to generate cover page image:", error);
+  }
+
+  // If image generation succeeded, use it
+  if (coverImageBuffer) {
+    return new Table({
+      width: { size: contentWidthTw, type: WidthType.DXA },
+      layout: TableLayoutType.FIXED,
+      columnWidths: [contentWidthTw],
+      borders: {
+        top: { style: BorderStyle.NONE },
+        bottom: { style: BorderStyle.NONE },
+        left: { style: BorderStyle.NONE },
+        right: { style: BorderStyle.NONE },
+      },
+      rows: [
+        new TableRow({
+          height: { value: convertInchesToTwip(10), rule: HeightRule.EXACT },
+          children: [
+            new TableCell({
+              margins: { top: 0, bottom: 0, left: 0, right: 0 },
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [
+                    new ImageRun({
+                      data: coverImageBuffer as any,
+                      transformation: {
+                        width: 650,
+                        height: 933, // 1200x1400 aspect ratio scaled to 650 width
+                      },
+                    } as any),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+  }
+
+  // Fallback to DOCX-based cover if image generation fails
+  console.warn("Using fallback DOCX-based cover page");
 
   const coverTop: Paragraph[] = [];
 
@@ -207,31 +292,6 @@ export function buildCover(
       children: [],
     })
   );
-  // Optional middle line: address (Real Estate) or lots/grouping (Assets). Allow suppression.
-  const lotsOrAddr = (() => {
-    // Real Estate override: show subject address/municipality if provided
-    const addr = String((reportData as any)?.property_details?.address || "").trim();
-    const muni = String((reportData as any)?.property_details?.municipality || "").trim();
-    if (addr) return muni ? `${addr}, ${muni}` : addr;
-    // Default: Asset report information (lots and grouping)
-    const lotsCount = Array.isArray((reportData as any)?.lots)
-      ? (reportData as any).lots.length
-      : 0;
-    const gm = String((reportData as any)?.grouping_mode || "catalogue");
-    const gmLabel =
-      gm === "single_lot"
-        ? tr.singleLot
-        : gm === "per_item"
-        ? tr.perItem
-        : gm === "per_photo"
-        ? tr.perPhoto
-        : gm === "catalogue"
-        ? tr.assetCatalogue
-        : gm === "combined"
-        ? tr.combined
-        : tr.mixed;
-    return `${lotsCount} ${tr.lotsWord} (${gmLabel})`;
-  })();
   if (!(reportData as any)?.suppressLotsLine && lotsOrAddr) {
     coverTop.push(
       new Paragraph({
@@ -276,9 +336,9 @@ export function buildCover(
                 alignment: AlignmentType.CENTER,
                 spacing: { after: 60 },
                 children: [
-                  new TextRun({ 
-                    text: tr.preparedFor.toUpperCase(), 
-                    size: 20, 
+                  new TextRun({
+                    text: tr.preparedFor.toUpperCase(),
+                    size: 20,
                     bold: true,
                     color: "6B7280",
                   }),
@@ -287,9 +347,9 @@ export function buildCover(
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 children: [
-                  new TextRun({ 
-                    text: preparedFor || "—", 
-                    size: 26, 
+                  new TextRun({
+                    text: preparedFor || "—",
+                    size: 26,
                     bold: true,
                     color: "1F2937",
                   }),
@@ -312,9 +372,9 @@ export function buildCover(
                 alignment: AlignmentType.CENTER,
                 spacing: { after: 60 },
                 children: [
-                  new TextRun({ 
-                    text: tr.reportDate.toUpperCase(), 
-                    size: 20, 
+                  new TextRun({
+                    text: tr.reportDate.toUpperCase(),
+                    size: 20,
                     bold: true,
                     color: "6B7280",
                   }),
@@ -323,9 +383,9 @@ export function buildCover(
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 children: [
-                  new TextRun({ 
-                    text: reportDate || "—", 
-                    size: 26, 
+                  new TextRun({
+                    text: reportDate || "—",
+                    size: 26,
                     bold: true,
                     color: "1F2937",
                   }),

@@ -63,11 +63,11 @@ export async function generateCatalogueDocx(reportData: any): Promise<Buffer> {
   const tr = t(lang);
   // Build non-header sections separately (do not include in main children)
   const coverChildren: Array<Paragraph | Table | TableOfContents> = [
-    buildCover(reportData, logoBuffer, contentWidthTw, tr.assetCatalogue),
+    await buildCover(reportData, logoBuffer, contentWidthTw, tr.assetCatalogue),
   ];
   const tocChildren = buildTOC(reportData);
   const transmittalChildren = buildTransmittalLetter(reportData, reportDate);
-  const certificateChildren = buildCertificateOfAppraisal(
+  const certificateChildren = await buildCertificateOfAppraisal(
     reportData,
     contentWidthTw,
     reportDate
