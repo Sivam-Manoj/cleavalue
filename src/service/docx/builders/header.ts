@@ -11,23 +11,16 @@ import {
   WidthType,
 } from "docx";
 
+// Enhanced: Logo-only header as per client request
 export function buildHeaderTable(
   logoBuffer: Buffer | null,
   contentWidthTw: number,
   userEmail?: string | null
 ): Table {
-  const site = "www.McDougallBay.com";
-  const phone = "(800)263-4193";
-  const address = "301 – 15 Great Plains Road, Emerald Park, SK  S4L 1C6";
-  const email = (userEmail && String(userEmail)) || "";
-
   return new Table({
     width: { size: contentWidthTw, type: WidthType.DXA },
     layout: TableLayoutType.FIXED,
-    columnWidths: [
-      Math.round(contentWidthTw * 0.25),
-      Math.round(contentWidthTw * 0.75),
-    ],
+    columnWidths: [contentWidthTw],
     borders: {
       top: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
       bottom: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
@@ -43,41 +36,98 @@ export function buildHeaderTable(
             margins: { top: 40, bottom: 20, left: 40, right: 40 },
             children: [
               new Paragraph({
+                alignment: AlignmentType.CENTER,
                 children: logoBuffer
                   ? [
                       new ImageRun({
                         data: logoBuffer as any,
-                        transformation: { width: 90, height: 32 },
+                        transformation: { width: 180, height: 64 },
                       } as any),
                     ]
-                  : [new TextRun({ text: "" })],
+                  : [new TextRun({ text: "McDougall Auctioneers", bold: true, size: 28 })],
               }),
             ],
           }),
+        ],
+      }),
+    ],
+  });
+}
+
+// New: Footer with corporate address, website, and appraiser details
+export function buildFooterTable(
+  contentWidthTw: number,
+  appraiserName?: string | null,
+  appraiserEmail?: string | null
+): Table {
+  const site = "www.McDougallBay.com";
+  const phone = "(800) 263-4193";
+  const address = "301 – 15 Great Plains Road, Emerald Park, SK  S4L 1C6";
+  const appraiser = appraiserName ? String(appraiserName) : "";
+  const email = appraiserEmail ? String(appraiserEmail) : "";
+
+  const footerLines: Paragraph[] = [];
+
+  // Corporate address
+  footerLines.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: address, size: 18, color: "6B7280" })],
+      spacing: { after: 40 },
+    })
+  );
+
+  // Website and phone
+  footerLines.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [
+        new TextRun({ text: site, size: 18, color: "3B82F6", bold: true }),
+        new TextRun({ text: "  •  ", size: 18, color: "9CA3AF" }),
+        new TextRun({ text: phone, size: 18, color: "6B7280" }),
+      ],
+      spacing: { after: 40 },
+    })
+  );
+
+  // Appraiser details (if provided)
+  if (appraiser || email) {
+    const appraiserParts: TextRun[] = [];
+    if (appraiser) {
+      appraiserParts.push(new TextRun({ text: `Prepared by: ${appraiser}`, size: 16, color: "6B7280" }));
+    }
+    if (email) {
+      if (appraiserParts.length > 0) {
+        appraiserParts.push(new TextRun({ text: "  •  ", size: 16, color: "9CA3AF" }));
+      }
+      appraiserParts.push(new TextRun({ text: email, size: 16, color: "6B7280" }));
+    }
+    footerLines.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: appraiserParts,
+      })
+    );
+  }
+
+  return new Table({
+    width: { size: contentWidthTw, type: WidthType.DXA },
+    layout: TableLayoutType.FIXED,
+    columnWidths: [contentWidthTw],
+    borders: {
+      top: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
+      bottom: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
+      left: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
+      right: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
+      insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
+      insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
+    },
+    rows: [
+      new TableRow({
+        children: [
           new TableCell({
-            margins: { top: 40, bottom: 20, left: 40, right: 40 },
-            children: [
-              // Address line
-              new Paragraph({
-                alignment: AlignmentType.RIGHT,
-                children: [new TextRun({ text: address, size: 20, color: "6B7280" })],
-              }),
-              // Site • Phone • Employee email
-              new Paragraph({
-                alignment: AlignmentType.RIGHT,
-                children: [
-                  new TextRun({ text: site, size: 20, color: "6B7280" }),
-                  new TextRun({ text: "  •  ", size: 20, color: "9CA3AF" }),
-                  new TextRun({ text: phone, size: 20, color: "6B7280" }),
-                  ...(email
-                    ? [
-                        new TextRun({ text: "  •  ", size: 20, color: "9CA3AF" }),
-                        new TextRun({ text: email, size: 20, color: "6B7280" }),
-                      ]
-                    : []),
-                ],
-              }),
-            ],
+            margins: { top: 60, bottom: 40, left: 40, right: 40 },
+            children: footerLines,
           }),
         ],
       }),

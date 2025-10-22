@@ -1,27 +1,23 @@
-import { generateCatalogueDocx } from "./docx/catalogueDocxBuilder.js";
-import { generateAssetLotsDocx, generatePerItemDocx } from "./docx/assetStandardDocxBuilder.js";
-import { generateCombinedDocx } from "./docx/combinedDocxBuilder.js";
 import { generateMixedDocx } from "./docx/mixedDocxBuilder.js";
 
-export async function generateAssetDocxFromReport(reportData: any): Promise<Buffer> {
+/**
+ * Universal DOCX generation service - uses mixedDocxBuilder for ALL modes
+ * This builder has all modern enhancements:
+ * - Hero image cover page
+ * - Logo-only header
+ * - Corporate footer with address, website, phone, appraiser
+ * - Modern certificate design with highlighted value
+ * - Valuation comparison table support
+ * - Table of contents with all sections
+ * - Multi-language support (en/fr/es)
+ * - Handles all grouping modes: catalogue, combined, mixed, per_item, single_lot, per_photo
+ */
+export async function generateAssetDocxFromReport(
+  reportData: any
+): Promise<Buffer> {
   try {
-    // High-fidelity DOCX builders for all modes
-    const mode = String(reportData?.grouping_mode || "single_lot");
-    if (mode === "catalogue") {
-      return await generateCatalogueDocx(reportData);
-    }
-    if (mode === "combined") {
-      return await generateCombinedDocx(reportData);
-    }
-    if (mode === "mixed") {
-      // Mixed: render a table per lot group using sub-mode specific layouts
-      return await generateMixedDocx(reportData);
-    }
-    if (mode === "per_item") {
-      return await generatePerItemDocx(reportData);
-    }
-    // single_lot and per_photo fall back to asset lots layout
-    return await generateAssetLotsDocx(reportData);
+    // Use unified mixedDocxBuilder for ALL modes - it has all modern enhancements
+    return await generateMixedDocx(reportData);
   } catch (error) {
     console.error("Error generating Asset DOCX:", error);
     throw new Error("Failed to generate Asset DOCX report.");

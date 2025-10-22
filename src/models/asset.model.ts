@@ -85,6 +85,22 @@ export interface IAssetReport extends Document {
   contract_no?: string;
   language?: 'en' | 'fr' | 'es';
   currency?: string; // ISO currency code, e.g., CAD, USD, INR
+  // Valuation comparison table
+  include_valuation_table?: boolean;
+  valuation_methods?: Array<'FML' | 'TKV' | 'OLV' | 'FLV'>;
+  valuation_data?: {
+    baseFMV: number;
+    methods: Array<{
+      method: string;
+      fullName: string;
+      description: string;
+      percentage: number;
+      value: number;
+      saleConditions: string;
+      timeline: string;
+      useCase: string;
+    }>;
+  };
 }
 
 const CatalogueItemSchema: Schema<ICatalogueItem> = new Schema(
@@ -183,6 +199,9 @@ const AssetReportSchema: Schema<IAssetReport> = new Schema(
     contract_no: { type: String },
     language: { type: String, enum: ['en', 'fr', 'es'], default: 'en' },
     currency: { type: String, default: 'CAD' },
+    include_valuation_table: { type: Boolean, default: false },
+    valuation_methods: [{ type: String, enum: ['FML', 'TKV', 'OLV', 'FLV'] }],
+    valuation_data: { type: Schema.Types.Mixed },
     analysis: { type: Schema.Types.Mixed },
   },
   { timestamps: true }

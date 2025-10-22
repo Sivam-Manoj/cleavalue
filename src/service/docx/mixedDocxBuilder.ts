@@ -21,7 +21,7 @@ import {
   WidthType,
   BorderStyle,
 } from "docx";
-import { buildHeaderTable } from "./builders/header.js";
+import { buildHeaderTable, buildFooterTable } from "./builders/header.js";
 import { buildAppendixPhotoGallery } from "./builders/appendix.js";
 import { buildCover } from "./builders/cover.js";
 import { buildTOC } from "./builders/toc.js";
@@ -496,6 +496,26 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
     contentWidthTw,
     (reportData as any)?.user_email
   );
+
+  // Footer table via builder (with corporate address and appraiser details)
+  const footerTable = buildFooterTable(
+    contentWidthTw,
+    reportData?.appraiser || (reportData as any)?.inspector_name,
+    (reportData as any)?.user_email
+  );
+
+  // Fetch hero image for modern cover page
+  let heroImageBuffer: Buffer | null = null;
+  const coverImageUrls = Array.isArray(reportData?.imageUrls)
+    ? reportData.imageUrls
+    : [];
+  if (coverImageUrls.length > 0) {
+    try {
+      heroImageBuffer = await fetchImageBuffer(coverImageUrls[0]);
+    } catch (e) {
+      console.warn("Failed to fetch hero image for cover:", e);
+    }
+  }
 
   const children: Array<Paragraph | Table | TableOfContents> = [];
   const reportDate = formatDateUS(
@@ -1138,12 +1158,19 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
       // Render extra images once for this mixed group (report-only)
       try {
         const first = items[0] || {};
-        let extraUrls: string[] = Array.isArray((first as any)?.extra_image_urls)
+        let extraUrls: string[] = Array.isArray(
+          (first as any)?.extra_image_urls
+        )
           ? ((first as any).extra_image_urls as string[]).filter(Boolean)
           : [];
-        if (!extraUrls.length && Array.isArray((first as any)?.extra_image_indexes)) {
+        if (
+          !extraUrls.length &&
+          Array.isArray((first as any)?.extra_image_indexes)
+        ) {
           extraUrls = ((first as any).extra_image_indexes as number[])
-            .map((i) => (Number.isFinite(i) && i >= 0 ? rootImageUrls[i] : undefined))
+            .map((i) =>
+              Number.isFinite(i) && i >= 0 ? rootImageUrls[i] : undefined
+            )
             .filter(Boolean) as string[];
         }
         extraUrls = Array.from(new Set(extraUrls));
@@ -1157,8 +1184,15 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
           );
           const gridCols = 4;
           const cellW = Math.round(contentWidthTw / gridCols);
-          const imgCellMargins = { top: 60, bottom: 60, left: 60, right: 60 } as const;
-          const bufs = await Promise.all(extraUrls.map((u) => fetchImageBuffer(u)));
+          const imgCellMargins = {
+            top: 60,
+            bottom: 60,
+            left: 60,
+            right: 60,
+          } as const;
+          const bufs = await Promise.all(
+            extraUrls.map((u) => fetchImageBuffer(u))
+          );
           const rows: TableRow[] = [];
           for (let i = 0; i < bufs.length; i += gridCols) {
             const slice = bufs.slice(i, i + gridCols);
@@ -1198,8 +1232,16 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
                 bottom: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
                 left: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
                 right: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
-                insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
-                insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
+                insideHorizontal: {
+                  style: BorderStyle.SINGLE,
+                  size: 1,
+                  color: "F3F4F6",
+                },
+                insideVertical: {
+                  style: BorderStyle.SINGLE,
+                  size: 1,
+                  color: "F3F4F6",
+                },
               },
               rows,
             })
@@ -1219,12 +1261,19 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
       // Render extra images once for this mixed group (report-only)
       try {
         const first = items[0] || {};
-        let extraUrls: string[] = Array.isArray((first as any)?.extra_image_urls)
+        let extraUrls: string[] = Array.isArray(
+          (first as any)?.extra_image_urls
+        )
           ? ((first as any).extra_image_urls as string[]).filter(Boolean)
           : [];
-        if (!extraUrls.length && Array.isArray((first as any)?.extra_image_indexes)) {
+        if (
+          !extraUrls.length &&
+          Array.isArray((first as any)?.extra_image_indexes)
+        ) {
           extraUrls = ((first as any).extra_image_indexes as number[])
-            .map((i) => (Number.isFinite(i) && i >= 0 ? rootImageUrls[i] : undefined))
+            .map((i) =>
+              Number.isFinite(i) && i >= 0 ? rootImageUrls[i] : undefined
+            )
             .filter(Boolean) as string[];
         }
         extraUrls = Array.from(new Set(extraUrls));
@@ -1238,8 +1287,15 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
           );
           const gridCols = 4;
           const cellW = Math.round(contentWidthTw / gridCols);
-          const imgCellMargins = { top: 60, bottom: 60, left: 60, right: 60 } as const;
-          const bufs = await Promise.all(extraUrls.map((u) => fetchImageBuffer(u)));
+          const imgCellMargins = {
+            top: 60,
+            bottom: 60,
+            left: 60,
+            right: 60,
+          } as const;
+          const bufs = await Promise.all(
+            extraUrls.map((u) => fetchImageBuffer(u))
+          );
           const rows: TableRow[] = [];
           for (let i = 0; i < bufs.length; i += gridCols) {
             const slice = bufs.slice(i, i + gridCols);
@@ -1279,8 +1335,16 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
                 bottom: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
                 left: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
                 right: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
-                insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
-                insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
+                insideHorizontal: {
+                  style: BorderStyle.SINGLE,
+                  size: 1,
+                  color: "F3F4F6",
+                },
+                insideVertical: {
+                  style: BorderStyle.SINGLE,
+                  size: 1,
+                  color: "F3F4F6",
+                },
               },
               rows,
             })
@@ -1293,6 +1357,14 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
         ...(await buildAssetLots(pseudo, rootImageUrls, contentWidthTw, label))
       );
     }
+  }
+
+  // Valuation Comparison Table (if enabled)
+  if (reportData?.include_valuation_table && reportData?.valuation_data) {
+    const { buildValuationTable } = await import(
+      "./builders/valuationTable.js"
+    );
+    children.push(...(await buildValuationTable(reportData, lang)));
   }
 
   // Market Overview + References
@@ -1396,12 +1468,18 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
           },
         },
         headers: { default: new Header({ children: [] }) },
-        footers: { default: new Footer({ children: [] }) },
+        footers: { default: new Footer({ children: [footerTable] }) },
         children: [
-          buildCover(reportData, logoBuffer, contentWidthTw, t.assetReport),
+          buildCover(
+            reportData,
+            logoBuffer,
+            contentWidthTw,
+            t.assetReport,
+            heroImageBuffer
+          ),
         ],
       },
-      // Table of Contents (no header/footer)
+      // Table of Contents
       {
         properties: {
           page: {
@@ -1414,10 +1492,10 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
           },
         },
         headers: { default: new Header({ children: [] }) },
-        footers: { default: new Footer({ children: [] }) },
-        children: buildTOC({ ...reportData, grouping_mode: "mixed" }),
+        footers: { default: new Footer({ children: [footerTable] }) },
+        children: buildTOC(reportData),
       },
-      // Transmittal Letter (no header/footer)
+      // Transmittal Letter
       {
         properties: {
           page: {
@@ -1430,10 +1508,10 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
           },
         },
         headers: { default: new Header({ children: [] }) },
-        footers: { default: new Footer({ children: [] }) },
+        footers: { default: new Footer({ children: [footerTable] }) },
         children: buildTransmittalLetter(reportData, reportDate),
       },
-      // Certificate of Appraisal (no header/footer)
+      // Certificate of Appraisal
       {
         properties: {
           page: {
@@ -1446,7 +1524,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
           },
         },
         headers: { default: new Header({ children: [] }) },
-        footers: { default: new Footer({ children: [] }) },
+        footers: { default: new Footer({ children: [footerTable] }) },
         children: buildCertificateOfAppraisal(
           reportData,
           contentWidthTw,
@@ -1470,10 +1548,12 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
         footers: {
           default: new Footer({
             children: [
+              footerTable,
               new Paragraph({
                 alignment: AlignmentType.CENTER,
+                spacing: { before: 160 },
                 children: [
-                  new TextRun({ text: t.page }),
+                  new TextRun({ text: t.page, size: 18, color: "6B7280" }),
                   PageNumber.CURRENT as any,
                 ],
               }),

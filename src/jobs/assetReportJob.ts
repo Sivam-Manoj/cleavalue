@@ -991,6 +991,59 @@ export async function runAssetReportJob({
       return isNaN(d.getTime()) ? undefined : d;
     };
 
+    // Process valuation comparison table if requested
+    let valuationData: any = undefined;
+    const includeValuationTable = details?.include_valuation_table === true;
+    const valuationMethods = Array.isArray(details?.valuation_methods)
+      ? details.valuation_methods
+      : [];
+
+    if (includeValuationTable && valuationMethods.length > 0) {
+      try {
+        await withStep("calculate_valuations", "Calculating valuation methods", async () => {
+          const { determineValuationPercentages, generateValuationTable } = await import("../service/assetValuationService.js");
+          
+          // Calculate total FMV from all lots
+          const totalFMV = lots.reduce((sum, lot) => {
+            const valStr = String(lot.estimated_value || "0");
+            const num = parseFloat(valStr.replace(/[^0-9.-]/g, ""));
+            return sum + (isNaN(num) ? 0 : num);
+          }, 0);
+
+          if (totalFMV > 0) {
+            // Get AI-determined percentages based on first lot or general info
+            const firstLot = lots[0];
+            const assetTitle = firstLot?.title || "General Assets";
+            const assetDescription = firstLot?.description || "";
+            const assetCondition = firstLot?.condition || "Unknown";
+            const industry = details?.industry || "General";
+
+            const percentages = await determineValuationPercentages(
+              assetTitle,
+              assetDescription,
+              assetCondition,
+              industry,
+              totalFMV
+            );
+
+            // Generate the valuation table
+            valuationData = generateValuationTable(
+              totalFMV,
+              valuationMethods as any,
+              percentages
+            );
+
+            console.log(`Generated valuation table with ${valuationMethods.length} methods for total FMV: $${totalFMV}`);
+          } else {
+            console.warn("Total FMV is 0, skipping valuation table generation");
+          }
+        });
+      } catch (error) {
+        console.error("Valuation calculation failed:", error);
+        // Continue without valuation data
+      }
+    }
+
     const newReport = new AssetReport({
       user: user.id,
       grouping_mode: groupingMode,
@@ -1008,6 +1061,9 @@ export async function runAssetReportJob({
       contract_no: details?.contract_no,
       language: selectedLanguage,
       currency: selectedCurrency,
+      include_valuation_table: includeValuationTable,
+      valuation_methods: includeValuationTable ? valuationMethods : [],
+      valuation_data: valuationData,
     });
 
     await withStep("save_report", "Persisting report to database", async () => {

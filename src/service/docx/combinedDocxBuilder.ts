@@ -192,6 +192,12 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
     );
   }
 
+  // Valuation Comparison Table (if enabled)
+  if (reportData?.include_valuation_table && reportData?.valuation_data) {
+    const { buildValuationTable } = await import("./builders/valuationTable.js");
+    children.push(...(await buildValuationTable(reportData, lang)));
+  }
+
   // Market Overview + References
   // Reuse builder that consumes reportData
   // Note: market builder already tolerates errors

@@ -22,7 +22,8 @@ export function buildCover(
   reportData: any,
   logoBuffer: Buffer | null,
   contentWidthTw: number,
-  titleText: string = "Asset Report"
+  titleText: string = "Asset Report",
+  heroImageBuffer: Buffer | null = null
 ): Table {
   const lang = getLang(reportData);
   const tr = t(lang);
@@ -37,6 +38,24 @@ export function buildCover(
   const coverInnerWidthTw = contentWidthTw - coverCellMarginTw * 2;
 
   const coverTop: Paragraph[] = [];
+
+  // Enhanced: Hero image at top (if provided)
+  if (heroImageBuffer) {
+    coverTop.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 300 },
+        children: [
+          new ImageRun({
+            data: heroImageBuffer as any,
+            transformation: { width: 600, height: 400 },
+          } as any),
+        ],
+      })
+    );
+  }
+
+  // Logo (larger, professional sizing)
   if (logoBuffer) {
     coverTop.push(
       new Paragraph({
@@ -45,7 +64,7 @@ export function buildCover(
         children: [
           new ImageRun({
             data: logoBuffer as any,
-            transformation: { width: 540, height: 192 },
+            transformation: { width: 500, height: 178 },
           } as any),
         ],
       })
