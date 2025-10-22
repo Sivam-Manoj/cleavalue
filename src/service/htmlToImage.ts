@@ -1,5 +1,8 @@
 import puppeteer from "puppeteer";
 import Jimp from "jimp";
+import { readFile } from "fs/promises";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 
 /**
  * Convert HTML string to image buffer using Puppeteer
@@ -73,6 +76,48 @@ export async function htmlToImageBuffer(
 }
 
 /**
+ * Build certificate HTML from template file
+ */
+async function buildCertificateHTMLFromTemplate(data: {
+  title: string;
+  clientName: string;
+  effectiveDate: string;
+  purpose: string;
+  preparedBy: string;
+  totalValue?: string;
+  reportDate: string;
+}): Promise<string> {
+  // Get current file directory
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+  
+  // Read template file
+  const templatePath = join(__dirname, '../docx/templates/certificate.html');
+  let html = await readFile(templatePath, 'utf-8');
+  
+  // Replace placeholders
+  html = html.replace(/\{\{TITLE\}\}/g, data.title || 'Certificate of Appraisal');
+  html = html.replace(/\{\{CLIENT_NAME\}\}/g, data.clientName || '—');
+  html = html.replace(/\{\{EFFECTIVE_DATE\}\}/g, data.effectiveDate || '—');
+  html = html.replace(/\{\{PURPOSE\}\}/g, data.purpose || '—');
+  html = html.replace(/\{\{PREPARED_BY\}\}/g, data.preparedBy || '—');
+  html = html.replace(/\{\{REPORT_DATE\}\}/g, data.reportDate || '—');
+  
+  // Handle optional total value section
+  if (data.totalValue) {
+    html = html.replace(/\{\{TOTAL_VALUE\}\}/g, data.totalValue);
+    html = html.replace(/\{\{VALUE_SECTION_START\}\}/g, '');
+    html = html.replace(/\{\{VALUE_SECTION_END\}\}/g, '');
+  } else {
+    // Remove entire value section if no value provided
+    const valueSectionRegex = /\{\{VALUE_SECTION_START\}\}[\s\S]*?\{\{VALUE_SECTION_END\}\}/g;
+    html = html.replace(valueSectionRegex, '');
+  }
+  
+  return html;
+}
+
+/**
  * Generate certificate image from data
  * @param certificateData - Data for the certificate
  * @returns Buffer containing the certificate image
@@ -87,11 +132,11 @@ export async function generateCertificateImage(certificateData: {
   appraiserSignature?: string;
   reportDate: string;
 }): Promise<Buffer> {
-  const html = buildCertificateHTML(certificateData);
+  const html = await buildCertificateHTMLFromTemplate(certificateData);
 
   return await htmlToImageBuffer(html, {
     width: 1200,
-    height: 1553,
+    height: 1400, // Smaller height for compact certificate
     format: "png",
     quality: 95,
   });

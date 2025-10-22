@@ -16,7 +16,6 @@ import {
 } from "docx";
 import { formatDateUS } from "./utils.js";
 import { getLang, t } from "./i18n.js";
-import { generateCoverPageImage } from "../../htmlToImage.js";
 
 export async function buildCover(
   reportData: any,
@@ -65,68 +64,7 @@ export async function buildCover(
     return `${lotsCount} ${lotSuffix}${gmDisplay ? ` • ${gmDisplay}` : ""}`;
   })();
 
-  // Generate beautiful cover page image from HTML
-  let coverImageBuffer: Buffer | null = null;
-  try {
-    coverImageBuffer = await generateCoverPageImage({
-      companyName: "McDougall Auctioneers",
-      title: titleText || tr.assetReport,
-      subtitle: "Professional Valuation Report",
-      clientName: preparedFor || "—",
-      reportDate: reportDate || "—",
-      additionalInfo: lotsOrAddr || "",
-    }, logoBuffer);
-  } catch (error) {
-    console.error("Failed to generate cover page image:", error);
-  }
-
-  // If image generation succeeded, use it as centered cover
-  if (coverImageBuffer) {
-    // Small centered image using robust pixel sizing
-    const imageWidth = 600; // px, safe within 6.5in (~624px)
-    const imageHeight = Math.round(600 * (1553 / 1200)); // ~777px
-    
-    return new Table({
-      width: { size: contentWidthTw, type: WidthType.DXA },
-      alignment: AlignmentType.CENTER,
-      layout: TableLayoutType.FIXED,
-      borders: {
-        top: { style: BorderStyle.NONE },
-        bottom: { style: BorderStyle.NONE },
-        left: { style: BorderStyle.NONE },
-        right: { style: BorderStyle.NONE },
-      },
-      rows: [
-        new TableRow({
-          children: [
-            new TableCell({
-              margins: { top: 0, bottom: 0, left: 0, right: 0 },
-              verticalAlign: VerticalAlign.CENTER,
-              children: [
-                new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  children: [
-                    new ImageRun({
-                      data: coverImageBuffer as any,
-                      transformation: {
-                        width: imageWidth,
-                        height: imageHeight,
-                      },
-                    } as any),
-                  ],
-                  spacing: { before: 0, after: 0 },
-                }),
-              ],
-            }),
-          ],
-        }),
-      ],
-    });
-  }
-
-  // Fallback to DOCX-based cover if image generation fails
-  console.warn("Using fallback DOCX-based cover page");
-
+  // Use pure DOCX-based cover page for better compatibility
   const coverTop: Paragraph[] = [];
 
   // Spacer for top section
@@ -137,33 +75,34 @@ export async function buildCover(
     })
   );
 
-  // Modern logo section with gradient-inspired styling
+  // Modern logo section with enhanced styling
   if (logoBuffer) {
-    // Logo with modern framing
+    // Logo with elegant presentation
     coverTop.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
-        spacing: { after: 200 },
+        spacing: { after: 240 },
         children: [
           new ImageRun({
             data: logoBuffer as any,
-            transformation: { width: 450, height: 160 },
+            transformation: { width: 480, height: 170 },
           } as any),
         ],
       })
     );
   } else {
-    // Modern company name display
+    // Elegant company name display
     coverTop.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
-        spacing: { after: 200 },
+        spacing: { after: 100 },
         children: [
           new TextRun({
-            text: "McDougall",
-            size: 56,
+            text: "McDOUGALL",
+            size: 64,
             bold: true,
-            color: "1F2937",
+            color: "DC2626",
+            allCaps: true,
           }),
         ],
       })
@@ -171,22 +110,23 @@ export async function buildCover(
     coverTop.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
-        spacing: { after: 200 },
+        spacing: { after: 240 },
         children: [
           new TextRun({
-            text: "Auctioneers",
-            size: 44,
+            text: "AUCTIONEERS",
+            size: 48,
             bold: false,
-            color: "6B7280",
+            color: "991B1B",
+            allCaps: true,
           }),
         ],
       })
     );
   }
 
-  // Decorative elements using tables for gradient effect simulation
+  // Decorative elements with red theme
   const decorativeLine = new Table({
-    width: { size: Math.round(coverInnerWidthTw * 0.6), type: WidthType.DXA },
+    width: { size: Math.round(coverInnerWidthTw * 0.7), type: WidthType.DXA },
     alignment: AlignmentType.CENTER,
     borders: {
       top: { style: BorderStyle.NONE },
@@ -196,11 +136,11 @@ export async function buildCover(
     },
     rows: [
       new TableRow({
-        height: { value: 60, rule: HeightRule.EXACT },
+        height: { value: 80, rule: HeightRule.EXACT },
         children: [
           new TableCell({
             width: { size: 33, type: WidthType.PERCENTAGE },
-            shading: { fill: "E5E7EB", type: ShadingType.SOLID },
+            shading: { fill: "FEE2E2", type: ShadingType.SOLID },
             borders: {
               top: { style: BorderStyle.NONE },
               bottom: { style: BorderStyle.NONE },
@@ -211,7 +151,7 @@ export async function buildCover(
           }),
           new TableCell({
             width: { size: 34, type: WidthType.PERCENTAGE },
-            shading: { fill: "D4AF37", type: ShadingType.SOLID },
+            shading: { fill: "DC2626", type: ShadingType.SOLID },
             borders: {
               top: { style: BorderStyle.NONE },
               bottom: { style: BorderStyle.NONE },
@@ -222,7 +162,7 @@ export async function buildCover(
           }),
           new TableCell({
             width: { size: 33, type: WidthType.PERCENTAGE },
-            shading: { fill: "E5E7EB", type: ShadingType.SOLID },
+            shading: { fill: "FEE2E2", type: ShadingType.SOLID },
             borders: {
               top: { style: BorderStyle.NONE },
               bottom: { style: BorderStyle.NONE },
@@ -244,12 +184,12 @@ export async function buildCover(
     })
   );
 
-  // Main title with modern gradient-inspired design
+  // Main title with elegant red theme design
   const titleBox = new Table({
     width: { size: coverInnerWidthTw, type: WidthType.DXA },
     borders: {
-      top: { style: BorderStyle.SINGLE, size: 3, color: "D4AF37" },
-      bottom: { style: BorderStyle.SINGLE, size: 3, color: "D4AF37" },
+      top: { style: BorderStyle.SINGLE, size: 6, color: "DC2626" },
+      bottom: { style: BorderStyle.SINGLE, size: 6, color: "DC2626" },
       left: { style: BorderStyle.NONE },
       right: { style: BorderStyle.NONE },
     },
@@ -257,18 +197,18 @@ export async function buildCover(
       new TableRow({
         children: [
           new TableCell({
-            shading: { fill: "F9FAFB", type: ShadingType.SOLID },
-            margins: { top: 200, bottom: 200, left: 100, right: 100 },
+            shading: { fill: "FFFBFB", type: ShadingType.SOLID },
+            margins: { top: 240, bottom: 240, left: 120, right: 120 },
             children: [
               new Paragraph({
                 alignment: AlignmentType.CENTER,
-                spacing: { after: 40 },
+                spacing: { after: 60 },
                 children: [
                   new TextRun({
                     text: titleText || tr.assetReport,
-                    size: 64,
+                    size: 72,
                     bold: true,
-                    color: "1F2937",
+                    color: "7F1D1D",
                   }),
                 ],
               }),
@@ -277,8 +217,8 @@ export async function buildCover(
                 children: [
                   new TextRun({
                     text: "Professional Valuation Report",
-                    size: 26,
-                    color: "6B7280",
+                    size: 28,
+                    color: "DC2626",
                     italics: true,
                   }),
                 ],
@@ -328,10 +268,10 @@ export async function buildCover(
         children: [
           // Client card
           new TableCell({
-            margins: { top: 120, bottom: 120, left: 80, right: 80 },
-            shading: { fill: "F3F4F6", type: ShadingType.SOLID },
+            margins: { top: 140, bottom: 140, left: 100, right: 100 },
+            shading: { fill: "FEF2F2", type: ShadingType.SOLID },
             borders: {
-              top: { style: BorderStyle.SINGLE, size: 8, color: "D4AF37" },
+              top: { style: BorderStyle.SINGLE, size: 12, color: "DC2626" },
               bottom: { style: BorderStyle.NONE },
               left: { style: BorderStyle.NONE },
               right: { style: BorderStyle.NONE },
@@ -339,13 +279,13 @@ export async function buildCover(
             children: [
               new Paragraph({
                 alignment: AlignmentType.CENTER,
-                spacing: { after: 60 },
+                spacing: { after: 80 },
                 children: [
                   new TextRun({
                     text: tr.preparedFor.toUpperCase(),
-                    size: 20,
+                    size: 22,
                     bold: true,
-                    color: "6B7280",
+                    color: "991B1B",
                   }),
                 ],
               }),
@@ -354,9 +294,9 @@ export async function buildCover(
                 children: [
                   new TextRun({
                     text: preparedFor || "—",
-                    size: 26,
+                    size: 28,
                     bold: true,
-                    color: "1F2937",
+                    color: "7F1D1D",
                   }),
                 ],
               }),
@@ -364,10 +304,10 @@ export async function buildCover(
           }),
           // Date card
           new TableCell({
-            margins: { top: 120, bottom: 120, left: 80, right: 80 },
-            shading: { fill: "F3F4F6", type: ShadingType.SOLID },
+            margins: { top: 140, bottom: 140, left: 100, right: 100 },
+            shading: { fill: "FEF2F2", type: ShadingType.SOLID },
             borders: {
-              top: { style: BorderStyle.SINGLE, size: 8, color: "D4AF37" },
+              top: { style: BorderStyle.SINGLE, size: 12, color: "DC2626" },
               bottom: { style: BorderStyle.NONE },
               left: { style: BorderStyle.NONE },
               right: { style: BorderStyle.NONE },
@@ -375,13 +315,13 @@ export async function buildCover(
             children: [
               new Paragraph({
                 alignment: AlignmentType.CENTER,
-                spacing: { after: 60 },
+                spacing: { after: 80 },
                 children: [
                   new TextRun({
                     text: tr.reportDate.toUpperCase(),
-                    size: 20,
+                    size: 22,
                     bold: true,
-                    color: "6B7280",
+                    color: "991B1B",
                   }),
                 ],
               }),
@@ -390,9 +330,9 @@ export async function buildCover(
                 children: [
                   new TextRun({
                     text: reportDate || "—",
-                    size: 26,
+                    size: 28,
                     bold: true,
-                    color: "1F2937",
+                    color: "7F1D1D",
                   }),
                 ],
               }),
