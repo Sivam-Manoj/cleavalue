@@ -1462,7 +1462,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
             margin: {
               top: convertInchesToTwip(1),
               right: convertInchesToTwip(1),
-              bottom: convertInchesToTwip(1),
+              bottom: convertInchesToTwip(0.6),
               left: convertInchesToTwip(1),
             },
           },
@@ -1486,7 +1486,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
             margin: {
               top: convertInchesToTwip(1),
               right: convertInchesToTwip(1),
-              bottom: convertInchesToTwip(1),
+              bottom: convertInchesToTwip(0.6),
               left: convertInchesToTwip(1),
             },
           },
@@ -1502,7 +1502,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
             margin: {
               top: convertInchesToTwip(1),
               right: convertInchesToTwip(1),
-              bottom: convertInchesToTwip(1),
+              bottom: convertInchesToTwip(0.6),
               left: convertInchesToTwip(1),
             },
           },
@@ -1518,7 +1518,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
             margin: {
               top: convertInchesToTwip(1),
               right: convertInchesToTwip(1),
-              bottom: convertInchesToTwip(1),
+              bottom: convertInchesToTwip(0.6),
               left: convertInchesToTwip(1),
             },
           },
@@ -1538,7 +1538,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
             margin: {
               top: convertInchesToTwip(1),
               right: convertInchesToTwip(1),
-              bottom: convertInchesToTwip(1),
+              bottom: convertInchesToTwip(0.6),
               left: convertInchesToTwip(1),
             },
             pageNumbers: { start: 1 },

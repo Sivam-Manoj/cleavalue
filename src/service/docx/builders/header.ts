@@ -73,7 +73,7 @@ export function buildFooterTable(
     new Paragraph({
       alignment: AlignmentType.CENTER,
       children: [new TextRun({ text: address, size: 18, color: "6B7280" })],
-      spacing: { after: 40 },
+      spacing: { after: 20 },
     })
   );
 
@@ -86,7 +86,7 @@ export function buildFooterTable(
         new TextRun({ text: "  •  ", size: 18, color: "9CA3AF" }),
         new TextRun({ text: phone, size: 18, color: "6B7280" }),
       ],
-      spacing: { after: 40 },
+      spacing: { after: 20 },
     })
   );
 
@@ -126,7 +126,7 @@ export function buildFooterTable(
       new TableRow({
         children: [
           new TableCell({
-            margins: { top: 60, bottom: 40, left: 40, right: 40 },
+            margins: { top: 40, bottom: 20, left: 40, right: 40 },
             children: footerLines,
           }),
         ],

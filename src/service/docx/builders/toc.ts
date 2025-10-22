@@ -8,6 +8,9 @@ import {
   TableRow,
   TextRun,
   WidthType,
+  TabStopType,
+  TabStopPosition,
+  PageNumber,
 } from "docx";
 import { goldDivider } from "./utils.js";
 import { getLang, t } from "./i18n.js";
@@ -120,22 +123,36 @@ export function buildTOC(reportData: any): Array<Paragraph | Table> {
   });
 
   const rows: TableRow[] = [headerRow];
+  let pageNum = 1; // Starting page number estimate
+  
   for (const e of entries) {
     rows.push(
       new TableRow({
         cantSplit: true,
         children: [
           new TableCell({
-            children: [new Paragraph({ text: e.label })],
+            children: [
+              new Paragraph({
+                children: [
+                  new TextRun({ text: e.label, size: 22 }),
+                  new TextRun({ text: " ", size: 18 }),
+                  new TextRun({ text: ".".repeat(80), size: 16, color: "D1D5DB" }),
+                ],
+              }),
+            ],
           }),
           new TableCell({
             children: [
-              new Paragraph({ alignment: AlignmentType.RIGHT, text: "—" }),
+              new Paragraph({
+                alignment: AlignmentType.RIGHT,
+                children: [new TextRun({ text: pageNum.toString(), size: 22 })],
+              }),
             ],
           }),
         ],
       })
     );
+    pageNum++; // Increment for next section
   }
 
   const table = new Table({
