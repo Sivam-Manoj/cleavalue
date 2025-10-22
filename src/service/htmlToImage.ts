@@ -87,34 +87,153 @@ async function buildCertificateHTMLFromTemplate(data: {
   totalValue?: string;
   reportDate: string;
 }): Promise<string> {
-  // Get current file directory
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = dirname(__filename);
-  
-  // Read template file
-  const templatePath = join(__dirname, '../docx/templates/certificate.html');
-  let html = await readFile(templatePath, 'utf-8');
-  
-  // Replace placeholders
-  html = html.replace(/\{\{TITLE\}\}/g, data.title || 'Certificate of Appraisal');
-  html = html.replace(/\{\{CLIENT_NAME\}\}/g, data.clientName || '—');
-  html = html.replace(/\{\{EFFECTIVE_DATE\}\}/g, data.effectiveDate || '—');
-  html = html.replace(/\{\{PURPOSE\}\}/g, data.purpose || '—');
-  html = html.replace(/\{\{PREPARED_BY\}\}/g, data.preparedBy || '—');
-  html = html.replace(/\{\{REPORT_DATE\}\}/g, data.reportDate || '—');
-  
-  // Handle optional total value section
-  if (data.totalValue) {
-    html = html.replace(/\{\{TOTAL_VALUE\}\}/g, data.totalValue);
-    html = html.replace(/\{\{VALUE_SECTION_START\}\}/g, '');
-    html = html.replace(/\{\{VALUE_SECTION_END\}\}/g, '');
-  } else {
-    // Remove entire value section if no value provided
-    const valueSectionRegex = /\{\{VALUE_SECTION_START\}\}[\s\S]*?\{\{VALUE_SECTION_END\}\}/g;
-    html = html.replace(valueSectionRegex, '');
+  try {
+    // Get current file directory
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
+    
+    // Read template file
+    const templatePath = join(__dirname, '../docx/templates/certificate.html');
+    console.log('Reading certificate template from:', templatePath);
+    let html = await readFile(templatePath, 'utf-8');
+    
+    // Replace placeholders
+    html = html.replace(/\{\{TITLE\}\}/g, data.title || 'Certificate of Appraisal');
+    html = html.replace(/\{\{CLIENT_NAME\}\}/g, data.clientName || '—');
+    html = html.replace(/\{\{EFFECTIVE_DATE\}\}/g, data.effectiveDate || '—');
+    html = html.replace(/\{\{PURPOSE\}\}/g, data.purpose || '—');
+    html = html.replace(/\{\{PREPARED_BY\}\}/g, data.preparedBy || '—');
+    html = html.replace(/\{\{REPORT_DATE\}\}/g, data.reportDate || '—');
+    
+    // Handle optional total value section
+    if (data.totalValue) {
+      html = html.replace(/\{\{TOTAL_VALUE\}\}/g, data.totalValue);
+      html = html.replace(/\{\{VALUE_SECTION_START\}\}/g, '');
+      html = html.replace(/\{\{VALUE_SECTION_END\}\}/g, '');
+    } else {
+      // Remove entire value section if no value provided
+      const valueSectionRegex = /\{\{VALUE_SECTION_START\}\}[\s\S]*?\{\{VALUE_SECTION_END\}\}/g;
+      html = html.replace(valueSectionRegex, '');
+    }
+    
+    return html;
+  } catch (error) {
+    console.error('Failed to read certificate template, using fallback:', error);
+    // Fallback to inline HTML if template file not found
+    return buildCertificateHTMLFallback(data);
   }
-  
-  return html;
+}
+
+function buildCertificateHTMLFallback(data: {
+  title: string;
+  clientName: string;
+  effectiveDate: string;
+  purpose: string;
+  preparedBy: string;
+  totalValue?: string;
+  reportDate: string;
+}): string {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    body { font-family: 'Inter', sans-serif; background: transparent; width: 1200px; height: 1400px; margin: 0; padding: 0; }
+    .playfair { font-family: 'Playfair Display', serif; }
+  </style>
+</head>
+<body class="flex items-center justify-center p-8">
+  <div class="w-full max-w-4xl bg-white rounded-lg shadow-2xl border-4 border-red-200 overflow-hidden">
+    <div class="bg-gradient-to-r from-red-600 to-red-700 p-12 text-center relative">
+      <div class="absolute top-0 left-0 w-full h-1 bg-amber-400"></div>
+      <i class="fas fa-award text-white text-5xl mb-4"></i>
+      <h1 class="playfair text-5xl font-bold text-white uppercase tracking-wider mb-3">${data.title}</h1>
+      <p class="text-red-100 text-lg tracking-widest uppercase">Professional Business Valuation</p>
+      <div class="absolute bottom-0 left-0 w-full h-1.5 bg-amber-400"></div>
+    </div>
+    
+    <div class="p-12">
+      <p class="text-gray-700 text-center leading-relaxed mb-8">
+        This document certifies that a comprehensive professional appraisal has been conducted 
+        in accordance with applicable industry standards and regulatory requirements.
+      </p>
+      
+      ${data.totalValue ? `
+      <div class="bg-gradient-to-br from-red-500 to-red-700 rounded-lg p-8 text-center mb-8 relative">
+        <div class="absolute top-0 left-0 w-full h-1 bg-amber-400"></div>
+        <div class="flex items-center justify-center mb-3">
+          <i class="fas fa-dollar-sign text-amber-300 text-2xl mr-2"></i>
+          <p class="text-red-100 text-sm font-bold tracking-widest uppercase">Total Appraised Value</p>
+        </div>
+        <p class="playfair text-6xl font-bold text-white">${data.totalValue}</p>
+      </div>
+      ` : ''}
+      
+      <div class="grid grid-cols-2 gap-4 mb-8">
+        <div class="bg-red-50 border-l-4 border-red-600 rounded p-5">
+          <div class="flex items-center mb-2">
+            <i class="fas fa-user text-red-600 mr-2"></i>
+            <p class="text-xs font-bold text-gray-500 uppercase">Client</p>
+          </div>
+          <p class="text-lg font-semibold text-gray-900">${data.clientName}</p>
+        </div>
+        <div class="bg-red-50 border-l-4 border-red-600 rounded p-5">
+          <div class="flex items-center mb-2">
+            <i class="fas fa-calendar text-red-600 mr-2"></i>
+            <p class="text-xs font-bold text-gray-500 uppercase">Effective Date</p>
+          </div>
+          <p class="text-lg font-semibold text-gray-900">${data.effectiveDate}</p>
+        </div>
+        <div class="bg-red-50 border-l-4 border-red-600 rounded p-5">
+          <div class="flex items-center mb-2">
+            <i class="fas fa-clipboard-list text-red-600 mr-2"></i>
+            <p class="text-xs font-bold text-gray-500 uppercase">Purpose</p>
+          </div>
+          <p class="text-lg font-semibold text-gray-900">${data.purpose}</p>
+        </div>
+        <div class="bg-red-50 border-l-4 border-red-600 rounded p-5">
+          <div class="flex items-center mb-2">
+            <i class="fas fa-user-tie text-red-600 mr-2"></i>
+            <p class="text-xs font-bold text-gray-500 uppercase">Prepared By</p>
+          </div>
+          <p class="text-lg font-semibold text-gray-900">${data.preparedBy}</p>
+        </div>
+      </div>
+      
+      <div class="grid grid-cols-2 gap-12 mt-10 pt-8 border-t-2">
+        <div class="text-center">
+          <div class="border-t-2 border-gray-800 pt-3 mb-2 h-16"></div>
+          <div class="flex items-center justify-center">
+            <i class="fas fa-pen-fancy text-gray-600 text-sm mr-2"></i>
+            <p class="text-sm font-semibold text-gray-600 uppercase">Authorized Signature</p>
+          </div>
+        </div>
+        <div class="text-center">
+          <div class="border-t-2 border-gray-800 pt-3 mb-2">
+            <p class="text-lg font-semibold text-gray-900 mt-3">${data.reportDate}</p>
+          </div>
+          <div class="flex items-center justify-center">
+            <i class="fas fa-calendar text-gray-600 text-sm mr-2"></i>
+            <p class="text-sm font-semibold text-gray-600 uppercase">Date</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="bg-gradient-to-r from-red-600 to-red-700 p-5 text-center">
+      <div class="flex items-center justify-center">
+        <i class="fas fa-shield-alt text-red-200 mr-2"></i>
+        <p class="text-sm text-red-50">This certificate is valid for business purposes and complies with professional appraisal standards.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+  `;
 }
 
 /**

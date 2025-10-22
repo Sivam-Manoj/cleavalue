@@ -67,182 +67,106 @@ export async function buildCover(
   // Use pure DOCX-based cover page for better compatibility
   const coverTop: Paragraph[] = [];
 
-  // Spacer for top section
+  // Top spacer
   coverTop.push(
     new Paragraph({
       text: "",
-      spacing: { after: 200 },
+      spacing: { after: 400 },
     })
   );
 
-  // Modern logo section with enhanced styling
+  // Logo section
   if (logoBuffer) {
-    // Logo with elegant presentation
     coverTop.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
-        spacing: { after: 240 },
+        spacing: { after: 300 },
         children: [
           new ImageRun({
             data: logoBuffer as any,
-            transformation: { width: 480, height: 170 },
+            transformation: { width: 400, height: 142 },
           } as any),
         ],
       })
     );
   } else {
-    // Elegant company name display
     coverTop.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
-        spacing: { after: 100 },
+        spacing: { after: 140 },
         children: [
           new TextRun({
-            text: "McDOUGALL",
-            size: 64,
+            text: "McDougall Auctioneers",
+            size: 52,
             bold: true,
             color: "DC2626",
-            allCaps: true,
-          }),
-        ],
-      })
-    );
-    coverTop.push(
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 240 },
-        children: [
-          new TextRun({
-            text: "AUCTIONEERS",
-            size: 48,
-            bold: false,
-            color: "991B1B",
-            allCaps: true,
           }),
         ],
       })
     );
   }
 
-  // Decorative elements with red theme
-  const decorativeLine = new Table({
-    width: { size: Math.round(coverInnerWidthTw * 0.7), type: WidthType.DXA },
-    alignment: AlignmentType.CENTER,
-    borders: {
-      top: { style: BorderStyle.NONE },
-      bottom: { style: BorderStyle.NONE },
-      left: { style: BorderStyle.NONE },
-      right: { style: BorderStyle.NONE },
-    },
-    rows: [
-      new TableRow({
-        height: { value: 80, rule: HeightRule.EXACT },
-        children: [
-          new TableCell({
-            width: { size: 33, type: WidthType.PERCENTAGE },
-            shading: { fill: "FEE2E2", type: ShadingType.SOLID },
-            borders: {
-              top: { style: BorderStyle.NONE },
-              bottom: { style: BorderStyle.NONE },
-              left: { style: BorderStyle.NONE },
-              right: { style: BorderStyle.NONE },
-            },
-            children: [new Paragraph("")],
-          }),
-          new TableCell({
-            width: { size: 34, type: WidthType.PERCENTAGE },
-            shading: { fill: "DC2626", type: ShadingType.SOLID },
-            borders: {
-              top: { style: BorderStyle.NONE },
-              bottom: { style: BorderStyle.NONE },
-              left: { style: BorderStyle.NONE },
-              right: { style: BorderStyle.NONE },
-            },
-            children: [new Paragraph("")],
-          }),
-          new TableCell({
-            width: { size: 33, type: WidthType.PERCENTAGE },
-            shading: { fill: "FEE2E2", type: ShadingType.SOLID },
-            borders: {
-              top: { style: BorderStyle.NONE },
-              bottom: { style: BorderStyle.NONE },
-              left: { style: BorderStyle.NONE },
-              right: { style: BorderStyle.NONE },
-            },
-            children: [new Paragraph("")],
-          }),
-        ],
-      }),
-    ],
-  });
+
+  // Main title section
+  coverTop.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 120 },
+      children: [
+        new TextRun({
+          text: titleText || tr.assetReport,
+          size: 60,
+          bold: true,
+          color: "1F2937",
+        }),
+      ],
+    })
+  );
 
   coverTop.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
-      spacing: { after: 240 },
-      children: [],
+      spacing: { after: 80 },
+      children: [
+        new TextRun({
+          text: "Professional Valuation Report",
+          size: 24,
+          color: "DC2626",
+          italics: true,
+        }),
+      ],
+      border: {
+        bottom: {
+          color: "DC2626",
+          space: 1,
+          style: BorderStyle.SINGLE,
+          size: 12,
+        },
+      },
     })
   );
 
-  // Main title with elegant red theme design
-  const titleBox = new Table({
-    width: { size: coverInnerWidthTw, type: WidthType.DXA },
-    borders: {
-      top: { style: BorderStyle.SINGLE, size: 6, color: "DC2626" },
-      bottom: { style: BorderStyle.SINGLE, size: 6, color: "DC2626" },
-      left: { style: BorderStyle.NONE },
-      right: { style: BorderStyle.NONE },
-    },
-    rows: [
-      new TableRow({
-        children: [
-          new TableCell({
-            shading: { fill: "FFFBFB", type: ShadingType.SOLID },
-            margins: { top: 240, bottom: 240, left: 120, right: 120 },
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                spacing: { after: 60 },
-                children: [
-                  new TextRun({
-                    text: titleText || tr.assetReport,
-                    size: 72,
-                    bold: true,
-                    color: "7F1D1D",
-                  }),
-                ],
-              }),
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [
-                  new TextRun({
-                    text: "Professional Valuation Report",
-                    size: 28,
-                    color: "DC2626",
-                    italics: true,
-                  }),
-                ],
-              }),
-            ],
-          }),
-        ],
-      }),
-    ],
-  });
-
-  coverTop.push(
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 160 },
-      children: [],
-    })
-  );
+  // Additional info
   if (!(reportData as any)?.suppressLotsLine && lotsOrAddr) {
     coverTop.push(
       new Paragraph({
         text: lotsOrAddr,
         alignment: AlignmentType.CENTER,
-        spacing: { after: 120 },
+        spacing: { after: 200, before: 200 },
+        children: [
+          new TextRun({
+            text: lotsOrAddr,
+            size: 22,
+            color: "6B7280",
+          }),
+        ],
+      })
+    );
+  } else {
+    coverTop.push(
+      new Paragraph({
+        text: "",
+        spacing: { after: 200 },
       })
     );
   }
@@ -268,10 +192,10 @@ export async function buildCover(
         children: [
           // Client card
           new TableCell({
-            margins: { top: 140, bottom: 140, left: 100, right: 100 },
-            shading: { fill: "FEF2F2", type: ShadingType.SOLID },
+            margins: { top: 120, bottom: 120, left: 80, right: 80 },
+            shading: { fill: "F9FAFB", type: ShadingType.SOLID },
             borders: {
-              top: { style: BorderStyle.SINGLE, size: 12, color: "DC2626" },
+              top: { style: BorderStyle.SINGLE, size: 6, color: "DC2626" },
               bottom: { style: BorderStyle.NONE },
               left: { style: BorderStyle.NONE },
               right: { style: BorderStyle.NONE },
@@ -279,13 +203,13 @@ export async function buildCover(
             children: [
               new Paragraph({
                 alignment: AlignmentType.CENTER,
-                spacing: { after: 80 },
+                spacing: { after: 60 },
                 children: [
                   new TextRun({
                     text: tr.preparedFor.toUpperCase(),
-                    size: 22,
+                    size: 18,
                     bold: true,
-                    color: "991B1B",
+                    color: "6B7280",
                   }),
                 ],
               }),
@@ -294,9 +218,9 @@ export async function buildCover(
                 children: [
                   new TextRun({
                     text: preparedFor || "—",
-                    size: 28,
+                    size: 24,
                     bold: true,
-                    color: "7F1D1D",
+                    color: "1F2937",
                   }),
                 ],
               }),
@@ -304,10 +228,10 @@ export async function buildCover(
           }),
           // Date card
           new TableCell({
-            margins: { top: 140, bottom: 140, left: 100, right: 100 },
-            shading: { fill: "FEF2F2", type: ShadingType.SOLID },
+            margins: { top: 120, bottom: 120, left: 80, right: 80 },
+            shading: { fill: "F9FAFB", type: ShadingType.SOLID },
             borders: {
-              top: { style: BorderStyle.SINGLE, size: 12, color: "DC2626" },
+              top: { style: BorderStyle.SINGLE, size: 6, color: "DC2626" },
               bottom: { style: BorderStyle.NONE },
               left: { style: BorderStyle.NONE },
               right: { style: BorderStyle.NONE },
@@ -315,13 +239,13 @@ export async function buildCover(
             children: [
               new Paragraph({
                 alignment: AlignmentType.CENTER,
-                spacing: { after: 80 },
+                spacing: { after: 60 },
                 children: [
                   new TextRun({
                     text: tr.reportDate.toUpperCase(),
-                    size: 22,
+                    size: 18,
                     bold: true,
-                    color: "991B1B",
+                    color: "6B7280",
                   }),
                 ],
               }),
@@ -330,9 +254,9 @@ export async function buildCover(
                 children: [
                   new TextRun({
                     text: reportDate || "—",
-                    size: 28,
+                    size: 24,
                     bold: true,
-                    color: "7F1D1D",
+                    color: "1F2937",
                   }),
                 ],
               }),
@@ -367,7 +291,7 @@ export async function buildCover(
               right: coverCellMarginTw,
             },
             shading: { fill: "FFFFFF", type: ShadingType.SOLID },
-            children: [...coverTop, decorativeLine, titleBox],
+            children: coverTop,
           }),
         ],
       }),
