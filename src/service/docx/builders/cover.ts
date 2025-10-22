@@ -82,12 +82,13 @@ export async function buildCover(
 
   // If image generation succeeded, use it as centered cover
   if (coverImageBuffer) {
-    // Small centered image: 7 inches wide, maintaining aspect ratio
-    const imageWidth = 7 * 72; // 504 points (7 inches)
-    const imageHeight = imageWidth * (1553 / 1200); // Maintain aspect ratio
+    // Small centered image using robust pixel sizing
+    const imageWidth = 600; // px, safe within 6.5in (~624px)
+    const imageHeight = Math.round(600 * (1553 / 1200)); // ~777px
     
     return new Table({
       width: { size: contentWidthTw, type: WidthType.DXA },
+      alignment: AlignmentType.CENTER,
       layout: TableLayoutType.FIXED,
       borders: {
         top: { style: BorderStyle.NONE },
@@ -99,7 +100,7 @@ export async function buildCover(
         new TableRow({
           children: [
             new TableCell({
-              margins: { top: 200, bottom: 200, left: 100, right: 100 },
+              margins: { top: 0, bottom: 0, left: 0, right: 0 },
               verticalAlign: VerticalAlign.CENTER,
               children: [
                 new Paragraph({
@@ -113,7 +114,7 @@ export async function buildCover(
                       },
                     } as any),
                   ],
-                  spacing: { before: 200, after: 200 },
+                  spacing: { before: 0, after: 0 },
                 }),
               ],
             }),

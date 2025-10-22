@@ -91,7 +91,7 @@ export async function generateCertificateImage(certificateData: {
 
   return await htmlToImageBuffer(html, {
     width: 1200,
-    height: 1600,
+    height: 1553,
     format: "png",
     quality: 95,
   });
@@ -338,24 +338,25 @@ function buildCertificateHTML(data: {
     
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #f8f9fa;
+      background: transparent;
       display: flex;
       align-items: center;
       justify-content: center;
       min-height: 1600px;
-      padding: 60px;
+      padding: 0;
+      margin: 0;
     }
     
     .certificate-container {
       width: 1100px;
-      background: #ffffff;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+      background: transparent;
+      box-shadow: none;
       position: relative;
       overflow: hidden;
     }
     
     .certificate-header {
-      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      background: linear-gradient(135deg, #fee2e2 0%, #fecaca 25%, #fca5a5 50%, #f87171 75%, #ef4444 100%);
       padding: 60px;
       text-align: center;
       position: relative;
@@ -374,15 +375,16 @@ function buildCertificateHTML(data: {
     .certificate-title {
       font-size: 52px;
       font-weight: 700;
-      color: #ffffff;
+      color: #7f1d1d;
       text-transform: uppercase;
       letter-spacing: 6px;
       margin-bottom: 20px;
+      text-shadow: 2px 2px 4px rgba(255,255,255,0.5);
     }
     
     .certificate-subtitle {
       font-size: 22px;
-      color: #D4AF37;
+      color: #dc2626;
       font-weight: 500;
       letter-spacing: 3px;
       text-transform: uppercase;
@@ -402,12 +404,12 @@ function buildCertificateHTML(data: {
     }
     
     .value-showcase {
-      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      background: linear-gradient(135deg, #fee2e2 0%, #f87171 60%, #ef4444 100%);
       border-radius: 10px;
       padding: 50px;
       text-align: center;
       margin: 60px 0;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
       position: relative;
     }
     
@@ -423,7 +425,7 @@ function buildCertificateHTML(data: {
     
     .value-label {
       font-size: 20px;
-      color: #D4AF37;
+      color: #7f1d1d;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 4px;
@@ -445,8 +447,8 @@ function buildCertificateHTML(data: {
     }
     
     .detail-item {
-      background: #f8f9fa;
-      border-left: 4px solid #1e3c72;
+      background: rgba(255,255,255,0.9);
+      border-left: 4px solid #dc2626;
       padding: 28px 35px;
       border-radius: 6px;
     }
@@ -494,7 +496,7 @@ function buildCertificateHTML(data: {
     }
     
     .footer-bar {
-      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      background: linear-gradient(135deg, #fee2e2 0%, #ef4444 100%);
       padding: 30px;
       text-align: center;
       margin-top: 60px;

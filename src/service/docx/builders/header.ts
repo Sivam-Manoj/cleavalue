@@ -116,7 +116,7 @@ export function buildFooterTable(
   footerLines.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
-      spacing: { before: 10, after: 0 },
+      spacing: { before: 0, after: 0 },
       children: [
         new TextRun({ text: "Page ", size: 18, color: "6B7280" }),
         new TextRun({

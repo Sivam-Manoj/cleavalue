@@ -1546,19 +1546,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
         },
         headers: { default: new Header({ children: [headerTable] }) },
         footers: {
-          default: new Footer({
-            children: [
-              footerTable,
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                spacing: { before: 160 },
-                children: [
-                  new TextRun({ text: t.page, size: 18, color: "6B7280" }),
-                  PageNumber.CURRENT as any,
-                ],
-              }),
-            ],
-          }),
+          default: new Footer({ children: [footerTable] }),
         },
         children,
       },
