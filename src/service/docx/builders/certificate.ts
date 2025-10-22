@@ -10,15 +10,17 @@ import {
   TextRun,
   WidthType,
   ShadingType,
+  ImageRun,
 } from "docx";
 import { goldDivider, formatDateUS } from "./utils.js";
 import { getLang, t } from "./i18n.js";
+import { generateCertificateImage } from "../../htmlToImage.js";
 
-export function buildCertificateOfAppraisal(
+export async function buildCertificateOfAppraisal(
   reportData: any,
   contentWidthTw: number,
   reportDate: string
-): Array<Paragraph | Table> {
+): Promise<Array<Paragraph | Table>> {
   const children: Array<Paragraph | Table> = [];
   const lang = getLang(reportData);
   const tr = t(lang);
@@ -40,6 +42,46 @@ export function buildCertificateOfAppraisal(
   const certCellMarginTw = 120;
   const certInnerWidthTw = contentWidthTw - certCellMarginTw * 2;
   const valueBoxWidthTw = Math.round(certInnerWidthTw * 0.75);
+
+  // Generate beautiful certificate image from HTML
+  let certificateImageBuffer: Buffer | null = null;
+  try {
+    certificateImageBuffer = await generateCertificateImage({
+      title: tr.certificateTitle,
+      clientName: String(reportData?.client_name || ""),
+      effectiveDate: formatDateUS(reportData?.effective_date) || reportDate || "",
+      purpose: String(reportData?.appraisal_purpose || ""),
+      preparedBy: preparedBy || "",
+      totalValue: totalVal ? String(totalVal) : undefined,
+      reportDate: reportDate || "",
+    });
+  } catch (error) {
+    console.error("Failed to generate certificate image:", error);
+  }
+
+  // If image generation succeeded, use it
+  if (certificateImageBuffer) {
+    children.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: [
+          new ImageRun({
+            data: certificateImageBuffer as any,
+            transformation: {
+              width: 650,
+              height: 867, // 1200x1600 aspect ratio scaled to 650 width
+            },
+          } as any),
+        ],
+        spacing: { after: 400 },
+      })
+    );
+
+    return children;
+  }
+
+  // Fallback to text-based certificate if image generation fails
+  console.warn("Using fallback text-based certificate");
 
   const certDetails = new Table({
     width: { size: certInnerWidthTw, type: WidthType.DXA },
@@ -476,4 +518,26 @@ export function buildCertificateOfAppraisal(
   );
 
   return children;
+}
+
+// Keep old function signature for backwards compatibility
+export function buildCertificateOfAppraisalSync(
+  reportData: any,
+  contentWidthTw: number,
+  reportDate: string
+): Array<Paragraph | Table> {
+  // This is a sync fallback that returns a simple placeholder
+  return [
+    new Paragraph({ 
+      text: "Certificate of Appraisal", 
+      pageBreakBefore: true,
+      heading: HeadingLevel.HEADING_1,
+      alignment: AlignmentType.CENTER,
+    }),
+    new Paragraph({ 
+      text: "Loading certificate...", 
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 400 },
+    }),
+  ];
 }

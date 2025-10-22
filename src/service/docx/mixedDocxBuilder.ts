@@ -1511,7 +1511,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
         footers: { default: new Footer({ children: [footerTable] }) },
         children: buildTransmittalLetter(reportData, reportDate),
       },
-      // Certificate of Appraisal
+      // Certificate of Appraisal (with beautiful HTML-generated image)
       {
         properties: {
           page: {
@@ -1525,7 +1525,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
         },
         headers: { default: new Header({ children: [] }) },
         footers: { default: new Footer({ children: [footerTable] }) },
-        children: buildCertificateOfAppraisal(
+        children: await buildCertificateOfAppraisal(
           reportData,
           contentWidthTw,
           reportDate

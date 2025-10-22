@@ -39,74 +39,172 @@ export function buildCover(
 
   const coverTop: Paragraph[] = [];
 
-  // Modern header section with company branding
+  // Spacer for top section
   coverTop.push(
     new Paragraph({
       text: "",
-      spacing: { after: 400 },
+      spacing: { after: 200 },
     })
   );
 
-  // Professional logo (optimized sizing)
+  // Modern logo section with gradient-inspired styling
   if (logoBuffer) {
+    // Logo with modern framing
     coverTop.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
-        spacing: { after: 300 },
+        spacing: { after: 200 },
         children: [
           new ImageRun({
             data: logoBuffer as any,
-            transformation: { width: 400, height: 142 },
+            transformation: { width: 450, height: 160 },
           } as any),
         ],
       })
     );
   } else {
-    // Fallback: Company name in large text
+    // Modern company name display
     coverTop.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
-        spacing: { after: 300 },
+        spacing: { after: 200 },
         children: [
           new TextRun({
-            text: "McDougall Auctioneers",
-            size: 48,
+            text: "McDougall",
+            size: 56,
             bold: true,
             color: "1F2937",
           }),
         ],
       })
     );
+    coverTop.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 200 },
+        children: [
+          new TextRun({
+            text: "Auctioneers",
+            size: 44,
+            bold: false,
+            color: "6B7280",
+          }),
+        ],
+      })
+    );
   }
-  // Professional divider line
+
+  // Decorative elements using tables for gradient effect simulation
+  const decorativeLine = new Table({
+    width: { size: Math.round(coverInnerWidthTw * 0.6), type: WidthType.DXA },
+    alignment: AlignmentType.CENTER,
+    borders: {
+      top: { style: BorderStyle.NONE },
+      bottom: { style: BorderStyle.NONE },
+      left: { style: BorderStyle.NONE },
+      right: { style: BorderStyle.NONE },
+    },
+    rows: [
+      new TableRow({
+        height: { value: 60, rule: HeightRule.EXACT },
+        children: [
+          new TableCell({
+            width: { size: 33, type: WidthType.PERCENTAGE },
+            shading: { fill: "E5E7EB", type: ShadingType.SOLID },
+            borders: {
+              top: { style: BorderStyle.NONE },
+              bottom: { style: BorderStyle.NONE },
+              left: { style: BorderStyle.NONE },
+              right: { style: BorderStyle.NONE },
+            },
+            children: [new Paragraph("")],
+          }),
+          new TableCell({
+            width: { size: 34, type: WidthType.PERCENTAGE },
+            shading: { fill: "D4AF37", type: ShadingType.SOLID },
+            borders: {
+              top: { style: BorderStyle.NONE },
+              bottom: { style: BorderStyle.NONE },
+              left: { style: BorderStyle.NONE },
+              right: { style: BorderStyle.NONE },
+            },
+            children: [new Paragraph("")],
+          }),
+          new TableCell({
+            width: { size: 33, type: WidthType.PERCENTAGE },
+            shading: { fill: "E5E7EB", type: ShadingType.SOLID },
+            borders: {
+              top: { style: BorderStyle.NONE },
+              bottom: { style: BorderStyle.NONE },
+              left: { style: BorderStyle.NONE },
+              right: { style: BorderStyle.NONE },
+            },
+            children: [new Paragraph("")],
+          }),
+        ],
+      }),
+    ],
+  });
+
   coverTop.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
-      spacing: { after: 200 },
-      border: {
-        bottom: {
-          color: "D4AF37",
-          space: 1,
-          style: BorderStyle.SINGLE,
-          size: 24,
-        },
-      },
+      spacing: { after: 240 },
+      children: [],
     })
   );
 
-  // Main title with professional styling
+  // Main title with modern gradient-inspired design
+  const titleBox = new Table({
+    width: { size: coverInnerWidthTw, type: WidthType.DXA },
+    borders: {
+      top: { style: BorderStyle.SINGLE, size: 3, color: "D4AF37" },
+      bottom: { style: BorderStyle.SINGLE, size: 3, color: "D4AF37" },
+      left: { style: BorderStyle.NONE },
+      right: { style: BorderStyle.NONE },
+    },
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            shading: { fill: "F9FAFB", type: ShadingType.SOLID },
+            margins: { top: 200, bottom: 200, left: 100, right: 100 },
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 40 },
+                children: [
+                  new TextRun({
+                    text: titleText || tr.assetReport,
+                    size: 64,
+                    bold: true,
+                    color: "1F2937",
+                  }),
+                ],
+              }),
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                  new TextRun({
+                    text: "Professional Valuation Report",
+                    size: 26,
+                    color: "6B7280",
+                    italics: true,
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+
   coverTop.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { after: 160 },
-      children: [
-        new TextRun({
-          text: titleText || tr.assetReport,
-          size: 56,
-          bold: true,
-          color: "1F2937",
-        }),
-      ],
+      children: [],
     })
   );
   // Optional middle line: address (Real Estate) or lots/grouping (Assets). Allow suppression.
@@ -144,53 +242,96 @@ export function buildCover(
     );
   }
 
+  // Modern details section with cards
   const coverDetails = new Table({
     width: { size: coverInnerWidthTw, type: WidthType.DXA },
     layout: TableLayoutType.FIXED,
     columnWidths: [
-      Math.round(coverInnerWidthTw * 0.28),
-      Math.round(coverInnerWidthTw * 0.72),
+      Math.round(coverInnerWidthTw * 0.5),
+      Math.round(coverInnerWidthTw * 0.5),
     ],
     borders: {
-      top: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
-      bottom: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
-      left: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
-      right: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
-      insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
-      insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
+      top: { style: BorderStyle.NONE },
+      bottom: { style: BorderStyle.NONE },
+      left: { style: BorderStyle.NONE },
+      right: { style: BorderStyle.NONE },
+      insideHorizontal: { style: BorderStyle.NONE },
+      insideVertical: { style: BorderStyle.SINGLE, size: 20, color: "FFFFFF" },
     },
     rows: [
       new TableRow({
         children: [
+          // Client card
           new TableCell({
-            margins: { top: 80, bottom: 80, left: 120, right: 120 },
-            shading: { type: ShadingType.CLEAR, fill: "F9FAFB", color: "auto" },
+            margins: { top: 120, bottom: 120, left: 80, right: 80 },
+            shading: { fill: "F3F4F6", type: ShadingType.SOLID },
+            borders: {
+              top: { style: BorderStyle.SINGLE, size: 8, color: "D4AF37" },
+              bottom: { style: BorderStyle.NONE },
+              left: { style: BorderStyle.NONE },
+              right: { style: BorderStyle.NONE },
+            },
             children: [
               new Paragraph({
-                children: [new TextRun({ text: tr.preparedFor, bold: true })],
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 60 },
+                children: [
+                  new TextRun({ 
+                    text: tr.preparedFor.toUpperCase(), 
+                    size: 20, 
+                    bold: true,
+                    color: "6B7280",
+                  }),
+                ],
+              }),
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                  new TextRun({ 
+                    text: preparedFor || "—", 
+                    size: 26, 
+                    bold: true,
+                    color: "1F2937",
+                  }),
+                ],
               }),
             ],
           }),
+          // Date card
           new TableCell({
-            margins: { top: 80, bottom: 80, left: 120, right: 120 },
-            children: [new Paragraph(preparedFor || "—")],
-          }),
-        ],
-      }),
-      new TableRow({
-        children: [
-          new TableCell({
-            margins: { top: 80, bottom: 80, left: 120, right: 120 },
-            shading: { type: ShadingType.CLEAR, fill: "F9FAFB", color: "auto" },
+            margins: { top: 120, bottom: 120, left: 80, right: 80 },
+            shading: { fill: "F3F4F6", type: ShadingType.SOLID },
+            borders: {
+              top: { style: BorderStyle.SINGLE, size: 8, color: "D4AF37" },
+              bottom: { style: BorderStyle.NONE },
+              left: { style: BorderStyle.NONE },
+              right: { style: BorderStyle.NONE },
+            },
             children: [
               new Paragraph({
-                children: [new TextRun({ text: tr.reportDate, bold: true })],
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 60 },
+                children: [
+                  new TextRun({ 
+                    text: tr.reportDate.toUpperCase(), 
+                    size: 20, 
+                    bold: true,
+                    color: "6B7280",
+                  }),
+                ],
+              }),
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                  new TextRun({ 
+                    text: reportDate || "—", 
+                    size: 26, 
+                    bold: true,
+                    color: "1F2937",
+                  }),
+                ],
               }),
             ],
-          }),
-          new TableCell({
-            margins: { top: 80, bottom: 80, left: 120, right: 120 },
-            children: [new Paragraph(reportDate || "—")],
           }),
         ],
       }),
@@ -211,16 +352,17 @@ export function buildCover(
     },
     rows: [
       new TableRow({
-        height: { value: convertInchesToTwip(5.5), rule: HeightRule.ATLEAST },
+        height: { value: convertInchesToTwip(6.5), rule: HeightRule.ATLEAST },
         children: [
           new TableCell({
             margins: {
-              top: 400,
-              bottom: 200,
+              top: 300,
+              bottom: 160,
               left: coverCellMarginTw,
               right: coverCellMarginTw,
             },
-            children: coverTop,
+            shading: { fill: "FFFFFF", type: ShadingType.SOLID },
+            children: [...coverTop, decorativeLine, titleBox],
           }),
         ],
       }),
