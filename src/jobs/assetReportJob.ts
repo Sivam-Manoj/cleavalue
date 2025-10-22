@@ -1098,7 +1098,7 @@ export async function runAssetReportJob({
     });
 
     const reportObject = newReport.toObject();
-    // Generate PDF, DOCX (now uses HTML builder), and XLSX in parallel
+    // Generate PDF, DOCX, and XLSX in parallel
     const [pdfBuffer, docxBuffer, xlsxBuffer] =
       await Promise.all([
         withStep("generate_pdf", "Generating PDF", async () => {
@@ -1186,7 +1186,7 @@ export async function runAssetReportJob({
     const baseName = `asset-mixed-${cn}-${dtStr}-${uniq}`;
 
     const pdfFilename = `${baseName}.pdf`;
-    const docxFilename = `${baseName}.docx`; // Now uses HTML-based builder with amazing styling
+    const docxFilename = `${baseName}.docx`;
     const xlsxFilename = `${baseName}.xlsx`;
     const imagesFolderName = `${baseName}-images`;
     const imagesZipFilename = `${baseName}-images.zip`;
@@ -1206,12 +1206,12 @@ export async function runAssetReportJob({
           `[AssetReportJob] PDF saved to ${pdfPath} in ${t1 - t0}ms (size=${pdfBuffer.length} bytes)`
         );
       }),
-      withStep("save_docx_file", "Saving DOCX file (HTML)", async () => {
+      withStep("save_docx_file", "Saving DOCX file", async () => {
         const t0 = Date.now();
         await fs.writeFile(docxPath, docxBuffer);
         const t1 = Date.now();
         console.log(
-          `[AssetReportJob] DOCX (HTML-based) saved to ${docxPath} in ${t1 - t0}ms (size=${docxBuffer.length} bytes)`
+          `[AssetReportJob] DOCX saved to ${docxPath} in ${t1 - t0}ms (size=${docxBuffer.length} bytes)`
         );
       }),
       withStep("save_xlsx_file", "Saving XLSX file", async () => {

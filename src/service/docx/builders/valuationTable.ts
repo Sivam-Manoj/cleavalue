@@ -9,6 +9,7 @@ import {
   VerticalAlign,
   BorderStyle,
   ShadingType,
+  TableLayoutType,
 } from "docx";
 import { goldDivider } from "./utils.js";
 
@@ -174,7 +175,7 @@ export async function buildValuationTable(
                 new TextRun({
                   text: t.method,
                   font: "Calibri",
-                  size: 20,
+                  size: 22,
                   bold: true,
                   color: "FFFFFF",
                 }),
@@ -184,7 +185,7 @@ export async function buildValuationTable(
           ],
           shading: { fill: "1F2937", type: ShadingType.SOLID },
           verticalAlign: VerticalAlign.CENTER,
-          width: { size: 30, type: WidthType.PERCENTAGE },
+          margins: { top: 120, bottom: 120, left: 100, right: 100 },
         }),
         new TableCell({
           children: [
@@ -193,7 +194,7 @@ export async function buildValuationTable(
                 new TextRun({
                   text: t.percentage,
                   font: "Calibri",
-                  size: 20,
+                  size: 22,
                   bold: true,
                   color: "FFFFFF",
                 }),
@@ -203,7 +204,7 @@ export async function buildValuationTable(
           ],
           shading: { fill: "1F2937", type: ShadingType.SOLID },
           verticalAlign: VerticalAlign.CENTER,
-          width: { size: 15, type: WidthType.PERCENTAGE },
+          margins: { top: 120, bottom: 120, left: 100, right: 100 },
         }),
         new TableCell({
           children: [
@@ -212,7 +213,7 @@ export async function buildValuationTable(
                 new TextRun({
                   text: t.value,
                   font: "Calibri",
-                  size: 20,
+                  size: 22,
                   bold: true,
                   color: "FFFFFF",
                 }),
@@ -222,7 +223,7 @@ export async function buildValuationTable(
           ],
           shading: { fill: "1F2937", type: ShadingType.SOLID },
           verticalAlign: VerticalAlign.CENTER,
-          width: { size: 25, type: WidthType.PERCENTAGE },
+          margins: { top: 120, bottom: 120, left: 100, right: 100 },
         }),
         new TableCell({
           children: [
@@ -231,7 +232,7 @@ export async function buildValuationTable(
                 new TextRun({
                   text: t.timeline,
                   font: "Calibri",
-                  size: 20,
+                  size: 22,
                   bold: true,
                   color: "FFFFFF",
                 }),
@@ -241,14 +242,17 @@ export async function buildValuationTable(
           ],
           shading: { fill: "1F2937", type: ShadingType.SOLID },
           verticalAlign: VerticalAlign.CENTER,
-          width: { size: 30, type: WidthType.PERCENTAGE },
+          margins: { top: 120, bottom: 120, left: 100, right: 100 },
         }),
       ],
     })
   );
 
-  // Data rows
-  for (const method of valuationData.methods) {
+  // Data rows with alternating shading
+  for (let i = 0; i < valuationData.methods.length; i++) {
+    const method = valuationData.methods[i];
+    const isEven = i % 2 === 0;
+    
     summaryRows.push(
       new TableRow({
         children: [
@@ -259,7 +263,7 @@ export async function buildValuationTable(
                   new TextRun({
                     text: method.method,
                     font: "Calibri",
-                    size: 20,
+                    size: 22,
                     bold: true,
                     color: "1F2937",
                   }),
@@ -270,7 +274,7 @@ export async function buildValuationTable(
                   new TextRun({
                     text: method.fullName,
                     font: "Calibri",
-                    size: 18,
+                    size: 19,
                     color: "6B7280",
                   }),
                 ],
@@ -278,6 +282,8 @@ export async function buildValuationTable(
               }),
             ],
             verticalAlign: VerticalAlign.CENTER,
+            margins: { top: 120, bottom: 120, left: 120, right: 120 },
+            shading: isEven ? { fill: "FFFFFF", type: ShadingType.SOLID } : { fill: "F9FAFB", type: ShadingType.SOLID },
           }),
           new TableCell({
             children: [
@@ -286,7 +292,7 @@ export async function buildValuationTable(
                   new TextRun({
                     text: `${method.percentage}%`,
                     font: "Calibri",
-                    size: 22,
+                    size: 24,
                     bold: true,
                     color: "1F2937",
                   }),
@@ -295,6 +301,8 @@ export async function buildValuationTable(
               }),
             ],
             verticalAlign: VerticalAlign.CENTER,
+            margins: { top: 120, bottom: 120, left: 100, right: 100 },
+            shading: isEven ? { fill: "FFFFFF", type: ShadingType.SOLID } : { fill: "F9FAFB", type: ShadingType.SOLID },
           }),
           new TableCell({
             children: [
@@ -303,7 +311,7 @@ export async function buildValuationTable(
                   new TextRun({
                     text: formatCurrency(method.value),
                     font: "Calibri",
-                    size: 22,
+                    size: 24,
                     bold: true,
                     color: "059669",
                   }),
@@ -312,6 +320,8 @@ export async function buildValuationTable(
               }),
             ],
             verticalAlign: VerticalAlign.CENTER,
+            margins: { top: 120, bottom: 120, left: 100, right: 100 },
+            shading: isEven ? { fill: "FFFFFF", type: ShadingType.SOLID } : { fill: "F9FAFB", type: ShadingType.SOLID },
           }),
           new TableCell({
             children: [
@@ -320,28 +330,40 @@ export async function buildValuationTable(
                   new TextRun({
                     text: method.timeline,
                     font: "Calibri",
-                    size: 18,
+                    size: 20,
                     color: "1F2937",
                   }),
                 ],
+                alignment: AlignmentType.CENTER,
               }),
             ],
             verticalAlign: VerticalAlign.CENTER,
+            margins: { top: 120, bottom: 120, left: 120, right: 120 },
+            shading: isEven ? { fill: "FFFFFF", type: ShadingType.SOLID } : { fill: "F9FAFB", type: ShadingType.SOLID },
           }),
         ],
       })
     );
   }
 
+  const tableWidthTw = 9360; // 6.5 inches
+  
   children.push(
     new Table({
       rows: summaryRows,
-      width: { size: 100, type: WidthType.PERCENTAGE },
+      width: { size: tableWidthTw, type: WidthType.DXA },
+      layout: TableLayoutType.FIXED,
+      columnWidths: [
+        Math.round(tableWidthTw * 0.28),  // Method column
+        Math.round(tableWidthTw * 0.15),  // Percentage column
+        Math.round(tableWidthTw * 0.27),  // Value column
+        Math.round(tableWidthTw * 0.30),  // Timeline column
+      ],
       borders: {
-        top: { style: BorderStyle.SINGLE, size: 1, color: "D1D5DB" },
-        bottom: { style: BorderStyle.SINGLE, size: 1, color: "D1D5DB" },
-        left: { style: BorderStyle.SINGLE, size: 1, color: "D1D5DB" },
-        right: { style: BorderStyle.SINGLE, size: 1, color: "D1D5DB" },
+        top: { style: BorderStyle.SINGLE, size: 2, color: "D1D5DB" },
+        bottom: { style: BorderStyle.SINGLE, size: 2, color: "D1D5DB" },
+        left: { style: BorderStyle.SINGLE, size: 2, color: "D1D5DB" },
+        right: { style: BorderStyle.SINGLE, size: 2, color: "D1D5DB" },
         insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
         insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
       },

@@ -39,43 +39,74 @@ export function buildCover(
 
   const coverTop: Paragraph[] = [];
 
-  // Enhanced: Hero image at top (if provided)
-  if (heroImageBuffer) {
+  // Modern header section with company branding
+  coverTop.push(
+    new Paragraph({
+      text: "",
+      spacing: { after: 400 },
+    })
+  );
+
+  // Professional logo (optimized sizing)
+  if (logoBuffer) {
     coverTop.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
         spacing: { after: 300 },
         children: [
           new ImageRun({
-            data: heroImageBuffer as any,
-            transformation: { width: 600, height: 400 },
+            data: logoBuffer as any,
+            transformation: { width: 400, height: 142 },
           } as any),
         ],
       })
     );
-  }
-
-  // Logo (larger, professional sizing)
-  if (logoBuffer) {
+  } else {
+    // Fallback: Company name in large text
     coverTop.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
-        spacing: { after: 200 },
+        spacing: { after: 300 },
         children: [
-          new ImageRun({
-            data: logoBuffer as any,
-            transformation: { width: 500, height: 178 },
-          } as any),
+          new TextRun({
+            text: "McDougall Auctioneers",
+            size: 48,
+            bold: true,
+            color: "1F2937",
+          }),
         ],
       })
     );
   }
+  // Professional divider line
   coverTop.push(
     new Paragraph({
-      text: titleText || tr.assetReport,
-      heading: HeadingLevel.TITLE,
       alignment: AlignmentType.CENTER,
-      spacing: { after: 120 },
+      spacing: { after: 200 },
+      border: {
+        bottom: {
+          color: "D4AF37",
+          space: 1,
+          style: BorderStyle.SINGLE,
+          size: 24,
+        },
+      },
+    })
+  );
+
+  // Main title with professional styling
+  coverTop.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 160 },
+      children: [
+        new TextRun({
+          text: titleText || tr.assetReport,
+          size: 56,
+          bold: true,
+          color: "1F2937",
+        }),
+      ],
     })
   );
   // Optional middle line: address (Real Estate) or lots/grouping (Assets). Allow suppression.
@@ -171,21 +202,21 @@ export function buildCover(
     layout: TableLayoutType.FIXED,
     columnWidths: [contentWidthTw],
     borders: {
-      top: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      bottom: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      left: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      right: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
-      insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "FFFFFF" },
+      top: { style: BorderStyle.NONE },
+      bottom: { style: BorderStyle.NONE },
+      left: { style: BorderStyle.NONE },
+      right: { style: BorderStyle.NONE },
+      insideHorizontal: { style: BorderStyle.NONE },
+      insideVertical: { style: BorderStyle.NONE },
     },
     rows: [
       new TableRow({
-        height: { value: convertInchesToTwip(6.2), rule: HeightRule.ATLEAST },
+        height: { value: convertInchesToTwip(5.5), rule: HeightRule.ATLEAST },
         children: [
           new TableCell({
             margins: {
-              top: 240,
-              bottom: 120,
+              top: 400,
+              bottom: 200,
               left: coverCellMarginTw,
               right: coverCellMarginTw,
             },
@@ -194,16 +225,16 @@ export function buildCover(
         ],
       }),
       new TableRow({
-        height: { value: convertInchesToTwip(1.6), rule: HeightRule.EXACT },
+        height: { value: convertInchesToTwip(2.0), rule: HeightRule.ATLEAST },
         children: [
           new TableCell({
             margins: {
-              top: 120,
-              bottom: 120,
+              top: 200,
+              bottom: 200,
               left: coverCellMarginTw,
               right: coverCellMarginTw,
             },
-            verticalAlign: VerticalAlign.BOTTOM,
+            verticalAlign: VerticalAlign.CENTER,
             children: [coverDetails],
           }),
         ],

@@ -34,7 +34,6 @@
     "express": "^5.1.0",
     "google-auth-library": "^10.1.0",
     "handlebars": "^4.7.8",
-    "html-to-docx": "^1.8.0",
     "jimp": "^0.16.13",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.16.2",
