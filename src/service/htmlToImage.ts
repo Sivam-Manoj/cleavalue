@@ -1,5 +1,5 @@
 import puppeteer from "puppeteer";
-import sharp from "sharp";
+import Jimp from "jimp";
 
 /**
  * Convert HTML string to image buffer using Puppeteer
@@ -16,12 +16,7 @@ export async function htmlToImageBuffer(
     quality?: number;
   } = {}
 ): Promise<Buffer> {
-  const {
-    width = 1200,
-    height = 1600,
-    format = "png",
-    quality = 95,
-  } = options;
+  const { width = 1200, height = 1600, format = "png", quality = 95 } = options;
 
   let browser;
   try {
@@ -59,15 +54,14 @@ export async function htmlToImageBuffer(
 
     await browser.close();
 
-    // Optimize with sharp
+    // Optimize with Jimp
+    const buffer = Buffer.from(screenshotBuffer);
+    const image = await Jimp.read(buffer);
+
     if (format === "png") {
-      return await sharp(screenshotBuffer)
-        .png({ quality, compressionLevel: 6 })
-        .toBuffer();
+      return await image.quality(quality).getBufferAsync(Jimp.MIME_PNG);
     } else {
-      return await sharp(screenshotBuffer)
-        .jpeg({ quality })
-        .toBuffer();
+      return await image.quality(quality).getBufferAsync(Jimp.MIME_JPEG);
     }
   } catch (error) {
     if (browser) {
@@ -83,18 +77,16 @@ export async function htmlToImageBuffer(
  * @param certificateData - Data for the certificate
  * @returns Buffer containing the certificate image
  */
-export async function generateCertificateImage(
-  certificateData: {
-    title: string;
-    clientName: string;
-    effectiveDate: string;
-    purpose: string;
-    preparedBy: string;
-    totalValue?: string;
-    appraiserSignature?: string;
-    reportDate: string;
-  }
-): Promise<Buffer> {
+export async function generateCertificateImage(certificateData: {
+  title: string;
+  clientName: string;
+  effectiveDate: string;
+  purpose: string;
+  preparedBy: string;
+  totalValue?: string;
+  appraiserSignature?: string;
+  reportDate: string;
+}): Promise<Buffer> {
   const html = buildCertificateHTML(certificateData);
 
   return await htmlToImageBuffer(html, {
@@ -374,29 +366,33 @@ function buildCertificateHTML(data: {
         opinion based on thorough analysis and inspection.
       </p>
       
-      ${data.totalValue ? `
+      ${
+        data.totalValue
+          ? `
       <div class="value-showcase">
         <div class="value-label">Total Appraised Value</div>
         <div class="value-amount">${data.totalValue}</div>
       </div>
-      ` : ''}
+      `
+          : ""
+      }
       
       <div class="details-grid">
         <div class="detail-item">
           <div class="detail-label">Client</div>
-          <div class="detail-value">${data.clientName || '—'}</div>
+          <div class="detail-value">${data.clientName || "—"}</div>
         </div>
         <div class="detail-item">
           <div class="detail-label">Effective Date</div>
-          <div class="detail-value">${data.effectiveDate || '—'}</div>
+          <div class="detail-value">${data.effectiveDate || "—"}</div>
         </div>
         <div class="detail-item">
           <div class="detail-label">Purpose</div>
-          <div class="detail-value">${data.purpose || '—'}</div>
+          <div class="detail-value">${data.purpose || "—"}</div>
         </div>
         <div class="detail-item">
           <div class="detail-label">Prepared By</div>
-          <div class="detail-value">${data.preparedBy || '—'}</div>
+          <div class="detail-value">${data.preparedBy || "—"}</div>
         </div>
       </div>
       
@@ -407,7 +403,7 @@ function buildCertificateHTML(data: {
         </div>
         <div class="signature-box">
           <div class="signature-line"></div>
-          <div class="signature-label">Date: ${data.reportDate || '—'}</div>
+          <div class="signature-label">Date: ${data.reportDate || "—"}</div>
         </div>
       </div>
     </div>
