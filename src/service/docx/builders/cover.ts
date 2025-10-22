@@ -82,6 +82,11 @@ export async function buildCover(
 
   // If image generation succeeded, use it as full-page cover
   if (coverImageBuffer) {
+    // Full page letter size: 8.5 x 11 inches
+    // At standard DPI this should completely fill the page
+    const pageWidth = 8.5 * 72; // 612 points
+    const pageHeight = 11 * 72; // 792 points
+    
     return new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       layout: TableLayoutType.FIXED,
@@ -93,10 +98,11 @@ export async function buildCover(
       },
       rows: [
         new TableRow({
-          height: { value: convertInchesToTwip(10.5), rule: HeightRule.EXACT },
+          height: { value: convertInchesToTwip(11), rule: HeightRule.EXACT },
           children: [
             new TableCell({
               margins: { top: 0, bottom: 0, left: 0, right: 0 },
+              verticalAlign: VerticalAlign.CENTER,
               children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
@@ -104,8 +110,8 @@ export async function buildCover(
                     new ImageRun({
                       data: coverImageBuffer as any,
                       transformation: {
-                        width: 816,  // 8.5 inches at 96 DPI for full width
-                        height: 1056, // 11 inches at 96 DPI for full height
+                        width: pageWidth,
+                        height: pageHeight,
                       },
                     } as any),
                   ],

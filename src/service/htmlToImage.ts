@@ -128,18 +128,19 @@ function buildCoverPageHTML(data: {
     
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #ffffff;
       min-height: 1400px;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 0;
+      margin: 0;
     }
     
     .cover-container {
       width: 100%;
       height: 1400px;
-      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
+      background: linear-gradient(135deg, #fee2e2 0%, #fecaca 25%, #fca5a5 50%, #f87171 75%, #ef4444 100%);
       position: relative;
       overflow: hidden;
     }
@@ -151,7 +152,7 @@ function buildCoverPageHTML(data: {
       right: -20%;
       width: 800px;
       height: 800px;
-      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, transparent 70%);
       border-radius: 50%;
     }
     
@@ -162,7 +163,7 @@ function buildCoverPageHTML(data: {
       left: -10%;
       width: 600px;
       height: 600px;
-      background: radial-gradient(circle, rgba(212,175,55,0.15) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
       border-radius: 50%;
     }
     
@@ -180,48 +181,49 @@ function buildCoverPageHTML(data: {
       text-align: center;
     }
     
-    .logo {
-      width: 280px;
-      height: auto;
-      margin: 0 auto 40px;
-      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));
-    }
-    
     .company-name {
       font-size: 48px;
       font-weight: 300;
-      color: #ffffff;
+      color: #7f1d1d;
       letter-spacing: 4px;
       text-transform: uppercase;
       margin-bottom: 20px;
-      text-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+      text-shadow: 2px 2px 4px rgba(255,255,255,0.5);
     }
     
     .divider {
       width: 200px;
       height: 3px;
-      background: linear-gradient(90deg, transparent, #D4AF37, transparent);
+      background: linear-gradient(90deg, transparent, #dc2626, transparent);
       margin: 0 auto 60px;
     }
     
     .title-section {
       text-align: center;
-      margin: 100px 0;
+      margin: 60px 0;
+    }
+    
+    .logo {
+      width: 320px;
+      height: auto;
+      margin: 0 auto 60px;
+      display: block;
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.2));
     }
     
     .main-title {
       font-size: 72px;
       font-weight: 700;
-      color: #ffffff;
+      color: #7f1d1d;
       margin-bottom: 30px;
-      text-shadow: 3px 3px 12px rgba(0,0,0,0.4);
+      text-shadow: 2px 2px 4px rgba(255,255,255,0.5);
       line-height: 1.2;
     }
     
     .subtitle {
       font-size: 32px;
       font-weight: 300;
-      color: #D4AF37;
+      color: #dc2626;
       font-style: italic;
       margin-bottom: 60px;
     }
@@ -234,19 +236,19 @@ function buildCoverPageHTML(data: {
     }
     
     .info-card {
-      background: rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.7);
       backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      border: 2px solid rgba(220, 38, 38, 0.3);
       border-radius: 20px;
       padding: 40px 60px;
       min-width: 350px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     }
     
     .info-label {
       font-size: 16px;
       font-weight: 600;
-      color: #D4AF37;
+      color: #dc2626;
       text-transform: uppercase;
       letter-spacing: 2px;
       margin-bottom: 15px;
@@ -255,18 +257,18 @@ function buildCoverPageHTML(data: {
     .info-value {
       font-size: 28px;
       font-weight: 600;
-      color: #ffffff;
+      color: #7f1d1d;
     }
     
     .footer-section {
       text-align: center;
       padding-top: 40px;
-      border-top: 1px solid rgba(255, 255, 255, 0.2);
+      border-top: 1px solid rgba(220, 38, 38, 0.2);
     }
     
     .footer-text {
       font-size: 18px;
-      color: rgba(255, 255, 255, 0.8);
+      color: #7f1d1d;
     }
   </style>
 </head>
@@ -274,12 +276,12 @@ function buildCoverPageHTML(data: {
   <div class="cover-container">
     <div class="content-wrapper">
       <div class="header-section">
-        ${data.logoBase64 ? `<img src="data:image/png;base64,${data.logoBase64}" class="logo" alt="Logo" />` : ''}
         <div class="company-name">${data.companyName}</div>
         <div class="divider"></div>
       </div>
       
       <div class="title-section">
+        ${data.logoBase64 ? `<img src="data:image/png;base64,${data.logoBase64}" class="logo" alt="Logo" />` : ''}
         <h1 class="main-title">${data.title}</h1>
         ${data.subtitle ? `<p class="subtitle">${data.subtitle}</p>` : ''}
         
