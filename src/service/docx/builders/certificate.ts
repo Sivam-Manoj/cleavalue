@@ -68,8 +68,8 @@ export async function buildCertificateOfAppraisal(
           new ImageRun({
             data: certificateImageBuffer as any,
             transformation: {
-              width: 650,
-              height: 867, // 1200x1600 aspect ratio scaled to 650 width
+              width: 900,  // Increased from 650 to 900
+              height: 1200, // 1200x1600 aspect ratio scaled to 900 width
             },
           } as any),
         ],

@@ -80,15 +80,14 @@ export async function buildCover(
     console.error("Failed to generate cover page image:", error);
   }
 
-  // If image generation succeeded, use it as full-page cover
+  // If image generation succeeded, use it as centered cover
   if (coverImageBuffer) {
-    // Full page letter size: 8.5 x 11 inches
-    // Image is 1200x1553px matching 8.5:11 aspect ratio exactly
-    const pageWidth = 8.5 * 72; // 612 points
-    const pageHeight = 11 * 72; // 792 points
+    // Small centered image: 7 inches wide, maintaining aspect ratio
+    const imageWidth = 7 * 72; // 504 points (7 inches)
+    const imageHeight = imageWidth * (1553 / 1200); // Maintain aspect ratio
     
     return new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
+      width: { size: contentWidthTw, type: WidthType.DXA },
       layout: TableLayoutType.FIXED,
       borders: {
         top: { style: BorderStyle.NONE },
@@ -96,29 +95,25 @@ export async function buildCover(
         left: { style: BorderStyle.NONE },
         right: { style: BorderStyle.NONE },
       },
-      margins: { top: 0, bottom: 0, left: 0, right: 0 },
       rows: [
         new TableRow({
-          height: { value: convertInchesToTwip(11), rule: HeightRule.EXACT },
-          cantSplit: true,
           children: [
             new TableCell({
-              margins: { top: 0, bottom: 0, left: 0, right: 0 },
-              verticalAlign: VerticalAlign.TOP,
+              margins: { top: 200, bottom: 200, left: 100, right: 100 },
+              verticalAlign: VerticalAlign.CENTER,
               children: [
                 new Paragraph({
-                  alignment: AlignmentType.LEFT,
-                  indent: { left: 0, right: 0 },
+                  alignment: AlignmentType.CENTER,
                   children: [
                     new ImageRun({
                       data: coverImageBuffer as any,
                       transformation: {
-                        width: pageWidth,
-                        height: pageHeight,
+                        width: imageWidth,
+                        height: imageHeight,
                       },
                     } as any),
                   ],
-                  spacing: { before: 0, after: 0, line: 0 },
+                  spacing: { before: 200, after: 200 },
                 }),
               ],
             }),

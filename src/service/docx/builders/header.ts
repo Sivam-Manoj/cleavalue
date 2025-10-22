@@ -74,7 +74,7 @@ export function buildFooterTable(
     new Paragraph({
       alignment: AlignmentType.CENTER,
       children: [new TextRun({ text: address, size: 18, color: "6B7280" })],
-      spacing: { after: 20 },
+      spacing: { after: 5 },
     })
   );
 
@@ -87,7 +87,7 @@ export function buildFooterTable(
         new TextRun({ text: "  •  ", size: 18, color: "9CA3AF" }),
         new TextRun({ text: phone, size: 18, color: "6B7280" }),
       ],
-      spacing: { after: 20 },
+      spacing: { after: 5 },
     })
   );
 
@@ -107,6 +107,7 @@ export function buildFooterTable(
       new Paragraph({
         alignment: AlignmentType.CENTER,
         children: appraiserParts,
+        spacing: { after: 0 },
       })
     );
   }
@@ -115,7 +116,7 @@ export function buildFooterTable(
   footerLines.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
-      spacing: { before: 20, after: 0 },
+      spacing: { before: 10, after: 0 },
       children: [
         new TextRun({ text: "Page ", size: 18, color: "6B7280" }),
         new TextRun({
@@ -143,7 +144,7 @@ export function buildFooterTable(
       new TableRow({
         children: [
           new TableCell({
-            margins: { top: 5, bottom: 0, left: 40, right: 40 },
+            margins: { top: 0, bottom: 0, left: 40, right: 40 },
             children: footerLines,
           }),
         ],
