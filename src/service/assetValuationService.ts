@@ -17,9 +17,27 @@ export interface ValuationResult {
   useCase: string;
 }
 
+export interface ValuationMethodData {
+  method: ValuationMethod;
+  fullName: string;
+  value: number;
+  aiExplanation: string;
+  description: string;
+  saleConditions: string;
+  timeline: string;
+  marketContext: string;
+  applicationScenarios: string;
+  assumptions: string;
+}
+
 export interface ValuationComparisonTable {
   baseFMV: number;
   methods: ValuationResult[];
+}
+
+export interface SingleValuationData {
+  baseFMV: number;
+  selectedMethod: ValuationMethodData;
 }
 
 const VALUATION_DEFINITIONS = {
@@ -108,10 +126,8 @@ Return ONLY a JSON object with the following structure (no markdown, no explanat
 The percentages must be realistic numbers within the typical ranges specified above.`;
 
     const response = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL_TEXT || "gpt-4o-mini",
+      model: process.env.OPENAI_MODEL_TEXT || "gpt-5",
       messages: [{ role: "user", content: prompt }],
-      temperature: 0.3,
-      max_tokens: 200,
     });
 
     const content = response.choices[0]?.message?.content?.trim() || "{}";
@@ -201,4 +217,136 @@ ${def.description}
 Use Cases:
 ${def.useCase}
   `.trim();
+}
+
+/**
+ * Generate comprehensive AI explanation for a single valuation method
+ */
+export async function generateValuationMethodAnalysis(
+  method: ValuationMethod,
+  assetTitle: string,
+  assetDescription: string,
+  assetCondition: string,
+  industry: string,
+  baseFMV: number,
+  calculatedValue: number
+): Promise<ValuationMethodData> {
+  const def = VALUATION_DEFINITIONS[method];
+  
+  try {
+    const prompt = `You are an expert appraisal professional. Provide a comprehensive, production-ready analysis for the ${def.fullName} valuation method.
+
+**Asset Information:**
+- Title: ${assetTitle}
+- Description: ${assetDescription || "N/A"}
+- Condition: ${assetCondition || "Unknown"}
+- Industry: ${industry || "General"}
+- Base Fair Market Value: $${baseFMV.toLocaleString()}
+- Calculated ${method} Value: $${calculatedValue.toLocaleString()}
+
+**Valuation Method:** ${def.fullName}
+**Sale Conditions:** ${def.saleConditions}
+**Timeline:** ${def.timeline}
+
+Provide a detailed analysis with the following sections (return as JSON object):
+
+1. **aiExplanation**: A concise 2-3 sentence summary explaining this specific valuation for this asset (suitable for table display)
+
+2. **marketContext**: A comprehensive 3-4 sentence paragraph analyzing current market conditions, demand trends, and how they affect this valuation for this specific asset type in this industry
+
+3. **applicationScenarios**: A detailed 3-4 sentence paragraph describing ideal use cases, when this valuation method should be applied, and who would use it (lenders, buyers, sellers, etc.)
+
+4. **assumptions**: A thorough 3-4 sentence paragraph listing key assumptions made in this valuation, including asset condition, market access, timeline expectations, and any caveats
+
+Return ONLY valid JSON (no markdown formatting):
+{
+  "aiExplanation": "...",
+  "marketContext": "...",
+  "applicationScenarios": "...",
+  "assumptions": "..."
+}
+
+Make the content professional, specific to this asset, and production-ready for client distribution.`;
+
+    const response = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL_TEXT || "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
+      max_tokens: 1000,
+    });
+
+    const content = response.choices[0]?.message?.content?.trim() || "{}";
+    const parsed = JSON.parse(content);
+
+    return {
+      method,
+      fullName: def.fullName,
+      value: calculatedValue,
+      aiExplanation: parsed.aiExplanation || `This ${def.fullName} represents the estimated value based on ${def.saleConditions.toLowerCase()}, calculated at ${Math.round((calculatedValue/baseFMV)*100)}% of the fair market value.`,
+      description: def.description,
+      saleConditions: def.saleConditions,
+      timeline: def.timeline,
+      marketContext: parsed.marketContext || `The market conditions for this asset type support this valuation under ${def.saleConditions.toLowerCase()} circumstances.`,
+      applicationScenarios: parsed.applicationScenarios || def.useCase,
+      assumptions: parsed.assumptions || "This valuation assumes normal market conditions and the asset information provided is accurate.",
+    };
+  } catch (error) {
+    console.error("AI explanation generation failed:", error);
+    
+    // Return fallback with basic information
+    return {
+      method,
+      fullName: def.fullName,
+      value: calculatedValue,
+      aiExplanation: `This ${def.fullName} represents the estimated value based on ${def.saleConditions.toLowerCase()}, calculated at ${Math.round((calculatedValue/baseFMV)*100)}% of the fair market value.`,
+      description: def.description,
+      saleConditions: def.saleConditions,
+      timeline: def.timeline,
+      marketContext: `The market conditions for this asset type in the ${industry} industry typically support ${def.typicalRange[0]}-${def.typicalRange[1]}% of FMV under ${def.saleConditions.toLowerCase()}. This specific asset has been evaluated considering its condition, marketability, and current demand factors.`,
+      applicationScenarios: def.useCase,
+      assumptions: `This valuation assumes: (1) the asset condition and specifications as described are accurate, (2) typical market access and buyer availability within the ${def.timeline.toLowerCase()}, (3) no hidden defects or undisclosed issues, and (4) sale under ${def.saleConditions.toLowerCase()}.`,
+    };
+  }
+}
+
+/**
+ * Generate single valuation method data with AI analysis
+ */
+export async function generateSingleValuationAnalysis(
+  baseFMV: number,
+  selectedMethod: ValuationMethod,
+  assetTitle: string,
+  assetDescription: string,
+  assetCondition: string,
+  industry: string
+): Promise<SingleValuationData> {
+  const def = VALUATION_DEFINITIONS[selectedMethod];
+  
+  // Determine percentage using AI
+  const percentages = await determineValuationPercentages(
+    assetTitle,
+    assetDescription,
+    assetCondition,
+    industry,
+    baseFMV
+  );
+  
+  const percentage = percentages[selectedMethod];
+  const calculatedValue = (baseFMV * percentage) / 100;
+  
+  // Generate comprehensive AI analysis
+  const methodData = await generateValuationMethodAnalysis(
+    selectedMethod,
+    assetTitle,
+    assetDescription,
+    assetCondition,
+    industry,
+    baseFMV,
+    calculatedValue
+  );
+  
+  return {
+    baseFMV,
+    selectedMethod: methodData,
+  };
 }
