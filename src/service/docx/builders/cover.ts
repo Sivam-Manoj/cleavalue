@@ -174,6 +174,7 @@ export async function buildCover(
   // Modern details section with cards
   const coverDetails = new Table({
     width: { size: coverInnerWidthTw, type: WidthType.DXA },
+    alignment: AlignmentType.CENTER,
     layout: TableLayoutType.FIXED,
     columnWidths: [
       Math.round(coverInnerWidthTw * 0.5),
@@ -269,6 +270,7 @@ export async function buildCover(
 
   return new Table({
     width: { size: contentWidthTw, type: WidthType.DXA },
+    alignment: AlignmentType.CENTER,
     layout: TableLayoutType.FIXED,
     columnWidths: [contentWidthTw],
     borders: {
@@ -290,6 +292,7 @@ export async function buildCover(
               left: coverCellMarginTw,
               right: coverCellMarginTw,
             },
+            verticalAlign: VerticalAlign.CENTER,
             shading: { fill: "FFFFFF", type: ShadingType.SOLID },
             children: coverTop,
           }),
