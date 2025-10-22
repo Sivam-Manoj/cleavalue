@@ -115,7 +115,7 @@ export function buildFooterTable(
   footerLines.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
-      spacing: { before: 60 },
+      spacing: { before: 30, after: 0 },
       children: [
         new TextRun({ text: "Page ", size: 18, color: "6B7280" }),
         new TextRun({
@@ -143,7 +143,7 @@ export function buildFooterTable(
       new TableRow({
         children: [
           new TableCell({
-            margins: { top: 20, bottom: 10, left: 40, right: 40 },
+            margins: { top: 10, bottom: 5, left: 40, right: 40 },
             children: footerLines,
           }),
         ],

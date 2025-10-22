@@ -1460,15 +1460,15 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
         properties: {
           page: {
             margin: {
-              top: convertInchesToTwip(1),
-              right: convertInchesToTwip(1),
-              bottom: convertInchesToTwip(0.6),
-              left: convertInchesToTwip(1),
+              top: convertInchesToTwip(0),
+              right: convertInchesToTwip(0),
+              bottom: convertInchesToTwip(0),
+              left: convertInchesToTwip(0),
             },
           },
         },
         headers: { default: new Header({ children: [] }) },
-        footers: { default: new Footer({ children: [footerTable] }) },
+        footers: { default: new Footer({ children: [] }) },
         children: [
           await buildCover(
             reportData,
@@ -1486,7 +1486,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
             margin: {
               top: convertInchesToTwip(1),
               right: convertInchesToTwip(1),
-              bottom: convertInchesToTwip(0.6),
+              bottom: convertInchesToTwip(0.3),
               left: convertInchesToTwip(1),
             },
           },
@@ -1495,16 +1495,17 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
         footers: { default: new Footer({ children: [footerTable] }) },
         children: buildTOC(reportData),
       },
-      // Transmittal Letter
+      // Transmittal Letter (Start page numbering here at 1)
       {
         properties: {
           page: {
             margin: {
               top: convertInchesToTwip(1),
               right: convertInchesToTwip(1),
-              bottom: convertInchesToTwip(0.6),
+              bottom: convertInchesToTwip(0.3),
               left: convertInchesToTwip(1),
             },
+            pageNumbers: { start: 1 },
           },
         },
         headers: { default: new Header({ children: [] }) },
@@ -1518,7 +1519,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
             margin: {
               top: convertInchesToTwip(1),
               right: convertInchesToTwip(1),
-              bottom: convertInchesToTwip(0.6),
+              bottom: convertInchesToTwip(0.3),
               left: convertInchesToTwip(1),
             },
           },
@@ -1531,17 +1532,16 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
           reportDate
         ) as any,
       },
-      // Main content (with header/footer). Restart page numbers at 1.
+      // Main content (with header/footer). Continue page numbering.
       {
         properties: {
           page: {
             margin: {
               top: convertInchesToTwip(1),
               right: convertInchesToTwip(1),
-              bottom: convertInchesToTwip(0.6),
+              bottom: convertInchesToTwip(0.3),
               left: convertInchesToTwip(1),
             },
-            pageNumbers: { start: 1 },
           },
         },
         headers: { default: new Header({ children: [headerTable] }) },

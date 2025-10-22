@@ -104,7 +104,7 @@ export async function generateCertificateImage(certificateData: {
  * Build beautiful cover page HTML
  */
 function buildCoverPageHTML(data: {
-  logoUrl?: string;
+  logoBase64?: string;
   companyName: string;
   title: string;
   subtitle?: string;
@@ -274,6 +274,7 @@ function buildCoverPageHTML(data: {
   <div class="cover-container">
     <div class="content-wrapper">
       <div class="header-section">
+        ${data.logoBase64 ? `<img src="data:image/png;base64,${data.logoBase64}" class="logo" alt="Logo" />` : ''}
         <div class="company-name">${data.companyName}</div>
         <div class="divider"></div>
       </div>
@@ -579,9 +580,16 @@ export async function generateCoverPageImage(
     clientName: string;
     reportDate: string;
     additionalInfo?: string;
-  }
+  },
+  logoBuffer?: Buffer | null
 ): Promise<Buffer> {
-  const html = buildCoverPageHTML(coverData);
+  // Convert logo buffer to base64 if provided
+  const logoBase64 = logoBuffer ? logoBuffer.toString('base64') : undefined;
+  
+  const html = buildCoverPageHTML({
+    ...coverData,
+    logoBase64,
+  });
 
   return await htmlToImageBuffer(html, {
     width: 1200,

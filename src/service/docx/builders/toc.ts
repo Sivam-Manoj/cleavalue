@@ -20,63 +20,66 @@ export function buildTOC(reportData: any): Array<Paragraph | Table> {
   const tr = t(lang);
   const entries: { label: string }[] = [];
   
-  // Order matches the HTML template and document structure exactly
-  // 1. Report Summary
-  entries.push({ label: tr.reportSummary });
+  // Order matches the actual document structure
+  // Page numbering starts from Transmittal Letter (page 1)
   
-  // 2. Summary of Value Conclusions
-  entries.push({ label: tr.summaryOfValue });
-  
-  // 3. Report Details (included in Report Summary section)
-  entries.push({ label: tr.reportDetails });
-  
-  // 4. Conditions of Appraisal
-  entries.push({ label: tr.conditionsHeading });
-  
-  // 5. Purpose of This Report
-  entries.push({ label: tr.purposeHeading });
-  
-  // 6. Identification of Assets Appraised
-  entries.push({ label: tr.identHeading });
-  
-  // 7. Scope of Work
-  entries.push({ label: tr.scopeHeading });
-  
-  // 8. Observations and Comments
-  entries.push({ label: tr.observationsHeading });
-  
-  // 9. Intended Users
-  entries.push({ label: tr.intendedHeading });
-  
-  // 10. Value Terminology
-  entries.push({ label: tr.valueTermHeading });
-  
-  // 11. Definitions and Obsolescence
-  entries.push({ label: tr.definitionsHeading });
-  
-  // 12. Limiting Conditions and Critical Assumptions
-  entries.push({ label: tr.limitingHeading });
-  
-  // 13. Company, Subject Asset Description
-  entries.push({ label: tr.companySubjectHeading });
-  
-  // 14. Approaches to Value
-  entries.push({ label: tr.approachesHeading });
-  
-  // 15. Valuation Process and Methodology
-  entries.push({ label: tr.valProcessHeading });
-  
-  // 16. Code of Ethics
-  entries.push({ label: tr.codeEthicsHeading });
-  
-  // 17. EXPERIENCE
-  entries.push({ label: tr.experienceHeading });
-  
-  // 18. Transmittal Letter
+  // 1. Transmittal Letter - Page 1
   entries.push({ label: tr.transmittalLetter });
   
-  // 19. Certificate of Appraisal
+  // 2. Certificate of Appraisal - Page 2
   entries.push({ label: tr.certificateOfAppraisal });
+  
+  // Main content sections start from Page 3+
+  // 3. Report Summary
+  entries.push({ label: tr.reportSummary });
+  
+  // 4. Summary of Value Conclusions
+  entries.push({ label: tr.summaryOfValue });
+  
+  // 5. Report Details
+  entries.push({ label: tr.reportDetails });
+  
+  // 6. Conditions of Appraisal
+  entries.push({ label: tr.conditionsHeading });
+  
+  // 7. Purpose of This Report
+  entries.push({ label: tr.purposeHeading });
+  
+  // 8. Identification of Assets Appraised
+  entries.push({ label: tr.identHeading });
+  
+  // 9. Scope of Work
+  entries.push({ label: tr.scopeHeading });
+  
+  // 10. Observations and Comments
+  entries.push({ label: tr.observationsHeading });
+  
+  // 11. Intended Users
+  entries.push({ label: tr.intendedHeading });
+  
+  // 12. Value Terminology
+  entries.push({ label: tr.valueTermHeading });
+  
+  // 13. Definitions and Obsolescence
+  entries.push({ label: tr.definitionsHeading });
+  
+  // 14. Limiting Conditions and Critical Assumptions
+  entries.push({ label: tr.limitingHeading });
+  
+  // 15. Company, Subject Asset Description
+  entries.push({ label: tr.companySubjectHeading });
+  
+  // 16. Approaches to Value
+  entries.push({ label: tr.approachesHeading });
+  
+  // 17. Valuation Process and Methodology
+  entries.push({ label: tr.valProcessHeading });
+  
+  // 18. Code of Ethics
+  entries.push({ label: tr.codeEthicsHeading });
+  
+  // 19. Experience
+  entries.push({ label: tr.experienceHeading });
   
   // 20. Results (lots/catalogue/per_item/combined)
   const gm = String(reportData?.grouping_mode || "");

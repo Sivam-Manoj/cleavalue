@@ -75,17 +75,16 @@ export async function buildCover(
       clientName: preparedFor || "—",
       reportDate: reportDate || "—",
       additionalInfo: lotsOrAddr || "",
-    });
+    }, logoBuffer);
   } catch (error) {
     console.error("Failed to generate cover page image:", error);
   }
 
-  // If image generation succeeded, use it
+  // If image generation succeeded, use it as full-page cover
   if (coverImageBuffer) {
     return new Table({
-      width: { size: contentWidthTw, type: WidthType.DXA },
+      width: { size: 100, type: WidthType.PERCENTAGE },
       layout: TableLayoutType.FIXED,
-      columnWidths: [contentWidthTw],
       borders: {
         top: { style: BorderStyle.NONE },
         bottom: { style: BorderStyle.NONE },
@@ -94,7 +93,7 @@ export async function buildCover(
       },
       rows: [
         new TableRow({
-          height: { value: convertInchesToTwip(10), rule: HeightRule.EXACT },
+          height: { value: convertInchesToTwip(10.5), rule: HeightRule.EXACT },
           children: [
             new TableCell({
               margins: { top: 0, bottom: 0, left: 0, right: 0 },
@@ -105,11 +104,12 @@ export async function buildCover(
                     new ImageRun({
                       data: coverImageBuffer as any,
                       transformation: {
-                        width: 650,
-                        height: 933, // 1200x1400 aspect ratio scaled to 650 width
+                        width: 816,  // 8.5 inches at 96 DPI for full width
+                        height: 1056, // 11 inches at 96 DPI for full height
                       },
                     } as any),
                   ],
+                  spacing: { before: 0, after: 0 },
                 }),
               ],
             }),
