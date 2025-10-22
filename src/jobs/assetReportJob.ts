@@ -7,7 +7,6 @@ import {
   type AssetAnalysisResult,
 } from "../service/assetOpenAIService.js";
 import { generateAssetDocxFromReport } from "../service/assetDocxService.js";
-import { generateHTMLDocx } from "../service/docx/htmlDocxBuilder.js"; // NEW: HTML-based DOCX
 import { generateAssetPdfFromReport } from "../service/assetPdfService.js";
 import { generateAssetXlsxFromReport } from "../service/xlsx/assetXlsxService.js";
 import {
@@ -1099,8 +1098,8 @@ export async function runAssetReportJob({
     });
 
     const reportObject = newReport.toObject();
-    // Generate PDF, DOCX (both versions), and XLSX in parallel
-    const [pdfBuffer, docxBuffer, htmlDocxBuffer, xlsxBuffer] =
+    // Generate PDF, DOCX (now uses HTML builder), and XLSX in parallel
+    const [pdfBuffer, docxBuffer, xlsxBuffer] =
       await Promise.all([
         withStep("generate_pdf", "Generating PDF", async () => {
           const t0 = Date.now();
@@ -1152,32 +1151,6 @@ export async function runAssetReportJob({
           );
           return buf;
         }),
-        withStep(
-          "generate_html_docx",
-          "Generating HTML DOCX (TEST)",
-          async () => {
-            const t0 = Date.now();
-            console.log(
-              `[AssetReportJob] HTML-DOCX generation start for report ${newReport._id} at ${new Date(t0).toISOString()}`
-            );
-            const buf = await generateHTMLDocx({
-              ...reportObject,
-              inspector_name: user?.name || "",
-              user_email: user?.email || "",
-              language: ((): "en" | "fr" | "es" => {
-                const l = String(
-                  (reportObject as any)?.language || details?.language || ""
-                ).toLowerCase();
-                return l === "fr" || l === "es" ? (l as any) : "en";
-              })(),
-            });
-            const t1 = Date.now();
-            console.log(
-              `[AssetReportJob] HTML-DOCX generation finished in ${t1 - t0}ms for report ${newReport._id}`
-            );
-            return buf;
-          }
-        ),
         withStep("generate_xlsx", "Generating Excel", async () => {
           const t0 = Date.now();
           console.log(
@@ -1213,15 +1186,13 @@ export async function runAssetReportJob({
     const baseName = `asset-mixed-${cn}-${dtStr}-${uniq}`;
 
     const pdfFilename = `${baseName}.pdf`;
-    const docxFilename = `${baseName}.docx`;
-    const htmlDocxFilename = `${baseName}-html.docx`; // NEW: HTML-based DOCX for testing
+    const docxFilename = `${baseName}.docx`; // Now uses HTML-based builder with amazing styling
     const xlsxFilename = `${baseName}.xlsx`;
     const imagesFolderName = `${baseName}-images`;
     const imagesZipFilename = `${baseName}-images.zip`;
 
     const pdfPath = path.join(reportsDir, pdfFilename);
     const docxPath = path.join(reportsDir, docxFilename);
-    const htmlDocxPath = path.join(reportsDir, htmlDocxFilename); // NEW
     const xlsxPath = path.join(reportsDir, xlsxFilename);
     const imagesDirPath = path.join(reportsDir, imagesFolderName);
     const imagesZipPath = path.join(reportsDir, imagesZipFilename);
@@ -1235,26 +1206,14 @@ export async function runAssetReportJob({
           `[AssetReportJob] PDF saved to ${pdfPath} in ${t1 - t0}ms (size=${pdfBuffer.length} bytes)`
         );
       }),
-      withStep("save_docx_file", "Saving DOCX file", async () => {
+      withStep("save_docx_file", "Saving DOCX file (HTML)", async () => {
         const t0 = Date.now();
         await fs.writeFile(docxPath, docxBuffer);
         const t1 = Date.now();
         console.log(
-          `[AssetReportJob] DOCX saved to ${docxPath} in ${t1 - t0}ms (size=${docxBuffer.length} bytes)`
+          `[AssetReportJob] DOCX (HTML-based) saved to ${docxPath} in ${t1 - t0}ms (size=${docxBuffer.length} bytes)`
         );
       }),
-      withStep(
-        "save_html_docx_file",
-        "Saving HTML DOCX file (TEST)",
-        async () => {
-          const t0 = Date.now();
-          await fs.writeFile(htmlDocxPath, htmlDocxBuffer);
-          const t1 = Date.now();
-          console.log(
-            `[AssetReportJob] HTML-DOCX saved to ${htmlDocxPath} in ${t1 - t0}ms (size=${htmlDocxBuffer.length} bytes)`
-          );
-        }
-      ),
       withStep("save_xlsx_file", "Saving XLSX file", async () => {
         const t0 = Date.now();
         await fs.writeFile(xlsxPath, xlsxBuffer);
