@@ -727,7 +727,7 @@ export async function generateRealEstateDocx(reportData: any): Promise<Buffer> {
         },
         headers: { default: new Header({ children: [] }) },
         footers: { default: new Footer({ children: [] }) },
-        children: [buildCover(coverData, logoBuffer, contentWidthTw, tt.title)],
+        children: [await buildCover(coverData, logoBuffer, contentWidthTw, tt.title)],
       },
       // Table of Contents (no header/footer)
       {

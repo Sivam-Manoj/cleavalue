@@ -272,7 +272,7 @@ async function generateStandardDocx(
         headers: { default: new Header({ children: [] }) },
         footers: { default: new Footer({ children: [] }) },
         children: [
-          buildCover(reportData, logoBuffer, contentWidthTw, tr.assetReport),
+          await buildCover(reportData, logoBuffer, contentWidthTw, tr.assetReport),
         ],
       },
       // Table of Contents (no header/footer)

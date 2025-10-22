@@ -1188,7 +1188,7 @@ export async function generateSalvageDocx(reportData: any): Promise<Buffer> {
         headers: { default: new Header({ children: [] }) },
         footers: { default: new Footer({ children: [] }) },
         children: [
-          buildCover(
+          await buildCover(
             { ...reportData, inspector_name: appraiser, suppressLotsLine: true },
             logoBuffer,
             contentWidthTw,

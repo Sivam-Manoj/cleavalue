@@ -301,7 +301,7 @@ export async function generateCombinedDocx(reportData: any): Promise<Buffer> {
         },
         headers: { default: new Header({ children: [] }) },
         footers: { default: new Footer({ children: [] }) },
-        children: [buildCover(reportData, logoBuffer, contentWidthTw, tr.assetReport)],
+        children: [await buildCover(reportData, logoBuffer, contentWidthTw, tr.assetReport)],
       },
       // Table of Contents (no header/footer)
       {
