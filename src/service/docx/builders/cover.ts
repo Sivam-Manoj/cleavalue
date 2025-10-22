@@ -83,7 +83,7 @@ export async function buildCover(
   // If image generation succeeded, use it as full-page cover
   if (coverImageBuffer) {
     // Full page letter size: 8.5 x 11 inches
-    // At standard DPI this should completely fill the page
+    // Image is 1200x1553px matching 8.5:11 aspect ratio exactly
     const pageWidth = 8.5 * 72; // 612 points
     const pageHeight = 11 * 72; // 792 points
     
@@ -96,16 +96,19 @@ export async function buildCover(
         left: { style: BorderStyle.NONE },
         right: { style: BorderStyle.NONE },
       },
+      margins: { top: 0, bottom: 0, left: 0, right: 0 },
       rows: [
         new TableRow({
           height: { value: convertInchesToTwip(11), rule: HeightRule.EXACT },
+          cantSplit: true,
           children: [
             new TableCell({
               margins: { top: 0, bottom: 0, left: 0, right: 0 },
-              verticalAlign: VerticalAlign.CENTER,
+              verticalAlign: VerticalAlign.TOP,
               children: [
                 new Paragraph({
-                  alignment: AlignmentType.CENTER,
+                  alignment: AlignmentType.LEFT,
+                  indent: { left: 0, right: 0 },
                   children: [
                     new ImageRun({
                       data: coverImageBuffer as any,
@@ -115,7 +118,7 @@ export async function buildCover(
                       },
                     } as any),
                   ],
-                  spacing: { before: 0, after: 0 },
+                  spacing: { before: 0, after: 0, line: 0 },
                 }),
               ],
             }),

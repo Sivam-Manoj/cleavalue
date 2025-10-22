@@ -129,17 +129,19 @@ function buildCoverPageHTML(data: {
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: #ffffff;
-      min-height: 1400px;
+      width: 1200px;
+      height: 1553px;
       display: flex;
-      align-items: center;
-      justify-content: center;
+      align-items: stretch;
+      justify-content: stretch;
       padding: 0;
       margin: 0;
+      overflow: hidden;
     }
     
     .cover-container {
-      width: 100%;
-      height: 1400px;
+      width: 1200px;
+      height: 1553px;
       background: linear-gradient(135deg, #fee2e2 0%, #fecaca 25%, #fca5a5 50%, #f87171 75%, #ef4444 100%);
       position: relative;
       overflow: hidden;
@@ -595,7 +597,7 @@ export async function generateCoverPageImage(
 
   return await htmlToImageBuffer(html, {
     width: 1200,
-    height: 1400,
+    height: 1553, // 8.5:11 aspect ratio (1200 * 11/8.5 = 1553)
     format: "png",
     quality: 95,
   });
