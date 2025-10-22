@@ -7,6 +7,7 @@ import {
   type AssetAnalysisResult,
 } from "../service/assetOpenAIService.js";
 import { generateAssetDocxFromReport } from "../service/assetDocxService.js";
+import { generateHTMLDocx } from "../service/docx/htmlDocxBuilder.js"; // NEW: HTML-based DOCX
 import { generateAssetPdfFromReport } from "../service/assetPdfService.js";
 import { generateAssetXlsxFromReport } from "../service/xlsx/assetXlsxService.js";
 import {
@@ -525,9 +526,12 @@ export async function runAssetReportJob({
             const uniqueLotId = `lot-${String(lotCounter).padStart(3, "0")}`;
 
             // Resolve primary image for this lot
-            const primaryIdx = Array.isArray(idxs) && idxs.length ? idxs[0] : undefined;
-            const primaryFromIdx = primaryIdx != null ? imageUrls[primaryIdx] : undefined;
-            const primaryUrl = directUrl || primaryFromIdx || urls[0] || coverUrl || undefined;
+            const primaryIdx =
+              Array.isArray(idxs) && idxs.length ? idxs[0] : undefined;
+            const primaryFromIdx =
+              primaryIdx != null ? imageUrls[primaryIdx] : undefined;
+            const primaryUrl =
+              directUrl || primaryFromIdx || urls[0] || coverUrl || undefined;
 
             const out = {
               ...lot,
@@ -539,7 +543,8 @@ export async function runAssetReportJob({
               image_indexes:
                 subMode === "per_item"
                   ? ((): number[] => {
-                      if (primaryIdx != null && Number.isFinite(primaryIdx)) return [primaryIdx];
+                      if (primaryIdx != null && Number.isFinite(primaryIdx))
+                        return [primaryIdx];
                       if (directUrl) {
                         const gi = imageUrls.indexOf(directUrl);
                         if (gi >= 0) return [gi];
@@ -549,7 +554,9 @@ export async function runAssetReportJob({
                   : idxs,
               image_urls:
                 subMode === "per_item"
-                  ? (primaryUrl ? [primaryUrl] : [])
+                  ? primaryUrl
+                    ? [primaryUrl]
+                    : []
                   : urls,
               extra_image_indexes: extraImageIdxs,
               extra_image_urls: extraImageUrls,
@@ -572,7 +579,10 @@ export async function runAssetReportJob({
                   lot_id: out?.lot_id,
                   title: typeof out?.title === "string" ? out.title : undefined,
                   chosenUrl: out?.image_url,
-                  image_url_in: typeof lot?.image_url === "string" ? lot.image_url : undefined,
+                  image_url_in:
+                    typeof lot?.image_url === "string"
+                      ? lot.image_url
+                      : undefined,
                   mappedIdxs: idxs,
                   primaryIdx,
                   primaryFromIdx,
@@ -766,8 +776,11 @@ export async function runAssetReportJob({
           const dbgList = (lots as any[]).map((l: any) => ({
             lot_id: l?.lot_id,
             title: typeof l?.title === "string" ? l.title : undefined,
-            image_url: typeof l?.image_url === "string" ? l.image_url : undefined,
-            image_indexes: Array.isArray(l?.image_indexes) ? l.image_indexes : [],
+            image_url:
+              typeof l?.image_url === "string" ? l.image_url : undefined,
+            image_indexes: Array.isArray(l?.image_indexes)
+              ? l.image_indexes
+              : [],
             image_urls: Array.isArray(l?.image_urls) ? l.image_urls : [],
           }));
           const previewImageUrls = imageUrls.slice(0, 20);
@@ -791,22 +804,26 @@ export async function runAssetReportJob({
       groupingMode === "single_lot"
     ) {
       try {
-        const decorated = (Array.isArray(lots) ? lots : []).map((lot: any, idx: number) => {
-          const raw = lot?.lot_number;
-          let num: number | null = null;
-          if (typeof raw === "number" && Number.isFinite(raw)) num = raw;
-          else if (typeof raw === "string") {
-            const m = raw.match(/\d+/);
-            if (m) {
-              const n = parseInt(m[0], 10);
-              if (Number.isFinite(n)) num = n;
+        const decorated = (Array.isArray(lots) ? lots : []).map(
+          (lot: any, idx: number) => {
+            const raw = lot?.lot_number;
+            let num: number | null = null;
+            if (typeof raw === "number" && Number.isFinite(raw)) num = raw;
+            else if (typeof raw === "string") {
+              const m = raw.match(/\d+/);
+              if (m) {
+                const n = parseInt(m[0], 10);
+                if (Number.isFinite(n)) num = n;
+              }
             }
+            return { idx, num, lot };
           }
-          return { idx, num, lot };
-        });
+        );
         const sticker = decorated.filter((d) => d.num != null);
         const others = decorated.filter((d) => d.num == null);
-        sticker.sort((a, b) => (a.num as number) - (b.num as number) || a.idx - b.idx);
+        sticker.sort(
+          (a, b) => (a.num as number) - (b.num as number) || a.idx - b.idx
+        );
         const merged = [...sticker, ...others];
         lots = merged.map((d) => d.lot);
       } catch {}
@@ -849,7 +866,7 @@ export async function runAssetReportJob({
             for (let lotIdx = 0; lotIdx < lots.length; lotIdx++) {
               const lot = lots[lotIdx];
               let lotNum: string | number = lot?.lot_number;
-              
+
               // If lot_number is null/undefined, assign sequential number
               if (lotNum == null || String(lotNum).trim() === "") {
                 lotNum = lotIdx + 1;
@@ -887,7 +904,7 @@ export async function runAssetReportJob({
               const lotImages: number[] = Array.isArray(lot?.image_indexes)
                 ? lot.image_indexes
                 : [];
-              
+
               // For each image in this lot, create rename mapping
               for (let i = 0; i < lotImages.length; i++) {
                 const globalIdx = lotImages[i];
@@ -912,17 +929,19 @@ export async function runAssetReportJob({
             // Copy images to new names in R2 storage
             const timestamp = Date.now();
             const newImageUrls: string[] = [...imageUrls]; // Clone
-            
+
             for (const info of renameMap) {
               try {
                 // Download old image from R2
                 const response = await fetch(info.oldUrl);
                 if (!response.ok) {
-                  console.warn(`Failed to fetch image for rename: ${info.oldUrl}`);
+                  console.warn(
+                    `Failed to fetch image for rename: ${info.oldUrl}`
+                  );
                   continue;
                 }
                 const buffer = Buffer.from(await response.arrayBuffer());
-                
+
                 // Upload with new lot-based name
                 const newFileName = `uploads/asset/${timestamp}-${info.newName}`;
                 await uploadBufferToR2(
@@ -932,10 +951,10 @@ export async function runAssetReportJob({
                   newFileName
                 );
                 const newUrl = `https://images.sellsnap.store/${newFileName}`;
-                
+
                 // Update imageUrls array at global index
                 newImageUrls[info.globalIndex] = newUrl;
-                
+
                 console.log(
                   `Renamed image: ${info.oldUrl.split("/").pop()} -> ${info.newName}`
                 );
@@ -958,7 +977,7 @@ export async function runAssetReportJob({
                 lot.image_urls = lot.image_indexes
                   .map((idx: number) => imageUrls[idx])
                   .filter(Boolean);
-                
+
                 // Update single image_url (first image)
                 if (lot.image_urls.length > 0) {
                   lot.image_url = lot.image_urls[0];
@@ -1000,44 +1019,53 @@ export async function runAssetReportJob({
 
     if (includeValuationTable && valuationMethods.length > 0) {
       try {
-        await withStep("calculate_valuations", "Calculating valuation methods", async () => {
-          const { determineValuationPercentages, generateValuationTable } = await import("../service/assetValuationService.js");
-          
-          // Calculate total FMV from all lots
-          const totalFMV = lots.reduce((sum, lot) => {
-            const valStr = String(lot.estimated_value || "0");
-            const num = parseFloat(valStr.replace(/[^0-9.-]/g, ""));
-            return sum + (isNaN(num) ? 0 : num);
-          }, 0);
+        await withStep(
+          "calculate_valuations",
+          "Calculating valuation methods",
+          async () => {
+            const { determineValuationPercentages, generateValuationTable } =
+              await import("../service/assetValuationService.js");
 
-          if (totalFMV > 0) {
-            // Get AI-determined percentages based on first lot or general info
-            const firstLot = lots[0];
-            const assetTitle = firstLot?.title || "General Assets";
-            const assetDescription = firstLot?.description || "";
-            const assetCondition = firstLot?.condition || "Unknown";
-            const industry = details?.industry || "General";
+            // Calculate total FMV from all lots
+            const totalFMV = lots.reduce((sum, lot) => {
+              const valStr = String(lot.estimated_value || "0");
+              const num = parseFloat(valStr.replace(/[^0-9.-]/g, ""));
+              return sum + (isNaN(num) ? 0 : num);
+            }, 0);
 
-            const percentages = await determineValuationPercentages(
-              assetTitle,
-              assetDescription,
-              assetCondition,
-              industry,
-              totalFMV
-            );
+            if (totalFMV > 0) {
+              // Get AI-determined percentages based on first lot or general info
+              const firstLot = lots[0];
+              const assetTitle = firstLot?.title || "General Assets";
+              const assetDescription = firstLot?.description || "";
+              const assetCondition = firstLot?.condition || "Unknown";
+              const industry = details?.industry || "General";
 
-            // Generate the valuation table
-            valuationData = generateValuationTable(
-              totalFMV,
-              valuationMethods as any,
-              percentages
-            );
+              const percentages = await determineValuationPercentages(
+                assetTitle,
+                assetDescription,
+                assetCondition,
+                industry,
+                totalFMV
+              );
 
-            console.log(`Generated valuation table with ${valuationMethods.length} methods for total FMV: $${totalFMV}`);
-          } else {
-            console.warn("Total FMV is 0, skipping valuation table generation");
+              // Generate the valuation table
+              valuationData = generateValuationTable(
+                totalFMV,
+                valuationMethods as any,
+                percentages
+              );
+
+              console.log(
+                `Generated valuation table with ${valuationMethods.length} methods for total FMV: $${totalFMV}`
+              );
+            } else {
+              console.warn(
+                "Total FMV is 0, skipping valuation table generation"
+              );
+            }
           }
-        });
+        );
       } catch (error) {
         console.error("Valuation calculation failed:", error);
         // Continue without valuation data
@@ -1071,74 +1099,103 @@ export async function runAssetReportJob({
     });
 
     const reportObject = newReport.toObject();
-    // Generate all outputs concurrently
-    const [pdfBuffer, docxBuffer, xlsxBuffer] = await Promise.all([
-      withStep("generate_pdf", "Generating PDF", async () => {
-        const t0 = Date.now();
-        console.log(
-          `[AssetReportJob] PDF generation start for report ${newReport._id} at ${new Date(t0).toISOString()}`
-        );
-        const buf = await generateAssetPdfFromReport({
-          ...reportObject,
-          inspector_name: user?.name || "",
-          user_email: user?.email || "",
-          language: selectedLanguage,
-        });
-        const t1 = Date.now();
-        console.log(
-          `[AssetReportJob] PDF generation finished in ${t1 - t0}ms for report ${newReport._id}`
-        );
-        return buf;
-      }),
-      withStep("generate_docx", "Generating DOCX", async () => {
-        const t0 = Date.now();
-        console.log(
-          `[AssetReportJob] DOCX generation start for report ${newReport._id} at ${new Date(t0).toISOString()}`
-        );
-        const buf = await generateAssetDocxFromReport({
-          ...reportObject,
-          inspector_name: user?.name || "",
-          user_email: user?.email || "",
-          language: ((): "en" | "fr" | "es" => {
-            const l = String(
-              (reportObject as any)?.language || details?.language || ""
-            ).toLowerCase();
-            return l === "fr" || l === "es" ? (l as any) : "en";
-          })(),
-          ...(groupingMode === "combined" && analysis?.combined
-            ? {
-                grouping_mode: "combined",
-                combined: (analysis as any).combined,
-                combined_modes: Array.isArray((analysis as any).combined_modes)
-                  ? (analysis as any).combined_modes
-                  : undefined,
-              }
-            : {}),
-        });
-        const t1 = Date.now();
-        console.log(
-          `[AssetReportJob] DOCX generation finished in ${t1 - t0}ms for report ${newReport._id}`
-        );
-        return buf;
-      }),
-      withStep("generate_xlsx", "Generating Excel", async () => {
-        const t0 = Date.now();
-        console.log(
-          `[AssetReportJob] XLSX generation start for report ${newReport._id} at ${new Date(t0).toISOString()}`
-        );
-        const buf = await generateAssetXlsxFromReport({
-          ...reportObject,
-          inspector_name: user?.name || "",
-          language:
-            (reportObject as any)?.language || details?.language || "en",
-        });
-        const t1 = Date.now();
-        console.log(
-          `[AssetReportJob] XLSX generation finished in ${t1 - t0}ms for report ${newReport._id}`
-        );
-        return buf;
-      }),
-    ]);
+    // Generate PDF, DOCX (both versions), and XLSX in parallel
+    const [pdfBuffer, docxBuffer, htmlDocxBuffer, xlsxBuffer] =
+      await Promise.all([
+        withStep("generate_pdf", "Generating PDF", async () => {
+          const t0 = Date.now();
+          console.log(
+            `[AssetReportJob] PDF generation start for report ${newReport._id} at ${new Date(t0).toISOString()}`
+          );
+          const buf = await generateAssetPdfFromReport({
+            ...reportObject,
+            inspector_name: user?.name || "",
+            user_email: user?.email || "",
+            language: selectedLanguage,
+          });
+          const t1 = Date.now();
+          console.log(
+            `[AssetReportJob] PDF generation finished in ${t1 - t0}ms for report ${newReport._id}`
+          );
+          return buf;
+        }),
+        withStep("generate_docx", "Generating DOCX", async () => {
+          const t0 = Date.now();
+          console.log(
+            `[AssetReportJob] DOCX generation start for report ${newReport._id} at ${new Date(t0).toISOString()}`
+          );
+          const buf = await generateAssetDocxFromReport({
+            ...reportObject,
+            inspector_name: user?.name || "",
+            user_email: user?.email || "",
+            language: ((): "en" | "fr" | "es" => {
+              const l = String(
+                (reportObject as any)?.language || details?.language || ""
+              ).toLowerCase();
+              return l === "fr" || l === "es" ? (l as any) : "en";
+            })(),
+            ...(groupingMode === "combined" && analysis?.combined
+              ? {
+                  grouping_mode: "combined",
+                  combined: (analysis as any).combined,
+                  combined_modes: Array.isArray(
+                    (analysis as any).combined_modes
+                  )
+                    ? (analysis as any).combined_modes
+                    : undefined,
+                }
+              : {}),
+          });
+          const t1 = Date.now();
+          console.log(
+            `[AssetReportJob] DOCX generation finished in ${t1 - t0}ms for report ${newReport._id}`
+          );
+          return buf;
+        }),
+        withStep(
+          "generate_html_docx",
+          "Generating HTML DOCX (TEST)",
+          async () => {
+            const t0 = Date.now();
+            console.log(
+              `[AssetReportJob] HTML-DOCX generation start for report ${newReport._id} at ${new Date(t0).toISOString()}`
+            );
+            const buf = await generateHTMLDocx({
+              ...reportObject,
+              inspector_name: user?.name || "",
+              user_email: user?.email || "",
+              language: ((): "en" | "fr" | "es" => {
+                const l = String(
+                  (reportObject as any)?.language || details?.language || ""
+                ).toLowerCase();
+                return l === "fr" || l === "es" ? (l as any) : "en";
+              })(),
+            });
+            const t1 = Date.now();
+            console.log(
+              `[AssetReportJob] HTML-DOCX generation finished in ${t1 - t0}ms for report ${newReport._id}`
+            );
+            return buf;
+          }
+        ),
+        withStep("generate_xlsx", "Generating Excel", async () => {
+          const t0 = Date.now();
+          console.log(
+            `[AssetReportJob] XLSX generation start for report ${newReport._id} at ${new Date(t0).toISOString()}`
+          );
+          const buf = await generateAssetXlsxFromReport({
+            ...reportObject,
+            inspector_name: user?.name || "",
+            language:
+              (reportObject as any)?.language || details?.language || "en",
+          });
+          const t1 = Date.now();
+          console.log(
+            `[AssetReportJob] XLSX generation finished in ${t1 - t0}ms for report ${newReport._id}`
+          );
+          return buf;
+        }),
+      ]);
 
     const reportsDir = path.resolve(process.cwd(), "reports");
     await fs.mkdir(reportsDir, { recursive: true });
@@ -1157,12 +1214,14 @@ export async function runAssetReportJob({
 
     const pdfFilename = `${baseName}.pdf`;
     const docxFilename = `${baseName}.docx`;
+    const htmlDocxFilename = `${baseName}-html.docx`; // NEW: HTML-based DOCX for testing
     const xlsxFilename = `${baseName}.xlsx`;
     const imagesFolderName = `${baseName}-images`;
     const imagesZipFilename = `${baseName}-images.zip`;
 
     const pdfPath = path.join(reportsDir, pdfFilename);
     const docxPath = path.join(reportsDir, docxFilename);
+    const htmlDocxPath = path.join(reportsDir, htmlDocxFilename); // NEW
     const xlsxPath = path.join(reportsDir, xlsxFilename);
     const imagesDirPath = path.join(reportsDir, imagesFolderName);
     const imagesZipPath = path.join(reportsDir, imagesZipFilename);
@@ -1184,6 +1243,18 @@ export async function runAssetReportJob({
           `[AssetReportJob] DOCX saved to ${docxPath} in ${t1 - t0}ms (size=${docxBuffer.length} bytes)`
         );
       }),
+      withStep(
+        "save_html_docx_file",
+        "Saving HTML DOCX file (TEST)",
+        async () => {
+          const t0 = Date.now();
+          await fs.writeFile(htmlDocxPath, htmlDocxBuffer);
+          const t1 = Date.now();
+          console.log(
+            `[AssetReportJob] HTML-DOCX saved to ${htmlDocxPath} in ${t1 - t0}ms (size=${htmlDocxBuffer.length} bytes)`
+          );
+        }
+      ),
       withStep("save_xlsx_file", "Saving XLSX file", async () => {
         const t0 = Date.now();
         await fs.writeFile(xlsxPath, xlsxBuffer);
@@ -1220,13 +1291,13 @@ export async function runAssetReportJob({
           if (m.includes("3gpp")) return ".3gp";
           return "";
         };
-        
+
         // Build lot-based name mapping with mode prefix: globalImageIndex -> lotBasedName (e.g., "bundle-1.1.jpg")
         const imageLotNames = new Map<number, string>();
         for (let lotIdx = 0; lotIdx < lots.length; lotIdx++) {
           const lot = lots[lotIdx];
-          const lotNum = lot?.lot_number ?? (lotIdx + 1);
-          
+          const lotNum = lot?.lot_number ?? lotIdx + 1;
+
           // Determine mode prefix (same logic as above)
           let modePrefix = "";
           if (groupingMode === "mixed" && lot?.sub_mode) {
@@ -1250,11 +1321,11 @@ export async function runAssetReportJob({
             else if (groupingMode === "per_photo") modePrefix = "perphoto";
             else if (groupingMode === "catalogue") modePrefix = "catalogue";
           }
-          
+
           const lotImages: number[] = Array.isArray(lot?.image_indexes)
             ? lot.image_indexes
             : [];
-          
+
           for (let i = 0; i < lotImages.length; i++) {
             const globalIdx = lotImages[i];
             const fileName = modePrefix
@@ -1269,7 +1340,8 @@ export async function runAssetReportJob({
           const file = images[i];
           // Use lot-based name if available, otherwise fallback to sequential
           const lotBasedName = imageLotNames.get(i);
-          const finalName = lotBasedName || `image-${String(i + 1).padStart(3, "0")}.jpg`;
+          const finalName =
+            lotBasedName || `image-${String(i + 1).padStart(3, "0")}.jpg`;
           const filePath = path.join(imagesDirPath, finalName);
 
           // Resolve input buffer
@@ -1357,7 +1429,9 @@ export async function runAssetReportJob({
         : "N/A";
 
     // Create approval records (pending by default)
-    const cnLabel = String((reportObject as any)?.contract_no || details?.contract_no || "").trim();
+    const cnLabel = String(
+      (reportObject as any)?.contract_no || details?.contract_no || ""
+    ).trim();
     const displayAddress = cnLabel ? `Asset - ${cnLabel}` : `Asset`;
     const pdfRec = new PdfReport({
       filename: pdfFilename,
