@@ -283,7 +283,7 @@ Make the content professional, specific to this asset, and production-ready for 
       method,
       fullName: def.fullName,
       value: calculatedValue,
-      aiExplanation: parsed.aiExplanation || `This ${def.fullName} represents the estimated value based on ${def.saleConditions.toLowerCase()}, calculated at ${Math.round((calculatedValue/baseFMV)*100)}% of the fair market value.`,
+      aiExplanation: parsed.aiExplanation || `This ${def.fullName} represents the estimated value based on ${def.saleConditions.toLowerCase()}.`,
       description: def.description,
       saleConditions: def.saleConditions,
       timeline: def.timeline,
@@ -367,7 +367,7 @@ async function generateBriefExplanation(
   const def = VALUATION_DEFINITIONS[method];
   
   try {
-    const prompt = `You are an expert appraiser. Provide a brief, professional explanation (2-3 sentences) for why this ${def.fullName} was calculated at $${calculatedValue.toLocaleString()} (${Math.round((calculatedValue/baseFMV)*100)}% of FMV).
+    const prompt = `You are an expert appraiser. Provide a brief, professional explanation (2-3 sentences) for why this ${def.fullName} was calculated at $${calculatedValue.toLocaleString()} for this asset.
 
 **Asset:** ${assetTitle}
 **Description:** ${assetDescription || "N/A"}
@@ -379,7 +379,7 @@ async function generateBriefExplanation(
 **Use:** ${def.useCase}
 **Conditions:** ${def.saleConditions}
 
-Provide ONLY the 2-3 sentence explanation (no JSON, no labels, just the text). Make it specific to this asset and professional for client reports.`;
+Provide ONLY the 2-3 sentence explanation (no JSON, no labels, just the text). Make it specific to this asset and professional for client reports. DO NOT mention percentages or % in your explanation.`;
 
     const response = await openai.chat.completions.create({
       model: process.env.OPENAI_MODEL_TEXT || "gpt-4o-mini",
@@ -389,10 +389,10 @@ Provide ONLY the 2-3 sentence explanation (no JSON, no labels, just the text). M
     });
 
     return response.choices[0]?.message?.content?.trim() || 
-      `This ${def.fullName} represents ${Math.round((calculatedValue/baseFMV)*100)}% of the fair market value, reflecting ${def.saleConditions.toLowerCase()} within a ${def.timeline.toLowerCase()} timeframe.`;
+      `This ${def.fullName} reflects ${def.saleConditions.toLowerCase()} within a ${def.timeline.toLowerCase()} timeframe.`;
   } catch (error) {
     console.error(`Brief explanation generation failed for ${method}:`, error);
-    return `This ${def.fullName} represents ${Math.round((calculatedValue/baseFMV)*100)}% of the fair market value, reflecting ${def.saleConditions.toLowerCase()} within a ${def.timeline.toLowerCase()} timeframe.`;
+    return `This ${def.fullName} reflects ${def.saleConditions.toLowerCase()} within a ${def.timeline.toLowerCase()} timeframe.`;
   }
 }
 

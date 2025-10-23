@@ -12,6 +12,11 @@ import {
   TableLayoutType,
 } from "docx";
 import { goldDivider } from "./utils.js";
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || "",
+});
 
 interface ValuationMethod {
   method: string;
@@ -28,6 +33,46 @@ interface ValuationMethod {
 interface ValuationData {
   baseFMV: number;
   methods: ValuationMethod[];
+}
+
+/**
+ * Generate AI recommendation for best valuation approach
+ */
+async function generateRecommendation(
+  valuationData: ValuationData,
+  reportData: any
+): Promise<string> {
+  try {
+    const methodsSummary = valuationData.methods
+      .map(m => `${m.method}: ${new Intl.NumberFormat("en-US", { style: "currency", currency: reportData?.currency || "CAD", minimumFractionDigits: 0 }).format(m.value)}`)
+      .join(", ");
+
+    const prompt = `You are an expert appraiser. Based on the valuation methods below, recommend the most appropriate approach for this asset.
+
+**Available Valuations:**
+${methodsSummary}
+
+**Asset Context:**
+- Industry: ${reportData?.industry || "General"}
+- Condition: ${reportData?.lots?.[0]?.condition || "Unknown"}
+
+Provide a 2-3 sentence professional recommendation on which valuation method is most appropriate for this asset and why. Be specific and actionable for client decision-making.
+
+Return ONLY the recommendation text (no labels, no JSON).`;
+
+    const response = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL_TEXT || "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
+      max_tokens: 200,
+    });
+
+    return response.choices[0]?.message?.content?.trim() || 
+      `Based on the asset characteristics and market conditions, consider the valuation method that best aligns with your intended use case and timeline requirements.`;
+  } catch (error) {
+    console.error("Recommendation generation failed:", error);
+    return `Based on the asset characteristics and market conditions, consider the valuation method that best aligns with your intended use case and timeline requirements.`;
+  }
 }
 
 /**
@@ -364,26 +409,27 @@ export async function buildValuationTable(
 
   children.push(new Paragraph({ text: "", spacing: { after: 400 } }));
 
-  // Note about AI-generated explanations
+  // Recommendation section
+  const recommendationText = await generateRecommendation(valuationData, reportData);
+  
   children.push(
     new Paragraph({
       children: [
         new TextRun({
-          text: "Note: ",
+          text: "Recommendation: ",
           font: "Calibri",
-          size: 20,
+          size: 22,
           bold: true,
-          color: "6B7280",
+          color: "DC2626",
         }),
         new TextRun({
-          text: "AI-generated explanations above are specific to this asset's characteristics, condition, and industry context.",
+          text: recommendationText,
           font: "Calibri",
           size: 20,
-          color: "6B7280",
-          italics: true,
+          color: "1F2937",
         }),
       ],
-      spacing: { before: 300, after: 100 },
+      spacing: { before: 300, after: 200 },
     })
   );
 
