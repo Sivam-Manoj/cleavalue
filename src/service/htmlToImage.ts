@@ -19,7 +19,7 @@ export async function htmlToImageBuffer(
     quality?: number;
   } = {}
 ): Promise<Buffer> {
-  const { width = 1200, height = 1600, format = "png", quality = 95 } = options;
+  const { width = 1200, height = 1605, format = "png", quality = 95 } = options;
 
   let browser;
   try {
