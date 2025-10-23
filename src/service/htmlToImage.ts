@@ -144,12 +144,12 @@ function buildCertificateHTMLFallback(data: {
   <style>
     body { font-family: 'Inter', sans-serif; background: #ffffff; width: 794px; height: 1123px; margin: 0; padding: 0; overflow: hidden; }
     .playfair { font-family: 'Playfair Display', serif; }
-    .cert-wrapper { width: 100%; height: 100%; margin: 0; padding: 30px 40px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; border-radius: 0; }
+    .cert-wrapper { width: 100%; height: 100%; margin: 0; padding: 0; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; border-radius: 0; }
   </style>
 </head>
 <body>
-  <div class="cert-wrapper bg-white rounded-lg shadow-2xl border-4 border-red-200 overflow-hidden">
-    <div class="bg-gradient-to-r from-red-600 to-red-700 p-12 text-center relative">
+  <div class="cert-wrapper bg-gradient-to-br from-red-50 to-white overflow-hidden">
+    <div class="bg-gradient-to-r from-red-600 to-red-700 p-8 text-center relative">
       <div class="absolute top-0 left-0 w-full h-1 bg-amber-400"></div>
       <i class="fas fa-award text-white text-5xl mb-4"></i>
       <h1 class="playfair text-5xl font-bold text-white uppercase tracking-wider mb-3">${data.title}</h1>
@@ -157,7 +157,7 @@ function buildCertificateHTMLFallback(data: {
       <div class="absolute bottom-0 left-0 w-full h-1.5 bg-amber-400"></div>
     </div>
     
-    <div class="p-12">
+    <div class="p-8">
       <p class="text-gray-700 text-center leading-relaxed mb-8">
         This document certifies that a comprehensive professional appraisal has been conducted 
         in accordance with applicable industry standards and regulatory requirements.

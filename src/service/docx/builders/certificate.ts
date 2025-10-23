@@ -68,12 +68,12 @@ export async function buildCertificateOfAppraisal(
           new ImageRun({
             data: certificateImageBuffer as any,
             transformation: {
-              width: 595,  // A4 width to fill page properly
-              height: 842, // A4 aspect ratio (1:1.414)
+              width: 794,  // Full A4 pixel width (96 DPI)
+              height: 1123, // Full A4 pixel height (96 DPI) - fills entire page
             },
           } as any),
         ],
-        spacing: { after: 400 },
+        spacing: { before: 0, after: 0 },
       })
     );
 
