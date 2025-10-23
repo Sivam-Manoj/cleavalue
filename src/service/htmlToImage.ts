@@ -142,9 +142,9 @@ function buildCertificateHTMLFallback(data: {
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
-    body { font-family: 'Inter', sans-serif; background: #ffffff; width: 794px; height: 1123px; margin: 0; padding: 0; overflow: hidden; }
+    body { font-family: 'Inter', sans-serif; background: #ffffff; width: 794px; height: 1123px; margin: 0; padding: 0; overflow: hidden; display: flex; align-items: flex-start; justify-content: center; }
     .playfair { font-family: 'Playfair Display', serif; }
-    .cert-wrapper { width: 100%; height: 100%; margin: 0; padding: 0; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; border-radius: 0; }
+    .cert-wrapper { width: 780px; height: 1050px; margin: 30px 7px 0 7px; padding: 0; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; border-radius: 8px; border: 2px solid #fecaca; }
   </style>
 </head>
 <body>

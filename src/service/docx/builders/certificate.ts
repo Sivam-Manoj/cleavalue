@@ -27,7 +27,7 @@ export async function buildCertificateOfAppraisal(
 
   // Modern certificate - no heading, goes straight to the certificate card
   children.push(
-    new Paragraph({ text: "", pageBreakBefore: true, spacing: { after: 100 } })
+    new Paragraph({ text: "", pageBreakBefore: true, spacing: { after: 0 } })
   );
 
   const totalVal =

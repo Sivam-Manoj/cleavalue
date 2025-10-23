@@ -1517,15 +1517,15 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
         properties: {
           page: {
             margin: {
-              top: convertInchesToTwip(1),
-              right: convertInchesToTwip(1),
-              bottom: convertInchesToTwip(0.1),
-              left: convertInchesToTwip(1),
+              top: convertInchesToTwip(0),
+              right: convertInchesToTwip(0),
+              bottom: convertInchesToTwip(0),
+              left: convertInchesToTwip(0),
             },
           },
         },
         headers: { default: new Header({ children: [] }) },
-        footers: { default: new Footer({ children: [footerTable] }) },
+        footers: { default: new Footer({ children: [] }) },
         children: await buildCertificateOfAppraisal(
           reportData,
           contentWidthTw,
