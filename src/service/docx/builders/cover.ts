@@ -309,6 +309,7 @@ export async function buildCover(
               right: coverCellMarginTw,
             },
             verticalAlign: VerticalAlign.CENTER,
+            shading: { fill: "FFFFFF", type: ShadingType.SOLID },
             children: [coverDetails],
           }),
         ],
