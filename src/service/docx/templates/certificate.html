@@ -31,20 +31,17 @@
       padding: 0;
       margin: 0;
       overflow: hidden;
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
     }
     
     .certificate-wrapper {
-      width: 780px;
-      height: 1050px;
+      width: 100%;
+      height: 100%;
       background: linear-gradient(135deg, #fef2f2 0%, #ffffff 100%);
-      border-radius: 8px;
+      border-radius: 0;
       overflow: hidden;
-      border: 2px solid #fecaca;
-      margin: 30px 7px 0 7px;
-      padding: 0;
+      border: none;
+      margin: 0;
+      padding: 40px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -173,23 +170,26 @@
       
       <!-- Signature Section -->
       <div class="grid grid-cols-2 gap-16 mt-12 pt-10 border-t-2 border-gray-200">
-        <div class="text-center">
-          <div class="border-t-2 border-gray-800 pt-3 mb-2">
-            <div class="h-16"></div>
-          </div>
-          <div class="flex items-center justify-center">
-            <i class="fas fa-pen-fancy text-gray-600 text-sm mr-2"></i>
-            <p class="text-sm font-semibold text-gray-600 tracking-wide uppercase">Authorized Signature</p>
+        <!-- Authorized Signature Column -->
+        <div>
+          <div class="h-16 mb-2"></div>
+          <div class="border-t-2 border-gray-800 pt-2">
+            <div class="flex items-center justify-center">
+              <i class="fas fa-pen-fancy text-gray-600 text-sm mr-2"></i>
+              <p class="text-sm font-semibold text-gray-600 tracking-wide uppercase">Authorized Signature</p>
+            </div>
           </div>
         </div>
         
-        <div class="text-center">
-          <div class="border-t-2 border-gray-800 pt-3 mb-2">
-            <p class="text-lg font-semibold text-gray-900 mt-4">{{REPORT_DATE}}</p>
-          </div>
-          <div class="flex items-center justify-center">
-            <i class="fas fa-calendar text-gray-600 text-sm mr-2"></i>
-            <p class="text-sm font-semibold text-gray-600 tracking-wide uppercase">Date</p>
+        <!-- Date Column -->
+        <div>
+          <div class="h-16 mb-2"></div>
+          <div class="border-t-2 border-gray-800 pt-2">
+            <div class="flex items-center justify-center">
+              <i class="fas fa-calendar text-gray-600 text-sm mr-2"></i>
+              <p class="text-sm font-semibold text-gray-600 tracking-wide uppercase mr-3">Date:</p>
+              <p class="text-base font-semibold text-gray-900">{{REPORT_DATE}}</p>
+            </div>
           </div>
         </div>
       </div>

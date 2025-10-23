@@ -1,8 +1,24 @@
+/**
+ * Generate Sample DOCX Reports for Testing
+ * 
+ * Usage:
+ *   npm run test:docx        (fast - no build required)
+ *   npm run sample:docx      (production - with build)
+ * 
+ * This script generates sample DOCX reports in the ./reports directory:
+ * - Asset report with valuation comparison table
+ * - Catalogue report with items
+ * - Per-item report
+ * 
+ * Tests certificate page, valuation table, and all DOCX features.
+ */
+
 import { generateAssetDocxFromReport } from "../service/assetDocxService.js";
 import fs from "fs/promises";
 import path from "path";
 
 async function main() {
+  console.log("🚀 Generating sample DOCX reports...\n");
   const imagePath = path.resolve(process.cwd(), "public/icon.png");
   let imgDataUrl: string | undefined;
   try {
@@ -24,8 +40,12 @@ async function main() {
     effective_date: now.toISOString(),
     appraiser: "Jane Doe",
     appraisal_company: "ClearValue",
+    industry: "Construction & Manufacturing",
     analysis: { summary: "This is a sample generated report.", total_value: "$123,456" },
     total_appraised_value: "$123,456",
+    // Test valuation comparison table with multiple methods
+    include_valuation_table: true,
+    valuation_methods: ["FML", "OLV", "FLV"],
     imageUrls: imgDataUrl ? [imgDataUrl] : [],
     lots: [
       {
@@ -48,13 +68,14 @@ async function main() {
     ],
   };
 
+  console.log("📄 Generating Asset Report with Valuation Table...");
   const buffer = await generateAssetDocxFromReport(sample);
   const reportsDir = path.resolve(process.cwd(), "reports");
   await fs.mkdir(reportsDir, { recursive: true });
   const filenameSafeDate = now.toISOString().replace(/[:.]/g, "-");
   const outPath = path.join(reportsDir, `sample-asset-${filenameSafeDate}.docx`);
   await fs.writeFile(outPath, buffer);
-  console.log("Sample DOCX written to", outPath);
+  console.log("✅ Asset Report:", outPath);
 
   // Generate catalogue grouping sample
   const catalogueSample: any = {
@@ -90,10 +111,11 @@ async function main() {
       },
     ],
   };
+  console.log("\n📚 Generating Catalogue Report...");
   const catalogueBuf = await generateAssetDocxFromReport(catalogueSample);
   const catPath = path.join(reportsDir, `sample-catalogue-${filenameSafeDate}.docx`);
   await fs.writeFile(catPath, catalogueBuf);
-  console.log("Sample DOCX written to", catPath);
+  console.log("✅ Catalogue Report:", catPath);
 
   // Generate per_item grouping sample
   const perItemSample: any = {
@@ -121,10 +143,20 @@ async function main() {
       },
     ],
   };
+  console.log("\n📦 Generating Per-Item Report...");
   const perItemBuf = await generateAssetDocxFromReport(perItemSample);
   const perItemPath = path.join(reportsDir, `sample-per_item-${filenameSafeDate}.docx`);
   await fs.writeFile(perItemPath, perItemBuf);
-  console.log("Sample DOCX written to", perItemPath);
+  console.log("✅ Per-Item Report:", perItemPath);
+  
+  console.log("\n🎉 All sample reports generated successfully!");
+  console.log("📂 Check the ./reports directory");
+  console.log("\n📋 Generated files include:");
+  console.log("   - Certificate of Appraisal (HTML-generated)");
+  console.log("   - Valuation Comparison Table (FML, OLV, FLV)");
+  console.log("   - Transmittal Letter");
+  console.log("   - Table of Contents");
+  console.log("   - All report sections");
 }
 
 main().catch((err) => {

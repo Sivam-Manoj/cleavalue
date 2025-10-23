@@ -93,7 +93,7 @@ async function buildCertificateHTMLFromTemplate(data: {
     const __dirname = dirname(__filename);
     
     // Read template file
-    const templatePath = join(__dirname, '../docx/templates/certificate.html');
+    const templatePath = join(__dirname, './docx/templates/certificate.html');
     console.log('Reading certificate template from:', templatePath);
     let html = await readFile(templatePath, 'utf-8');
     
@@ -142,9 +142,9 @@ function buildCertificateHTMLFallback(data: {
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
-    body { font-family: 'Inter', sans-serif; background: #ffffff; width: 794px; height: 1123px; margin: 0; padding: 0; overflow: hidden; display: flex; align-items: flex-start; justify-content: center; }
+    body { font-family: 'Inter', sans-serif; background: #ffffff; width: 794px; height: 1123px; margin: 0; padding: 0; overflow: hidden; }
     .playfair { font-family: 'Playfair Display', serif; }
-    .cert-wrapper { width: 780px; height: 1050px; margin: 30px 7px 0 7px; padding: 0; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; border-radius: 8px; border: 2px solid #fecaca; }
+    .cert-wrapper { width: 100%; height: 100%; margin: 0; padding: 40px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; border-radius: 0; border: none; }
   </style>
 </head>
 <body>
@@ -206,20 +206,23 @@ function buildCertificateHTMLFallback(data: {
       </div>
       
       <div class="grid grid-cols-2 gap-12 mt-10 pt-8 border-t-2">
-        <div class="text-center">
-          <div class="border-t-2 border-gray-800 pt-3 mb-2 h-16"></div>
-          <div class="flex items-center justify-center">
-            <i class="fas fa-pen-fancy text-gray-600 text-sm mr-2"></i>
-            <p class="text-sm font-semibold text-gray-600 uppercase">Authorized Signature</p>
+        <div>
+          <div class="h-16 mb-2"></div>
+          <div class="border-t-2 border-gray-800 pt-2">
+            <div class="flex items-center justify-center">
+              <i class="fas fa-pen-fancy text-gray-600 text-sm mr-2"></i>
+              <p class="text-sm font-semibold text-gray-600 uppercase">Authorized Signature</p>
+            </div>
           </div>
         </div>
-        <div class="text-center">
-          <div class="border-t-2 border-gray-800 pt-3 mb-2">
-            <p class="text-lg font-semibold text-gray-900 mt-3">${data.reportDate}</p>
-          </div>
-          <div class="flex items-center justify-center">
-            <i class="fas fa-calendar text-gray-600 text-sm mr-2"></i>
-            <p class="text-sm font-semibold text-gray-600 uppercase">Date</p>
+        <div>
+          <div class="h-16 mb-2"></div>
+          <div class="border-t-2 border-gray-800 pt-2">
+            <div class="flex items-center justify-center">
+              <i class="fas fa-calendar text-gray-600 text-sm mr-2"></i>
+              <p class="text-sm font-semibold text-gray-600 uppercase mr-3">Date:</p>
+              <p class="text-base font-semibold text-gray-900">${data.reportDate}</p>
+            </div>
           </div>
         </div>
       </div>
@@ -255,8 +258,8 @@ export async function generateCertificateImage(certificateData: {
   const html = await buildCertificateHTMLFromTemplate(certificateData);
 
   return await htmlToImageBuffer(html, {
-    width: 1200,
-    height: 1400, // Smaller height for compact certificate
+    width: 794,
+    height: 1123, // A4 dimensions - matches HTML canvas exactly
     format: "png",
     quality: 95,
   });
