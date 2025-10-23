@@ -13,22 +13,21 @@ import {
 } from "docx";
 import { goldDivider } from "./utils.js";
 
-interface ValuationMethodData {
-  method: "FML" | "TKV" | "OLV" | "FLV";
+interface ValuationMethod {
+  method: string;
   fullName: string;
-  value: number;
-  aiExplanation: string;
   description: string;
+  percentage: number;
+  value: number;
   saleConditions: string;
   timeline: string;
-  marketContext: string;
-  applicationScenarios: string;
-  assumptions: string;
+  useCase: string;
+  aiExplanation?: string;
 }
 
 interface ValuationData {
   baseFMV: number;
-  selectedMethod: ValuationMethodData;
+  methods: ValuationMethod[];
 }
 
 /**
@@ -40,52 +39,37 @@ export async function buildValuationTable(
 ): Promise<any[]> {
   const valuationData = reportData?.valuation_data as ValuationData | undefined;
   
-  if (!valuationData || !valuationData.selectedMethod) {
+  if (!valuationData || !valuationData.methods || valuationData.methods.length === 0) {
     return [];
   }
 
   const i18n = {
     en: {
-      title: "VALUATION METHOD ANALYSIS",
-      subtitle: "Comprehensive Valuation Assessment",
+      title: "VALUATION COMPARISON TABLE",
+      subtitle: "Multiple Valuation Methods with AI Analysis",
       baseFMV: "Base Fair Market Value",
-      method: "Valuation Method",
-      value: "Calculated Value",
-      timeline: "Expected Timeline",
-      explanation: "Professional Analysis & Explanation",
-      saleConditions: "Sale Conditions",
-      marketContext: "Market Context",
-      applicationScenarios: "Application Scenarios",
-      assumptions: "Key Assumptions",
-      description: "Description",
+      method: "Method",
+      value: "Value",
+      timeline: "Timeline",
+      explanation: "AI Explanation",
     },
     fr: {
-      title: "ANALYSE DE LA MÉTHODE D'ÉVALUATION",
-      subtitle: "Évaluation Complète et Professionnelle",
+      title: "TABLEAU COMPARATIF D'ÉVALUATION",
+      subtitle: "Plusieurs Méthodes avec Analyse IA",
       baseFMV: "Juste Valeur Marchande de Base",
-      method: "Méthode d'Évaluation",
-      value: "Valeur Calculée",
-      timeline: "Délai Prévu",
-      explanation: "Analyse et Explication Professionnelle",
-      saleConditions: "Conditions de Vente",
-      marketContext: "Contexte du Marché",
-      applicationScenarios: "Scénarios d'Application",
-      assumptions: "Hypothèses Clés",
-      description: "Description",
+      method: "Méthode",
+      value: "Valeur",
+      timeline: "Délai",
+      explanation: "Explication IA",
     },
     es: {
-      title: "ANÁLISIS DEL MÉTODO DE VALUACIÓN",
-      subtitle: "Evaluación Integral y Profesional",
+      title: "TABLA COMPARATIVA DE VALUACIÓN",
+      subtitle: "Múltiples Métodos con Análisis IA",
       baseFMV: "Valor Justo de Mercado Base",
-      method: "Método de Valuación",
-      value: "Valor Calculado",
-      timeline: "Plazo Esperado",
-      explanation: "Análisis y Explicación Profesional",
-      saleConditions: "Condiciones de Venta",
-      marketContext: "Contexto del Mercado",
-      applicationScenarios: "Escenarios de Aplicación",
-      assumptions: "Supuestos Clave",
-      description: "Descripción",
+      method: "Método",
+      value: "Valor",
+      timeline: "Plazo",
+      explanation: "Explicación IA",
     },
   };
 
@@ -168,9 +152,7 @@ export async function buildValuationTable(
     })
   );
 
-  const method = valuationData.selectedMethod;
-
-  // Summary table with 4 columns: Method, Value, Timeline, Explanation
+  // Comparison table with 4 columns: Method, Value, Timeline, AI Explanation
   const summaryRows: TableRow[] = [];
 
   // Header row
@@ -258,97 +240,103 @@ export async function buildValuationTable(
     })
   );
 
-  // Single data row for selected method
-  summaryRows.push(
-    new TableRow({
-      children: [
-        new TableCell({
-          children: [
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: method.method,
-                  font: "Calibri",
-                  size: 22,
-                  bold: true,
-                  color: "7F1D1D",
-                }),
-              ],
-            }),
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: method.fullName,
-                  font: "Calibri",
-                  size: 18,
-                  color: "6B7280",
-                }),
-              ],
-              spacing: { after: 0 },
-            }),
-          ],
-          verticalAlign: VerticalAlign.CENTER,
-          margins: { top: 140, bottom: 140, left: 120, right: 120 },
-          shading: { fill: "FEF2F2", type: ShadingType.SOLID },
-        }),
-        new TableCell({
-          children: [
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: formatCurrency(method.value),
-                  font: "Calibri",
-                  size: 26,
-                  bold: true,
-                  color: "059669",
-                }),
-              ],
-              alignment: AlignmentType.CENTER,
-            }),
-          ],
-          verticalAlign: VerticalAlign.CENTER,
-          margins: { top: 140, bottom: 140, left: 100, right: 100 },
-          shading: { fill: "FEF2F2", type: ShadingType.SOLID },
-        }),
-        new TableCell({
-          children: [
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: method.timeline,
-                  font: "Calibri",
-                  size: 19,
-                  color: "1F2937",
-                }),
-              ],
-              alignment: AlignmentType.CENTER,
-            }),
-          ],
-          verticalAlign: VerticalAlign.CENTER,
-          margins: { top: 140, bottom: 140, left: 120, right: 120 },
-          shading: { fill: "FEF2F2", type: ShadingType.SOLID },
-        }),
-        new TableCell({
-          children: [
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: method.aiExplanation,
-                  font: "Calibri",
-                  size: 18,
-                  color: "374151",
-                }),
-              ],
-              alignment: AlignmentType.LEFT,
-            }),
-          ],
-          verticalAlign: VerticalAlign.CENTER,
-          margins: { top: 140, bottom: 140, left: 140, right: 140 },
-          shading: { fill: "FEF2F2", type: ShadingType.SOLID },
-        }),
-      ],
-    })
-  );
+  // Data rows for each selected method with alternating shading
+  for (let i = 0; i < valuationData.methods.length; i++) {
+    const method = valuationData.methods[i];
+    const isEven = i % 2 === 0;
+    const bgColor = isEven ? "FFFFFF" : "F9FAFB";
+    
+    summaryRows.push(
+      new TableRow({
+        children: [
+          new TableCell({
+            children: [
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: method.method,
+                    font: "Calibri",
+                    size: 22,
+                    bold: true,
+                    color: "DC2626",
+                  }),
+                ],
+              }),
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: method.fullName,
+                    font: "Calibri",
+                    size: 18,
+                    color: "6B7280",
+                  }),
+                ],
+                spacing: { after: 0 },
+              }),
+            ],
+            verticalAlign: VerticalAlign.CENTER,
+            margins: { top: 140, bottom: 140, left: 120, right: 120 },
+            shading: { fill: bgColor, type: ShadingType.SOLID },
+          }),
+          new TableCell({
+            children: [
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: formatCurrency(method.value),
+                    font: "Calibri",
+                    size: 24,
+                    bold: true,
+                    color: "059669",
+                  }),
+                ],
+                alignment: AlignmentType.CENTER,
+              }),
+            ],
+            verticalAlign: VerticalAlign.CENTER,
+            margins: { top: 140, bottom: 140, left: 100, right: 100 },
+            shading: { fill: bgColor, type: ShadingType.SOLID },
+          }),
+          new TableCell({
+            children: [
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: method.timeline,
+                    font: "Calibri",
+                    size: 19,
+                    color: "1F2937",
+                  }),
+                ],
+                alignment: AlignmentType.CENTER,
+              }),
+            ],
+            verticalAlign: VerticalAlign.CENTER,
+            margins: { top: 140, bottom: 140, left: 120, right: 120 },
+            shading: { fill: bgColor, type: ShadingType.SOLID },
+          }),
+          new TableCell({
+            children: [
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: method.aiExplanation || method.description,
+                    font: "Calibri",
+                    size: 18,
+                    color: "374151",
+                  }),
+                ],
+                alignment: AlignmentType.LEFT,
+              }),
+            ],
+            verticalAlign: VerticalAlign.CENTER,
+            margins: { top: 140, bottom: 140, left: 140, right: 140 },
+            shading: { fill: bgColor, type: ShadingType.SOLID },
+          }),
+        ],
+      })
+    );
+  }
 
   const tableWidthTw = 9360; // 6.5 inches
   
@@ -376,169 +364,26 @@ export async function buildValuationTable(
 
   children.push(new Paragraph({ text: "", spacing: { after: 400 } }));
 
-  // Detailed analysis sections
+  // Note about AI-generated explanations
   children.push(
     new Paragraph({
       children: [
         new TextRun({
-          text: "Detailed Valuation Analysis",
-          font: "Calibri",
-          size: 28,
-          bold: true,
-          color: "1F2937",
-        }),
-      ],
-      spacing: { before: 400, after: 200 },
-    })
-  );
-
-  // Method description
-  children.push(
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: t.description + ": ",
-          font: "Calibri",
-          size: 22,
-          bold: true,
-          color: "7F1D1D",
-        }),
-      ],
-      spacing: { before: 200, after: 100 },
-    })
-  );
-
-  children.push(
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: method.description,
+          text: "Note: ",
           font: "Calibri",
           size: 20,
-          color: "374151",
-        }),
-      ],
-      spacing: { after: 200 },
-    })
-  );
-
-  // Market context
-  children.push(
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: t.marketContext + ": ",
-          font: "Calibri",
-          size: 22,
           bold: true,
-          color: "7F1D1D",
+          color: "6B7280",
         }),
-      ],
-      spacing: { before: 200, after: 100 },
-    })
-  );
-
-  children.push(
-    new Paragraph({
-      children: [
         new TextRun({
-          text: method.marketContext,
+          text: "AI-generated explanations above are specific to this asset's characteristics, condition, and industry context.",
           font: "Calibri",
           size: 20,
-          color: "374151",
+          color: "6B7280",
+          italics: true,
         }),
       ],
-      spacing: { after: 200 },
-    })
-  );
-
-  // Sale conditions
-  children.push(
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: t.saleConditions + ": ",
-          font: "Calibri",
-          size: 22,
-          bold: true,
-          color: "7F1D1D",
-        }),
-      ],
-      spacing: { before: 200, after: 100 },
-    })
-  );
-
-  children.push(
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: method.saleConditions,
-          font: "Calibri",
-          size: 20,
-          color: "374151",
-        }),
-      ],
-      spacing: { after: 200 },
-    })
-  );
-
-  // Application scenarios
-  children.push(
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: t.applicationScenarios + ": ",
-          font: "Calibri",
-          size: 22,
-          bold: true,
-          color: "7F1D1D",
-        }),
-      ],
-      spacing: { before: 200, after: 100 },
-    })
-  );
-
-  children.push(
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: method.applicationScenarios,
-          font: "Calibri",
-          size: 20,
-          color: "374151",
-        }),
-      ],
-      spacing: { after: 200 },
-    })
-  );
-
-  // Key assumptions
-  children.push(
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: t.assumptions + ": ",
-          font: "Calibri",
-          size: 22,
-          bold: true,
-          color: "7F1D1D",
-        }),
-      ],
-      spacing: { before: 200, after: 100 },
-    })
-  );
-
-  children.push(
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: method.assumptions,
-          font: "Calibri",
-          size: 20,
-          color: "374151",
-        }),
-      ],
-      spacing: { after: 200 },
+      spacing: { before: 300, after: 100 },
     })
   );
 

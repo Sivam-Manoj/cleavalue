@@ -1009,18 +1009,20 @@ export async function runAssetReportJob({
       return isNaN(d.getTime()) ? undefined : d;
     };
 
-    // Process valuation method analysis if requested (single method only)
+    // Process valuation comparison table if requested (multiple methods)
     let valuationData: any = undefined;
     const includeValuationTable = details?.include_valuation_table === true;
-    const valuationMethod = details?.valuation_method; // Single method, not array
+    const valuationMethods = Array.isArray(details?.valuation_methods)
+      ? details.valuation_methods
+      : [];
 
-    if (includeValuationTable && valuationMethod) {
+    if (includeValuationTable && valuationMethods.length > 0) {
       try {
         await withStep(
           "calculate_valuations",
-          "Generating AI valuation analysis",
+          "Generating AI valuation comparison table",
           async () => {
-            const { generateSingleValuationAnalysis } =
+            const { generateComparisonTableWithAI } =
               await import("../service/assetValuationService.js");
 
             // Calculate total FMV from all lots
@@ -1038,10 +1040,10 @@ export async function runAssetReportJob({
               const assetCondition = firstLot?.condition || "Unknown";
               const industry = details?.industry || "General";
 
-              // Generate comprehensive AI analysis for the selected method
-              valuationData = await generateSingleValuationAnalysis(
+              // Generate comparison table with AI explanations for all selected methods
+              valuationData = await generateComparisonTableWithAI(
                 totalFMV,
-                valuationMethod as any,
+                valuationMethods as any,
                 assetTitle,
                 assetDescription,
                 assetCondition,
@@ -1049,17 +1051,17 @@ export async function runAssetReportJob({
               );
 
               console.log(
-                `Generated valuation analysis for ${valuationMethod} with AI explanation for total FMV: $${totalFMV}`
+                `Generated valuation comparison table with AI explanations for ${valuationMethods.length} methods, total FMV: $${totalFMV}`
               );
             } else {
               console.warn(
-                "Total FMV is 0, skipping valuation analysis generation"
+                "Total FMV is 0, skipping valuation table generation"
               );
             }
           }
         );
       } catch (error) {
-        console.error("Valuation analysis failed:", error);
+        console.error("Valuation calculation failed:", error);
         // Continue without valuation data
       }
     }
@@ -1082,7 +1084,7 @@ export async function runAssetReportJob({
       language: selectedLanguage,
       currency: selectedCurrency,
       include_valuation_table: includeValuationTable,
-      valuation_method: includeValuationTable ? valuationMethod : null,
+      valuation_methods: includeValuationTable ? valuationMethods : [],
       valuation_data: valuationData,
     });
 

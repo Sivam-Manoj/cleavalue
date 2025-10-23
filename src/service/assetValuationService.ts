@@ -15,6 +15,7 @@ export interface ValuationResult {
   saleConditions: string;
   timeline: string;
   useCase: string;
+  aiExplanation?: string; // Brief AI-generated explanation
 }
 
 export interface ValuationMethodData {
@@ -348,5 +349,107 @@ export async function generateSingleValuationAnalysis(
   return {
     baseFMV,
     selectedMethod: methodData,
+  };
+}
+
+/**
+ * Generate brief AI explanation for a single method (for comparison table)
+ */
+async function generateBriefExplanation(
+  method: ValuationMethod,
+  assetTitle: string,
+  assetDescription: string,
+  assetCondition: string,
+  industry: string,
+  baseFMV: number,
+  calculatedValue: number
+): Promise<string> {
+  const def = VALUATION_DEFINITIONS[method];
+  
+  try {
+    const prompt = `You are an expert appraiser. Provide a brief, professional explanation (2-3 sentences) for why this ${def.fullName} was calculated at $${calculatedValue.toLocaleString()} (${Math.round((calculatedValue/baseFMV)*100)}% of FMV).
+
+**Asset:** ${assetTitle}
+**Description:** ${assetDescription || "N/A"}
+**Condition:** ${assetCondition || "Unknown"}
+**Industry:** ${industry || "General"}
+**Base FMV:** $${baseFMV.toLocaleString()}
+
+**Method:** ${def.fullName}
+**Use:** ${def.useCase}
+**Conditions:** ${def.saleConditions}
+
+Provide ONLY the 2-3 sentence explanation (no JSON, no labels, just the text). Make it specific to this asset and professional for client reports.`;
+
+    const response = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL_TEXT || "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
+      max_tokens: 200,
+    });
+
+    return response.choices[0]?.message?.content?.trim() || 
+      `This ${def.fullName} represents ${Math.round((calculatedValue/baseFMV)*100)}% of the fair market value, reflecting ${def.saleConditions.toLowerCase()} within a ${def.timeline.toLowerCase()} timeframe.`;
+  } catch (error) {
+    console.error(`Brief explanation generation failed for ${method}:`, error);
+    return `This ${def.fullName} represents ${Math.round((calculatedValue/baseFMV)*100)}% of the fair market value, reflecting ${def.saleConditions.toLowerCase()} within a ${def.timeline.toLowerCase()} timeframe.`;
+  }
+}
+
+/**
+ * Generate comparison table with brief AI explanations for multiple methods
+ */
+export async function generateComparisonTableWithAI(
+  baseFMV: number,
+  selectedMethods: ValuationMethod[],
+  assetTitle: string,
+  assetDescription: string,
+  assetCondition: string,
+  industry: string
+): Promise<ValuationComparisonTable> {
+  // Get AI-determined percentages
+  const percentages = await determineValuationPercentages(
+    assetTitle,
+    assetDescription,
+    assetCondition,
+    industry,
+    baseFMV
+  );
+
+  // Generate brief explanations for each method in parallel
+  const methods: ValuationResult[] = await Promise.all(
+    selectedMethods.map(async (method) => {
+      const def = VALUATION_DEFINITIONS[method];
+      const percentage = percentages[method];
+      const value = (baseFMV * percentage) / 100;
+
+      // Generate brief AI explanation
+      const aiExplanation = await generateBriefExplanation(
+        method,
+        assetTitle,
+        assetDescription,
+        assetCondition,
+        industry,
+        baseFMV,
+        value
+      );
+
+      return {
+        method,
+        fullName: def.fullName,
+        description: def.description,
+        percentage,
+        value,
+        saleConditions: def.saleConditions,
+        timeline: def.timeline,
+        useCase: def.useCase,
+        aiExplanation,
+      };
+    })
+  );
+
+  return {
+    baseFMV,
+    methods,
   };
 }
