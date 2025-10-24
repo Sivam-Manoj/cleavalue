@@ -1513,7 +1513,7 @@ export async function runAssetReportJob({
 /**
  * Helper function to generate a ZIP buffer from image URLs
  */
-async function generateImagesZip(imageUrls: string[]): Promise<Buffer> {
+export async function generateImagesZip(imageUrls: string[]): Promise<Buffer> {
   return new Promise(async (resolve, reject) => {
     try {
       const chunks: Buffer[] = [];
