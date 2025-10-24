@@ -67,12 +67,21 @@ export interface IAssetLot {
   sub_mode?: 'single_lot' | 'per_item' | 'per_photo';
 }
 
+export type ReportStatus = 'draft' | 'preview' | 'pending_approval' | 'approved' | 'declined';
+
 export interface IAssetReport extends Document {
   user: mongoose.Schema.Types.ObjectId;
   grouping_mode: AssetGroupingMode;
   imageUrls: string[];
   lots: IAssetLot[];
   analysis?: Record<string, any>; // raw AI output for reference
+  // Workflow status
+  status: ReportStatus;
+  preview_data?: Record<string, any>; // Editable data shown in preview modal
+  preview_submitted_at?: Date;
+  approval_requested_at?: Date;
+  approval_processed_at?: Date;
+  decline_reason?: string;
   // Added metadata fields
   client_name?: string;
   effective_date?: Date;
@@ -187,6 +196,18 @@ const AssetReportSchema: Schema<IAssetReport> = new Schema(
     },
     imageUrls: [{ type: String, required: true }],
     lots: { type: [AssetLotSchema], default: [] },
+    // Workflow status fields
+    status: {
+      type: String,
+      enum: ['draft', 'preview', 'pending_approval', 'approved', 'declined'],
+      default: 'draft',
+      required: true,
+    },
+    preview_data: { type: Schema.Types.Mixed },
+    preview_submitted_at: { type: Date },
+    approval_requested_at: { type: Date },
+    approval_processed_at: { type: Date },
+    decline_reason: { type: String },
     // New optional report-level fields
     client_name: { type: String },
     effective_date: { type: Date },

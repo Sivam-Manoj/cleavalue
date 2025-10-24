@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import PdfReport from "../models/pdfReport.model.js";
+import AssetReport from "../models/asset.model.js";
 import { sendEmail } from "../utils/sendVerificationEmail.js";
 
 // List pending reports for approval (admins and superadmins)
@@ -8,9 +9,8 @@ export const getPendingReports = async (req: Request, res: Response) => {
     const page = Math.max(parseInt((req.query.page as string) || "1", 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt((req.query.limit as string) || "20", 10) || 20, 1), 200);
 
+    // Get pending PdfReports (old workflow)
     const filter: any = { approvalStatus: "pending" };
-    
-    // First, get unique report groups with pagination
     const groupsAgg = await (PdfReport as any).aggregate([
       { $match: filter },
       { $group: { _id: { $ifNull: ["$report", "$_id"] }, maxCreatedAt: { $max: "$createdAt" } } },
@@ -24,18 +24,42 @@ export const getPendingReports = async (req: Request, res: Response) => {
       }}
     ]);
 
-    const total = groupsAgg?.[0]?.total?.[0]?.count || 0;
+    const pdfTotal = groupsAgg?.[0]?.total?.[0]?.count || 0;
     const reportIds = (groupsAgg?.[0]?.groups || []).map((g: any) => g._id);
-
-    // Then fetch all records for these report groups
-    const items = reportIds.length > 0 ? await PdfReport.find({
+    const pdfItems = reportIds.length > 0 ? await PdfReport.find({
       ...filter,
       $or: reportIds.map((id: any) => id ? { report: id } : { _id: id, report: { $exists: false } })
     })
       .populate("user", "email username")
       .sort({ createdAt: -1 }) : [];
 
-    return res.status(200).json({ items, total, page, limit });
+    // Get pending AssetReports (new preview workflow)
+    const assetReports = await AssetReport.find({ status: 'pending_approval' })
+      .populate("user", "email username")
+      .sort({ createdAt: -1 })
+      .limit(limit);
+
+    // Convert AssetReports to match the PdfReport format for the UI
+    const assetItems = assetReports.map((report: any) => ({
+      _id: report._id,
+      filename: `${report.client_name || 'Asset Report'}.docx`,
+      address: report.client_name || report.preview_data?.client_name || 'Asset Report',
+      fairMarketValue: report.preview_data?.currency || 'N/A',
+      reportType: 'Asset',
+      createdAt: report.createdAt,
+      user: report.user,
+      contract_no: report.preview_data?.contract_no || undefined,
+      fileType: 'asset-preview', // Special type to identify AssetReports
+      approvalStatus: 'pending',
+      report: report._id, // Use _id as report group
+      isAssetReport: true, // Flag to identify this is an AssetReport
+    }));
+
+    // Combine both lists
+    const allItems = [...assetItems, ...pdfItems];
+    const total = assetReports.length + pdfTotal;
+
+    return res.status(200).json({ items: allItems, total, page, limit });
   } catch (e) {
     console.error("getPendingReports error", e);
     return res.status(500).json({ message: "Failed to fetch pending reports" });
@@ -47,6 +71,39 @@ export const approveReport = async (req: any, res: Response) => {
   try {
     const { id } = req.params;
     const adminUser = req.user; // from adminProtect
+    
+    // Check if it's an AssetReport first
+    const assetReport = await AssetReport.findById(id).populate("user", "email username");
+    if (assetReport) {
+      // New workflow: AssetReport with preview
+      if (assetReport.status !== 'pending_approval') {
+        return res.status(400).json({ message: "AssetReport is not pending approval" });
+      }
+      
+      // Update status to approved
+      assetReport.status = 'approved';
+      assetReport.approval_processed_at = new Date();
+      await assetReport.save();
+      
+      // Queue DOCX generation
+      const { queueDocxGenerationJob } = await import("../jobs/assetReportJob.js");
+      queueDocxGenerationJob(String(assetReport._id));
+      
+      // Send approval email
+      const to = (assetReport as any).user?.email as string | undefined;
+      if (to) {
+        const { sendReportApprovedEmail } = await import("../service/assetEmailService.js");
+        await sendReportApprovedEmail(
+          to,
+          (assetReport as any).user?.username || "User",
+          String(assetReport._id)
+        );
+      }
+      
+      return res.status(200).json({ message: "AssetReport approved and DOCX generation queued" });
+    }
+    
+    // Old workflow: PdfReport
     const report = await PdfReport.findById(id).populate("user", "email username");
     if (!report) return res.status(404).json({ message: "Report not found" });
 
@@ -107,6 +164,37 @@ export const rejectReport = async (req: any, res: Response) => {
       return res.status(400).json({ message: "Rejection note is required" });
     }
     const adminUser = req.user; // from adminProtect
+    
+    // Check if it's an AssetReport first
+    const assetReport = await AssetReport.findById(id).populate("user", "email username");
+    if (assetReport) {
+      // New workflow: AssetReport with preview
+      if (assetReport.status !== 'pending_approval') {
+        return res.status(400).json({ message: "AssetReport is not pending approval" });
+      }
+      
+      // Update status to declined
+      assetReport.status = 'declined';
+      assetReport.decline_reason = note.trim();
+      assetReport.approval_processed_at = new Date();
+      await assetReport.save();
+      
+      // Send decline email
+      const to = (assetReport as any).user?.email as string | undefined;
+      if (to) {
+        const { sendReportDeclinedEmail } = await import("../service/assetEmailService.js");
+        await sendReportDeclinedEmail(
+          to,
+          (assetReport as any).user?.username || "User",
+          String(assetReport._id),
+          note.trim()
+        );
+      }
+      
+      return res.status(200).json({ message: "AssetReport declined" });
+    }
+    
+    // Old workflow: PdfReport
     const report = await PdfReport.findById(id).populate("user", "email username");
     if (!report) return res.status(404).json({ message: "Report not found" });
 

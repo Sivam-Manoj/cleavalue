@@ -81,6 +81,12 @@ export interface AssetAnalysisResult {
   summary?: string;
   language?: "en" | "fr" | "es";
   currency?: string;
+  total_value?: string;
+  market_overview?: string;
+  comparable_sales?: string;
+  valuation_explanation?: string;
+  condition_notes?: string;
+  recommendations?: string;
 }
 
 export interface ExcelRow {

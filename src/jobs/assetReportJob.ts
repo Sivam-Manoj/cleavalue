@@ -1508,3 +1508,256 @@ export async function runAssetReportJob({
     if (progressId) endProgress(progressId, false, "Error processing request");
   }
 }
+
+/**
+ * NEW PREVIEW WORKFLOW: Process images, extract data, store in preview_data
+ * Does NOT generate DOCX - that happens after admin approval
+ */
+export async function runAssetPreviewJob({
+  user,
+  images,
+  videos = [],
+  details,
+  progressId,
+}: AssetJobInput) {
+  try {
+    if (progressId) startProgress(progressId);
+    
+    // Phase 1: Upload images to R2
+    console.log(`[PreviewJob] Uploading ${images.length} images for user ${user.id}`);
+    
+    const uploadedImageUrls: string[] = [];
+    for (const img of images) {
+      // Sanitize filename: remove special characters, replace spaces with hyphens
+      const sanitizedName = img.originalname
+        .replace(/[^a-zA-Z0-9._-]/g, '-') // Replace special chars with hyphens
+        .replace(/--+/g, '-') // Replace multiple hyphens with single
+        .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+      
+      const fileName = `uploads/asset/${Date.now()}-${sanitizedName}`;
+      
+      // Upload to R2
+      await uploadBufferToR2(
+        img.buffer,
+        img.mimetype || "image/jpeg",
+        process.env.R2_BUCKET_NAME!,
+        fileName
+      );
+      
+      // Use public domain URL (not the internal R2 URL)
+      const publicUrl = `https://images.sellsnap.store/${fileName}`;
+      uploadedImageUrls.push(publicUrl);
+    }
+    
+    // Phase 2: AI Processing
+    console.log(`[PreviewJob] Starting AI analysis`);
+    const analysisResult = await analyzeAssetImages(
+      uploadedImageUrls,
+      details.grouping_mode || "mixed",
+      details.language || "en",
+      details.currency || "CAD"
+    );
+    
+    // Enrich with VIN data if applicable
+    if (analysisResult.lots) {
+      await enrichLotsWithVin(analysisResult.lots);
+    }
+    
+    // Phase 3: Calculate valuation data if requested
+    let valuationData = null;
+    if (details.include_valuation_table && details.valuation_methods?.length > 0) {
+      const { generateComparisonTableWithAI } = await import("../service/assetValuationService.js");
+      
+      // Calculate total FMV
+      const totalFMV = analysisResult.lots.reduce((sum, lot) => {
+        const value = lot.estimated_value?.replace(/[^0-9.-]+/g, "") || "0";
+        return sum + parseFloat(value);
+      }, 0);
+      
+      valuationData = await generateComparisonTableWithAI(
+        totalFMV,
+        details.valuation_methods,
+        analysisResult.lots[0]?.title || "Asset",
+        analysisResult.lots[0]?.description || "",
+        analysisResult.lots[0]?.condition || "Good",
+        details.industry || "General"
+      );
+    }
+    
+    // Phase 4: Create AssetReport with preview_data
+    const newReport = new AssetReport({
+      user: user.id,
+      grouping_mode: details.grouping_mode || "mixed",
+      imageUrls: uploadedImageUrls,
+      lots: analysisResult.lots,
+      status: 'preview', // NEW: Set to preview status
+      preview_data: {
+        lots: analysisResult.lots,
+        client_name: details.client_name,
+        contract_no: details.contract_no,
+        effective_date: details.effective_date,
+        appraisal_purpose: details.appraisal_purpose,
+        owner_name: details.owner_name,
+        appraiser: details.appraiser,
+        appraisal_company: details.appraisal_company,
+        industry: details.industry,
+        inspection_date: details.inspection_date,
+        currency: details.currency || 'CAD',
+        language: details.language || 'en',
+        include_valuation_table: details.include_valuation_table,
+        valuation_methods: details.valuation_methods,
+        valuation_data: valuationData,
+        total_appraised_value: analysisResult.total_value,
+        total_value: analysisResult.total_value,
+        // Include AI analysis data for editing
+        market_overview: analysisResult.market_overview,
+        comparable_sales: analysisResult.comparable_sales,
+        valuation_explanation: analysisResult.valuation_explanation,
+        condition_notes: analysisResult.condition_notes,
+        recommendations: analysisResult.recommendations,
+      },
+      // Store original metadata
+      client_name: details.client_name,
+      effective_date: details.effective_date,
+      appraisal_purpose: details.appraisal_purpose,
+      owner_name: details.owner_name,
+      appraiser: details.appraiser,
+      appraisal_company: details.appraisal_company,
+      industry: details.industry,
+      currency: details.currency || 'CAD',
+      language: details.language || 'en',
+      include_valuation_table: details.include_valuation_table,
+      valuation_methods: details.valuation_methods,
+      valuation_data: valuationData,
+      analysis: analysisResult,
+    });
+    
+    await newReport.save();
+    console.log(`[PreviewJob] Report saved with ID: ${newReport._id}, Status: preview`);
+    
+    // Phase 5: Send "Preview Ready" email
+    const { sendPreviewReadyEmail } = await import("../service/assetEmailService.js");
+    await sendPreviewReadyEmail(
+      user.email,
+      user.name || 'User',
+      String(newReport._id)
+    );
+    
+    if (progressId) {
+      endProgress(progressId, true, "Preview ready");
+    }
+    
+    console.log(`[PreviewJob] Completed successfully for report ${newReport._id}`);
+  } catch (error) {
+    console.error("[PreviewJob] Error:", error);
+    if (progressId) endProgress(progressId, false, "Error processing request");
+    throw error;
+  }
+}
+
+/**
+ * Generate DOCX/PDF after admin approval
+ */
+export async function queueDocxGenerationJob(reportId: string) {
+  setImmediate(() =>
+    runDocxGenerationJob(reportId).catch((e) => {
+      console.error("[DocxGenJob] Failed:", e);
+    })
+  );
+}
+
+export async function runDocxGenerationJob(reportId: string) {
+  try {
+    console.log(`[DocxGenJob] Starting for report ${reportId}`);
+    
+    const report = await AssetReport.findById(reportId).populate('user');
+    if (!report) {
+      throw new Error(`Report ${reportId} not found`);
+    }
+    
+    if (report.status !== 'approved') {
+      throw new Error(`Report ${reportId} status is ${report.status}, expected 'approved'`);
+    }
+    
+    const user = report.user as any;
+    
+    // Use preview_data (user-edited) for generation
+    const reportData = {
+      ...report.toObject(),
+      ...report.preview_data, // Override with user-edited data
+      inspector_name: user?.name || "",
+      user_email: user?.email || "",
+    };
+    
+    // Generate DOCX
+    console.log(`[DocxGenJob] Generating DOCX`);
+    const docxBuffer = await generateAssetDocxFromReport(reportData);
+    const docxFilename = `asset-report-${reportId}.docx`;
+    const docxUrl = await uploadBufferToR2(
+      docxBuffer,
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      process.env.R2_BUCKET_NAME!,
+      `reports/${user._id}/${docxFilename}`
+    );
+    
+    // Generate PDF
+    console.log(`[DocxGenJob] Generating PDF`);
+    const pdfBuffer = await generateAssetPdfFromReport(reportData);
+    const pdfFilename = `asset-report-${reportId}.pdf`;
+    const pdfUrl = await uploadBufferToR2(
+      pdfBuffer,
+      "application/pdf",
+      process.env.R2_BUCKET_NAME!,
+      `reports/${user._id}/${pdfFilename}`
+    );
+    
+    // Generate XLSX
+    console.log(`[DocxGenJob] Generating XLSX`);
+    const xlsxBuffer = await generateAssetXlsxFromReport(reportData);
+    const xlsxFilename = `asset-report-${reportId}.xlsx`;
+    const xlsxUrl = await uploadBufferToR2(
+      xlsxBuffer,
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      process.env.R2_BUCKET_NAME!,
+      `reports/${user._id}/${xlsxFilename}`
+    );
+    
+    // Create PdfReport records
+    const pdfRec = new PdfReport({
+      user: user._id,
+      report: reportId,
+      report_type: "asset",
+      file_type: "pdf",
+      file_url: pdfUrl,
+      file_name: pdfFilename,
+      status: "approved",
+    });
+    
+    const docxRec = new PdfReport({
+      user: user._id,
+      report: reportId,
+      report_type: "asset",
+      file_type: "docx",
+      file_url: docxUrl,
+      file_name: docxFilename,
+      status: "approved",
+    });
+    
+    const xlsxRec = new PdfReport({
+      user: user._id,
+      report: reportId,
+      report_type: "asset",
+      file_type: "xlsx",
+      file_url: xlsxUrl,
+      file_name: xlsxFilename,
+      status: "approved",
+    });
+    
+    await Promise.all([pdfRec.save(), docxRec.save(), xlsxRec.save()]);
+    
+    console.log(`[DocxGenJob] Completed successfully for report ${reportId}`);
+  } catch (error) {
+    console.error(`[DocxGenJob] Error for report ${reportId}:`, error);
+    throw error;
+  }
+}
