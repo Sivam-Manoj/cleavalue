@@ -78,6 +78,11 @@ export interface IAssetReport extends Document {
   // Workflow status
   status: ReportStatus;
   preview_data?: Record<string, any>; // Editable data shown in preview modal
+  preview_files?: {
+    docx?: string;
+    excel?: string;
+    images?: string;
+  }; // Preview file URLs for admin review
   preview_submitted_at?: Date;
   approval_requested_at?: Date;
   approval_processed_at?: Date;
@@ -204,6 +209,11 @@ const AssetReportSchema: Schema<IAssetReport> = new Schema(
       required: true,
     },
     preview_data: { type: Schema.Types.Mixed },
+    preview_files: {
+      docx: { type: String },
+      excel: { type: String },
+      images: { type: String },
+    },
     preview_submitted_at: { type: Date },
     approval_requested_at: { type: Date },
     approval_processed_at: { type: Date },

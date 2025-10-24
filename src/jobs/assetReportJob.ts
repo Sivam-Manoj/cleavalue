@@ -1635,7 +1635,62 @@ export async function runAssetPreviewJob({
     await newReport.save();
     console.log(`[PreviewJob] Report saved with ID: ${newReport._id}, Status: preview`);
     
-    // Phase 5: Send "Preview Ready" email
+    // Phase 5: Generate preview files (DOCX, Excel, Images) for admin review
+    console.log(`[PreviewJob] Generating preview files for report ${newReport._id}`);
+    
+    const reportData = {
+      ...newReport.toObject(),
+      ...newReport.preview_data,
+      inspector_name: user?.name || "",
+      user_email: user?.email || "",
+    };
+    
+    try {
+      // Generate DOCX
+      const docxBuffer = await generateAssetDocxFromReport(reportData);
+      const docxFilename = `asset-preview-${newReport._id}.docx`;
+      const docxUrl = await uploadBufferToR2(
+        docxBuffer,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        process.env.R2_BUCKET_NAME!,
+        `previews/${docxFilename}`
+      );
+      
+      // Generate Excel
+      const excelBuffer = await generateAssetExcelFromReport(reportData);
+      const excelFilename = `asset-preview-${newReport._id}.xlsx`;
+      const excelUrl = await uploadBufferToR2(
+        excelBuffer,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        process.env.R2_BUCKET_NAME!,
+        `previews/${excelFilename}`
+      );
+      
+      // Generate Images ZIP
+      const zipBuffer = await generateImagesZip(uploadedImageUrls);
+      const zipFilename = `asset-preview-images-${newReport._id}.zip`;
+      const zipUrl = await uploadBufferToR2(
+        zipBuffer,
+        "application/zip",
+        process.env.R2_BUCKET_NAME!,
+        `previews/${zipFilename}`
+      );
+      
+      // Save preview file URLs to report
+      newReport.preview_files = {
+        docx: `https://images.sellsnap.store/previews/${docxFilename}`,
+        excel: `https://images.sellsnap.store/previews/${excelFilename}`,
+        images: `https://images.sellsnap.store/previews/${zipFilename}`,
+      };
+      await newReport.save();
+      
+      console.log(`[PreviewJob] Preview files generated successfully`);
+    } catch (fileError) {
+      console.error("[PreviewJob] Error generating preview files:", fileError);
+      // Continue even if file generation fails - user can still edit
+    }
+    
+    // Phase 6: Send "Preview Ready" email
     const { sendPreviewReadyEmail } = await import("../service/assetEmailService.js");
     await sendPreviewReadyEmail(
       user.email,

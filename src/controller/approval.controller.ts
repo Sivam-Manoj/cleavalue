@@ -53,6 +53,7 @@ export const getPendingReports = async (req: Request, res: Response) => {
       approvalStatus: 'pending',
       report: report._id, // Use _id as report group
       isAssetReport: true, // Flag to identify this is an AssetReport
+      preview_files: report.preview_files, // Include preview file URLs
     }));
 
     // Combine both lists
