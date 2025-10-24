@@ -23,7 +23,9 @@ export const signup = async (req: Request, res: Response) => {
   } = req.body;
 
   try {
-    const existingUser = await User.findOne({ email });
+    // Normalize email to lowercase for case-insensitive comparison
+    const normalizedEmail = email.toLowerCase().trim();
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
@@ -35,7 +37,7 @@ export const signup = async (req: Request, res: Response) => {
     const verificationCodeExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
     const newUser = new User({
-      email,
+      email: normalizedEmail,
       password: hashedPassword,
       username,
       companyName,
@@ -50,7 +52,7 @@ export const signup = async (req: Request, res: Response) => {
     await newUser.save();
 
     try {
-      await sendVerificationCode(email, verificationCode);
+      await sendVerificationCode(normalizedEmail, verificationCode);
       res.status(201).json({
         message:
           "Signup successful. Please check your email for a verification code.",
@@ -72,7 +74,9 @@ export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   try {
-    const user = await User.findOne({ email }).select("+password");
+    // Normalize email to lowercase for case-insensitive comparison
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail }).select("+password");
     if (!user || user.authProvider !== "email") {
       return res.status(404).json({
         message: "User not found or not registered with email/password.",
@@ -128,7 +132,9 @@ export const verifyEmail = async (req: Request, res: Response) => {
   const { email, verificationCode } = req.body;
 
   try {
-    const user = await User.findOne({ email });
+    // Normalize email to lowercase for case-insensitive comparison
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
       return res.status(404).json({ message: "User not found." });
@@ -192,7 +198,9 @@ export const resendVerificationCode = async (req: Request, res: Response) => {
   const { email } = req.body;
 
   try {
-    const user = await User.findOne({ email });
+    // Normalize email to lowercase for case-insensitive comparison
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       return res.status(404).json({ message: "User not found." });
     }
@@ -210,7 +218,7 @@ export const resendVerificationCode = async (req: Request, res: Response) => {
     user.verificationCodeExpires = verificationCodeExpires;
     await user.save();
 
-    await sendVerificationCode(email, verificationCode);
+    await sendVerificationCode(normalizedEmail, verificationCode);
 
     res.status(200).json({
       message: "A new verification code has been sent to your email.",
@@ -279,7 +287,9 @@ export const forgotPassword = async (req: Request, res: Response) => {
   const { email } = req.body;
 
   try {
-    const user = await User.findOne({ email });
+    // Normalize email to lowercase for case-insensitive comparison
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
       // To prevent user enumeration, we send a generic success message even if the user doesn't exist.
