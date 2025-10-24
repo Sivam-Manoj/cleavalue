@@ -20,6 +20,7 @@ import fs from "fs/promises";
 import path from "path";
 import { createWriteStream } from "fs";
 import archiver from "archiver";
+import axios from "axios";
 import { enrichLotsWithVin } from "../service/vehicleApiService.js";
 
 export type AssetGroupingMode =
@@ -1510,6 +1511,46 @@ export async function runAssetReportJob({
 }
 
 /**
+ * Helper function to generate a ZIP buffer from image URLs
+ */
+async function generateImagesZip(imageUrls: string[]): Promise<Buffer> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const chunks: Buffer[] = [];
+      const archive = archiver("zip", { zlib: { level: 9 } });
+      
+      // Collect data chunks
+      archive.on("data", (chunk: Buffer) => chunks.push(chunk));
+      archive.on("end", () => resolve(Buffer.concat(chunks)));
+      archive.on("error", (err: any) => reject(err));
+      
+      // Download and add each image to the archive
+      for (let i = 0; i < imageUrls.length; i++) {
+        const imageUrl = imageUrls[i];
+        try {
+          const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
+          const imageBuffer = Buffer.from(response.data as ArrayBuffer);
+          
+          // Extract filename from URL or use index
+          const urlParts = imageUrl.split("/");
+          const filename = urlParts[urlParts.length - 1] || `image-${i + 1}.jpg`;
+          
+          archive.append(imageBuffer, { name: filename });
+        } catch (err) {
+          console.error(`[generateImagesZip] Failed to download image ${imageUrl}:`, err);
+          // Continue with other images even if one fails
+        }
+      }
+      
+      // Finalize the archive
+      archive.finalize();
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+/**
  * NEW PREVIEW WORKFLOW: Process images, extract data, store in preview_data
  * Does NOT generate DOCX - that happens after admin approval
  */
@@ -1657,7 +1698,7 @@ export async function runAssetPreviewJob({
       );
       
       // Generate Excel
-      const excelBuffer = await generateAssetExcelFromReport(reportData);
+      const excelBuffer = await generateAssetXlsxFromReport(reportData);
       const excelFilename = `asset-preview-${newReport._id}.xlsx`;
       const excelUrl = await uploadBufferToR2(
         excelBuffer,
