@@ -40,21 +40,33 @@ export const getPendingReports = async (req: Request, res: Response) => {
       .limit(limit);
 
     // Convert AssetReports to match the PdfReport format for the UI
-    const assetItems = assetReports.map((report: any) => ({
-      _id: report._id,
-      filename: `${report.client_name || 'Asset Report'}.docx`,
-      address: report.client_name || report.preview_data?.client_name || 'Asset Report',
-      fairMarketValue: report.preview_data?.currency || 'N/A',
-      reportType: 'Asset',
-      createdAt: report.createdAt,
-      user: report.user,
-      contract_no: report.preview_data?.contract_no || undefined,
-      fileType: 'asset-preview', // Special type to identify AssetReports
-      approvalStatus: 'pending',
-      report: report._id, // Use _id as report group
-      isAssetReport: true, // Flag to identify this is an AssetReport
-      preview_files: report.preview_files, // Include preview file URLs
-    }));
+    const assetItems = assetReports.map((report: any) => {
+      const currency: string = String(report.preview_data?.currency || report.currency || 'CAD').toUpperCase();
+      const baseFMV: number | undefined = (report.preview_data?.valuation_data?.baseFMV as number | undefined);
+      const lots: any[] = Array.isArray(report.preview_data?.lots) ? report.preview_data.lots : (Array.isArray(report.lots) ? report.lots : []);
+      const sumFromLots = (lots || []).reduce((acc: number, lot: any) => {
+        const raw = typeof lot?.estimated_value === 'string' ? lot.estimated_value : '';
+        const num = parseFloat(String(raw).replace(/[^0-9.-]+/g, ''));
+        return acc + (Number.isFinite(num) ? num : 0);
+      }, 0);
+      const total = Number.isFinite(baseFMV as any) ? (baseFMV as number) : sumFromLots;
+      const fmvStr = total > 0 ? new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(total) : currency;
+      return {
+        _id: report._id,
+        filename: `${report.client_name || 'Asset Report'}.docx`,
+        address: report.client_name || report.preview_data?.client_name || 'Asset Report',
+        fairMarketValue: fmvStr,
+        reportType: 'Asset',
+        createdAt: report.createdAt,
+        user: report.user,
+        contract_no: report.preview_data?.contract_no || undefined,
+        fileType: 'asset-preview', // Special type to identify AssetReports
+        approvalStatus: 'pending',
+        report: report._id, // Use _id as report group
+        isAssetReport: true, // Flag to identify this is an AssetReport
+        preview_files: report.preview_files, // Include preview file URLs
+      };
+    });
 
     // Combine both lists
     const allItems = [...assetItems, ...pdfItems];

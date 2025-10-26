@@ -239,6 +239,8 @@ export const submitForApproval = async (req: AuthRequest, res: Response) => {
       ...report.preview_data,
       inspector_name: userObj?.name || userObj?.username || "",
       user_email: userObj?.email || "",
+      user_cv_url: userObj?.cvUrl || (report as any)?.user_cv_url,
+      user_cv_filename: userObj?.cvFilename || (report as any)?.user_cv_filename,
     } as any;
 
     // Generate preview files for admin review (DOCX, XLSX, Images ZIP)

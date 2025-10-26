@@ -146,8 +146,7 @@ export async function buildValuationTable(
       children: [
         new TextRun({
           text: t.title,
-          font: "Calibri",
-          size: 32,
+          size: 28,
           bold: true,
           color: "1F2937",
         }),
@@ -162,7 +161,6 @@ export async function buildValuationTable(
       children: [
         new TextRun({
           text: t.subtitle,
-          font: "Calibri",
           size: 22,
           color: "6B7280",
         }),
@@ -180,15 +178,13 @@ export async function buildValuationTable(
       children: [
         new TextRun({
           text: `${t.baseFMV}: `,
-          font: "Calibri",
-          size: 24,
+          size: 22,
           bold: true,
           color: "1F2937",
         }),
         new TextRun({
           text: formatCurrency(valuationData.baseFMV),
-          font: "Calibri",
-          size: 24,
+          size: 22,
           bold: true,
           color: "059669",
         }),
@@ -211,8 +207,7 @@ export async function buildValuationTable(
               children: [
                 new TextRun({
                   text: t.method,
-                  font: "Calibri",
-                  size: 20,
+                  size: 22,
                   bold: true,
                   color: "1F2937",
                 }),
@@ -230,8 +225,7 @@ export async function buildValuationTable(
               children: [
                 new TextRun({
                   text: t.value,
-                  font: "Calibri",
-                  size: 20,
+                  size: 22,
                   bold: true,
                   color: "1F2937",
                 }),
@@ -249,8 +243,7 @@ export async function buildValuationTable(
               children: [
                 new TextRun({
                   text: t.timeline,
-                  font: "Calibri",
-                  size: 20,
+                  size: 22,
                   bold: true,
                   color: "1F2937",
                 }),
@@ -268,8 +261,7 @@ export async function buildValuationTable(
               children: [
                 new TextRun({
                   text: t.explanation,
-                  font: "Calibri",
-                  size: 20,
+                  size: 22,
                   bold: true,
                   color: "1F2937",
                 }),
@@ -300,7 +292,6 @@ export async function buildValuationTable(
                 children: [
                   new TextRun({
                     text: method.method,
-                    font: "Calibri",
                     size: 22,
                     bold: true,
                     color: "DC2626",
@@ -311,8 +302,7 @@ export async function buildValuationTable(
                 children: [
                   new TextRun({
                     text: method.fullName,
-                    font: "Calibri",
-                    size: 18,
+                    size: 22,
                     color: "6B7280",
                   }),
                 ],
@@ -329,8 +319,7 @@ export async function buildValuationTable(
                 children: [
                   new TextRun({
                     text: formatCurrency(method.value),
-                    font: "Calibri",
-                    size: 24,
+                    size: 22,
                     bold: true,
                     color: "059669",
                   }),
@@ -348,8 +337,7 @@ export async function buildValuationTable(
                 children: [
                   new TextRun({
                     text: method.timeline,
-                    font: "Calibri",
-                    size: 19,
+                    size: 22,
                     color: "1F2937",
                   }),
                 ],
@@ -366,8 +354,7 @@ export async function buildValuationTable(
                 children: [
                   new TextRun({
                     text: method.aiExplanation || method.description,
-                    font: "Calibri",
-                    size: 18,
+                    size: 22,
                     color: "374151",
                   }),
                 ],
@@ -417,15 +404,13 @@ export async function buildValuationTable(
       children: [
         new TextRun({
           text: "Recommendation: ",
-          font: "Calibri",
           size: 22,
           bold: true,
           color: "DC2626",
         }),
         new TextRun({
           text: recommendationText,
-          font: "Calibri",
-          size: 20,
+          size: 22,
           color: "1F2937",
         }),
       ],

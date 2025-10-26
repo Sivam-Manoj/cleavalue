@@ -99,6 +99,9 @@ export interface IAssetReport extends Document {
   contract_no?: string;
   language?: 'en' | 'fr' | 'es';
   currency?: string; // ISO currency code, e.g., CAD, USD, INR
+  // Optional appraiser CV metadata
+  user_cv_url?: string;
+  user_cv_filename?: string;
   // Valuation comparison table
   include_valuation_table?: boolean;
   valuation_methods?: Array<'FML' | 'TKV' | 'OLV' | 'FLV'>;
@@ -230,6 +233,8 @@ const AssetReportSchema: Schema<IAssetReport> = new Schema(
     contract_no: { type: String },
     language: { type: String, enum: ['en', 'fr', 'es'], default: 'en' },
     currency: { type: String, default: 'CAD' },
+    user_cv_url: { type: String },
+    user_cv_filename: { type: String },
     include_valuation_table: { type: Boolean, default: false },
     valuation_methods: [{ type: String, enum: ['FML', 'TKV', 'OLV', 'FLV'] }],
     valuation_data: { type: Schema.Types.Mixed },

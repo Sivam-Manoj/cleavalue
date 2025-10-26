@@ -28,6 +28,7 @@ import { buildTOC } from "./builders/toc.js";
 import { buildTransmittalLetter } from "./builders/transmittal.js";
 import { buildCertificateOfAppraisal } from "./builders/certificate.js";
 import { buildMarketOverview } from "./builders/marketOverview.js";
+import { buildCertificationSection } from "./builders/certification.js";
 import { buildAssetLots } from "./builders/assetLots.js";
 import { buildPerItemTable } from "./builders/perItemTable.js";
 import { buildPerPhotoTable } from "./builders/perPhotoTable.js";
@@ -180,7 +181,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
         "This report and supporting file documentation are confidential. Distribution to parties other than the client requires prior written consent.",
       experienceHeading: "EXPERIENCE",
       experienceBody1:
-        "McDougall Auctioneers Ltd. is one of Western Canada’s leading full-service auction and valuation firms, with over 40 years of experience in marketing, selling, and appraising assets across a diverse range of industries. Headquartered in Saskatchewan and operating throughout Canada and the United States, McDougall Auctioneers has built a reputation for impartial, defensible valuations that meet or exceed industry and regulatory standards.",
+        "McDougall Auctioneers is one of Western Canada’s leading full-service auction and valuation firms, with over 40 years of experience in marketing, selling, and appraising assets across a diverse range of industries. Headquartered in Saskatchewan and operating throughout Canada and the United States, McDougall Auctioneers has built a reputation for impartial, defensible valuations that meet or exceed industry and regulatory standards.",
       experienceBody2:
         "Our appraisal team combines Certified Personal Property Appraisers, experienced auctioneers, and subject-matter specialists who have inspected and valued tens of thousands of assets annually. We deliver comprehensive appraisals for equipment, vehicles, industrial machinery, agricultural assets, and business inventories, using recognised methodologies such as the Market Approach, Cost Approach, and, where applicable, the Income Approach. All assignments are performed in compliance with the Uniform Standards of Professional Appraisal Practice (USPAP) and relevant Canadian appraisal guidelines.",
       experienceBody3:
@@ -323,7 +324,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
         "Ce rapport et la documentation de travail sont confidentiels. Toute diffusion à des tiers nécessite un consentement écrit préalable.",
       experienceHeading: "EXPÉRIENCE",
       experienceBody1:
-        "McDougall Auctioneers Ltd. est l’une des principales sociétés de vente aux enchères et d’évaluation à service complet de l’Ouest canadien, avec plus de 40 ans d’expérience dans la commercialisation, la vente et l’évaluation d’actifs dans divers secteurs. Basée en Saskatchewan et opérant au Canada et aux États-Unis, McDougall s’est forgé une réputation d’évaluations impartiales et défendables, conformes aux normes de l’industrie et réglementaires.",
+        "McDougall Auctioneers est l’une des principales sociétés de vente aux enchères et d’évaluation à service complet de l’Ouest canadien, avec plus de 40 ans d’expérience dans la commercialisation, la vente et l’évaluation d’actifs dans divers secteurs. Basée en Saskatchewan et opérant au Canada et aux États-Unis, McDougall s’est forgé une réputation d’évaluations impartiales et défendables, conformes aux normes de l’industrie et réglementaires.",
       experienceBody2:
         "Notre équipe regroupe des évaluateurs certifiés, des commissaires-priseurs expérimentés et des spécialistes sectoriels ayant inspecté et évalué des dizaines de milliers d’actifs chaque année. Nous réalisons des évaluations complètes d’équipements, de véhicules, de machines industrielles, d’actifs agricoles et d’inventaires, en utilisant des méthodologies reconnues telles que l’approche par le marché, par le coût et, le cas échéant, par le revenu. Toutes les missions sont conformes à l’USPAP et aux lignes directrices canadiennes pertinentes.",
       experienceBody3:
@@ -466,7 +467,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
         "Este informe y la documentación de respaldo son confidenciales. La distribución a terceros requiere consentimiento previo por escrito.",
       experienceHeading: "EXPERIENCIA",
       experienceBody1:
-        "McDougall Auctioneers Ltd. es una de las principales firmas de subastas y valoración de servicio completo en el oeste de Canadá, con más de 40 años de experiencia en comercialización, venta y tasación de activos en diversos sectores. Con sede en Saskatchewan y operaciones en Canadá y Estados Unidos, McDougall se ha ganado una reputación por valoraciones imparciales y defendibles que cumplen o superan las normas de la industria y regulatorias.",
+        "McDougall Auctioneers es una de las principales firmas de subastas y valoración de servicio completo en el oeste de Canadá, con más de 40 años de experiencia en comercialización, venta y tasación de activos en diversos sectores. Con sede en Saskatchewan y operaciones en Canadá y Estados Unidos, McDougall se ha ganado una reputación por valoraciones imparciales y defendibles que cumplen o superan las normas de la industria y regulatorias.",
       experienceBody2:
         "Nuestro equipo combina tasadores certificados de bienes muebles, subastadores experimentados y especialistas en la materia que inspeccionan y valoran decenas de miles de activos al año. Realizamos tasaciones integrales de equipos, vehículos, maquinaria industrial, activos agrícolas e inventarios, utilizando metodologías reconocidas como los enfoques de Mercado, Costo y, cuando corresponde, Ingresos. Todas las asignaciones se realizan conforme al USPAP y a las directrices canadienses pertinentes.",
       experienceBody3:
@@ -1367,6 +1368,9 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
     children.push(...(await buildValuationTable(reportData, lang)));
   }
 
+  // Certification (separate page)
+  children.push(...buildCertificationSection(reportData));
+
   // Market Overview + References
   children.push(...(await buildMarketOverview(reportData)));
 
@@ -1377,6 +1381,33 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
     contentWidthTw
   );
   children.push(...appendixChildren);
+
+  // Final page: Appraiser CV link (if provided by user)
+  if (reportData?.user_cv_url) {
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: "Appraiser CV: ",
+            bold: true,
+            color: "1F2937",
+          }),
+          new TextRun({
+            text: String(reportData.user_cv_filename || reportData.user_cv_url),
+            color: "1D4ED8",
+            underline: {}
+          }),
+          new TextRun({ text: "\n" }),
+          new TextRun({
+            text: String(reportData.user_cv_url),
+            color: "1D4ED8",
+            underline: {}
+          }),
+        ],
+        spacing: { before: 300, after: 200 },
+      })
+    );
+  }
 
   // Finalize document with sections and pack
   const doc = new Document({
@@ -1391,7 +1422,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
     styles: {
       default: {
         document: {
-          run: { font: "Calibri", size: 26, color: "111827" },
+          run: { font: "Times New Roman", size: 22, color: "111827" },
           paragraph: { spacing: { line: 276, before: 0, after: 80 } },
         },
       },
@@ -1401,7 +1432,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
           name: "Normal",
           basedOn: "",
           next: "Normal",
-          run: { font: "Calibri", size: 26, color: "111827" },
+          run: { font: "Times New Roman", size: 22, color: "111827" },
           paragraph: { spacing: { line: 276, after: 120 } },
         },
         {
@@ -1410,7 +1441,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
           basedOn: "Normal",
           next: "Normal",
           quickFormat: true,
-          run: { size: 44, bold: true, color: "111827" },
+          run: { font: "Times New Roman", size: 28, bold: true, color: "111827" },
           paragraph: { spacing: { before: 180, after: 100 } },
         },
         {
@@ -1419,7 +1450,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
           basedOn: "Normal",
           next: "Normal",
           quickFormat: true,
-          run: { size: 36, bold: true, color: "111827" },
+          run: { font: "Times New Roman", size: 28, bold: true, color: "111827" },
           paragraph: { spacing: { before: 140, after: 80 } },
         },
         {
@@ -1428,7 +1459,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
           basedOn: "Normal",
           next: "Normal",
           quickFormat: true,
-          run: { size: 52, bold: true, color: "111827" },
+          run: { font: "Times New Roman", size: 28, bold: true, color: "111827" },
           paragraph: {
             spacing: { before: 160, after: 120 },
             alignment: AlignmentType.CENTER,
@@ -1440,7 +1471,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
           basedOn: "Normal",
           next: "Normal",
           quickFormat: true,
-          run: { size: 26, color: "111827" },
+          run: { font: "Times New Roman", size: 22, color: "111827" },
           paragraph: { spacing: { line: 276, before: 0, after: 80 } },
         },
         {
@@ -1449,7 +1480,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
           basedOn: "Normal",
           next: "TableSmall",
           quickFormat: true,
-          run: { size: 16, color: "111827" },
+          run: { font: "Times New Roman", size: 22, color: "111827" },
           paragraph: { spacing: { line: 240, before: 0, after: 40 } },
         },
       ],

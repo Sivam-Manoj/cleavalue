@@ -2,6 +2,7 @@ import { Response } from 'express';
 import bcrypt from 'bcryptjs';
 import User from '../models/user.model.js';
 import { AuthRequest } from '../middleware/auth.middleware.js';
+import { uploadToR2 } from '../utils/r2Storage/r2Upload.js';
 
 // @desc    Get user profile
 // @route   GET /api/user/me
@@ -16,6 +17,60 @@ export const getUserProfile = async (req: AuthRequest, res: Response) => {
     }
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// @desc    Upload/replace appraiser CV to R2 and save URL on user
+// @route   POST /api/user/cv
+// @access  Private
+export const uploadUserCv = async (req: AuthRequest, res: Response) => {
+  try {
+    const file = (req as any)?.file as Express.Multer.File | undefined;
+    if (!file) {
+      return res.status(400).json({ message: 'No file provided' });
+    }
+
+    const safeName = String(file.originalname || 'cv').replace(/\s+/g, '_');
+    const cvFilename = `${req.userId}-${Date.now()}-${safeName}`;
+    const key = `cv/${cvFilename}`;
+    const bucket = process.env.R2_BUCKET_NAME!;
+
+    await uploadToR2(file, bucket, key);
+    const publicUrl = `https://images.sellsnap.store/cv/${cvFilename}`;
+
+    const updated = await User.findByIdAndUpdate(
+      req.userId,
+      {
+        $set: {
+          cvUrl: publicUrl,
+          cvFilename,
+          cvUploadedAt: new Date(),
+        },
+      },
+      { new: true }
+    ).select('-password -refreshTokens');
+
+    if (!updated) return res.status(404).json({ message: 'User not found' });
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ message: error?.message || 'Failed to upload CV' });
+  }
+};
+
+// @desc    Delete CV link from user (does not remove from R2)
+// @route   DELETE /api/user/cv
+// @access  Private
+export const deleteUserCv = async (req: AuthRequest, res: Response) => {
+  try {
+    const updated = await User.findByIdAndUpdate(
+      req.userId,
+      { $unset: { cvUrl: 1, cvFilename: 1, cvUploadedAt: 1 } },
+      { new: true }
+    ).select('-password -refreshTokens');
+    if (!updated) return res.status(404).json({ message: 'User not found' });
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ message: error?.message || 'Failed to delete CV' });
   }
 };
 

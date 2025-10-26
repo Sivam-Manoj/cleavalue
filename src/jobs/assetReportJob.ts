@@ -1783,6 +1783,8 @@ export async function runDocxGenerationJob(reportId: string) {
       ...report.preview_data, // Override with user-edited data
       inspector_name: user?.name || "",
       user_email: user?.email || "",
+      user_cv_url: (user as any)?.cvUrl || (report as any)?.user_cv_url,
+      user_cv_filename: (user as any)?.cvFilename || (report as any)?.user_cv_filename,
     };
     
     // Generate DOCX
@@ -1818,38 +1820,97 @@ export async function runDocxGenerationJob(reportId: string) {
       `reports/${user._id}/${xlsxFilename}`
     );
     
-    // Create PdfReport records
+    // Save local copies for user download API
+    const localDir = path.resolve(process.cwd(), "reports", String(user._id));
+    try { await fs.mkdir(localDir, { recursive: true }); } catch {}
+    const localDocxPath = path.join(localDir, docxFilename);
+    const localPdfPath = path.join(localDir, pdfFilename);
+    const localXlsxPath = path.join(localDir, xlsxFilename);
+    // Generate Images ZIP from final image URLs and save locally
+    const imagesZipFilename = `asset-report-images-${reportId}.zip`;
+    const imagesZipBuffer = await generateImagesZip(
+      Array.isArray((report as any)?.imageUrls) ? (report as any).imageUrls : []
+    );
+    const localImagesZipPath = path.join(localDir, imagesZipFilename);
+    await Promise.all([
+      fs.writeFile(localDocxPath, docxBuffer),
+      fs.writeFile(localPdfPath, pdfBuffer),
+      fs.writeFile(localXlsxPath, xlsxBuffer),
+      fs.writeFile(localImagesZipPath, imagesZipBuffer),
+    ]);
+
+    // Prepare common fields required by PdfReport schema
+    const addressStr = String(
+      (report as any)?.client_name || (report as any)?.preview_data?.client_name || "Asset Report"
+    );
+    const currency = String(
+      (report as any)?.preview_data?.currency || (report as any)?.currency || "CAD"
+    );
+    const rawTotal = (report as any)?.preview_data?.total_value ?? (report as any)?.preview_data?.total_appraised_value;
+    const totalNum = typeof rawTotal === "number" ? rawTotal : parseFloat(String(rawTotal || "0").replace(/[^0-9.-]+/g, ""));
+    const fairMarketValueStr = Number.isFinite(totalNum)
+      ? new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(totalNum)
+      : currency;
+    const contractNo = (report as any)?.contract_no || (report as any)?.preview_data?.contract_no || undefined;
+
+    // Create PdfReport records (approved)
     const pdfRec = new PdfReport({
       user: user._id,
       report: reportId,
-      report_type: "asset",
-      file_type: "pdf",
-      file_url: pdfUrl,
-      file_name: pdfFilename,
-      status: "approved",
+      reportType: "Asset",
+      reportModel: "AssetReport",
+      fileType: "pdf",
+      filePath: path.relative(process.cwd(), localPdfPath),
+      filename: pdfFilename,
+      approvalStatus: "approved",
+      address: addressStr,
+      fairMarketValue: fairMarketValueStr,
+      contract_no: contractNo,
     });
-    
+
     const docxRec = new PdfReport({
       user: user._id,
       report: reportId,
-      report_type: "asset",
-      file_type: "docx",
-      file_url: docxUrl,
-      file_name: docxFilename,
-      status: "approved",
+      reportType: "Asset",
+      reportModel: "AssetReport",
+      fileType: "docx",
+      filePath: path.relative(process.cwd(), localDocxPath),
+      filename: docxFilename,
+      approvalStatus: "approved",
+      address: addressStr,
+      fairMarketValue: fairMarketValueStr,
+      contract_no: contractNo,
     });
-    
+
     const xlsxRec = new PdfReport({
       user: user._id,
       report: reportId,
-      report_type: "asset",
-      file_type: "xlsx",
-      file_url: xlsxUrl,
-      file_name: xlsxFilename,
-      status: "approved",
+      reportType: "Asset",
+      reportModel: "AssetReport",
+      fileType: "xlsx",
+      filePath: path.relative(process.cwd(), localXlsxPath),
+      filename: xlsxFilename,
+      approvalStatus: "approved",
+      address: addressStr,
+      fairMarketValue: fairMarketValueStr,
+      contract_no: contractNo,
     });
-    
-    await Promise.all([pdfRec.save(), docxRec.save(), xlsxRec.save()]);
+
+    const imagesRec = new PdfReport({
+      user: user._id,
+      report: reportId,
+      reportType: "Asset",
+      reportModel: "AssetReport",
+      fileType: "images",
+      filePath: path.relative(process.cwd(), localImagesZipPath),
+      filename: imagesZipFilename,
+      approvalStatus: "approved",
+      address: addressStr,
+      fairMarketValue: fairMarketValueStr,
+      contract_no: contractNo,
+    });
+
+    await Promise.all([pdfRec.save(), docxRec.save(), xlsxRec.save(), imagesRec.save()]);
     
     console.log(`[DocxGenJob] Completed successfully for report ${reportId}`);
   } catch (error) {

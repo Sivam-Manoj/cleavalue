@@ -160,7 +160,9 @@ export function buildTransmittalLetter(
     })
   );
   const appraiserLine = `${reportData?.appraiser || "Certified Appraiser"}`;
-  const companyLine = `${reportData?.appraisal_company || "McDougall Auctioneers Ltd."}`;
+  const companyLine = `${reportData?.appraisal_company || "McDougall Auctioneers"}`
+    .replace(/\bLtd\.?\b/gi, "")
+    .trim() || "McDougall Auctioneers";
   children.push(
     new Paragraph({
       style: "BodyLarge",

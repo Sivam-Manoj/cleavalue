@@ -74,6 +74,16 @@ const userSchema = new mongoose.Schema({
   passwordResetExpires: {
     type: Date,
   },
+  // Appraiser CV / Resume
+  cvUrl: {
+    type: String,
+  },
+  cvFilename: {
+    type: String,
+  },
+  cvUploadedAt: {
+    type: Date,
+  },
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);
