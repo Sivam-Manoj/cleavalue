@@ -50,6 +50,91 @@ export function queueAssetReportJob(input: AssetJobInput) {
   );
 }
 
+// Background job: generate preview files on submission (non-blocking)
+export function queuePreviewFilesJob(reportId: string) {
+  setImmediate(() =>
+    runPreviewFilesJob(reportId).catch((e) => {
+      console.error("[PreviewFilesJob] Failed:", e);
+    })
+  );
+}
+
+export async function runPreviewFilesJob(reportId: string) {
+  try {
+    console.log(`[PreviewFilesJob] Starting for report ${reportId}`);
+    const report = await AssetReport.findById(reportId).populate("user");
+    if (!report) throw new Error(`Report ${reportId} not found`);
+    if (!report.preview_data) throw new Error(`Report ${reportId} missing preview_data`);
+
+    const user = report.user as any;
+    const reportData = {
+      ...report.toObject(),
+      ...report.preview_data,
+      inspector_name: user?.name || user?.username || "",
+      user_email: user?.email || "",
+      user_cv_url: (user as any)?.cvUrl || (report as any)?.user_cv_url,
+      user_cv_filename: (user as any)?.cvFilename || (report as any)?.user_cv_filename,
+    } as any;
+
+    const docxBuffer = await generateAssetDocxFromReport(reportData);
+    const xlsxBuffer = await generateAssetXlsxFromReport(reportData);
+    const imagesZip = await generateImagesZip(Array.isArray((report as any)?.imageUrls) ? (report as any).imageUrls : []);
+
+    const docxFilename = `asset-preview-${reportId}.docx`;
+    const xlsxFilename = `asset-preview-${reportId}.xlsx`;
+    const imagesFilename = `asset-preview-images-${reportId}.zip`;
+
+    await Promise.all([
+      uploadBufferToR2(
+        docxBuffer,
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        process.env.R2_BUCKET_NAME!,
+        `previews/${docxFilename}`
+      ),
+      uploadBufferToR2(
+        xlsxBuffer,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        process.env.R2_BUCKET_NAME!,
+        `previews/${xlsxFilename}`
+      ),
+      uploadBufferToR2(
+        imagesZip,
+        "application/zip",
+        process.env.R2_BUCKET_NAME!,
+        `previews/${imagesFilename}`
+      ),
+    ]);
+
+    (report as any).preview_files = {
+      docx: `https://images.sellsnap.store/previews/${docxFilename}`,
+      excel: `https://images.sellsnap.store/previews/${xlsxFilename}`,
+      images: `https://images.sellsnap.store/previews/${imagesFilename}`,
+    } as any;
+    await report.save();
+
+    const { sendPreviewSubmittedEmail, sendAdminApprovalRequestEmail } = await import(
+      "../service/assetEmailService.js"
+    );
+    await sendPreviewSubmittedEmail(
+      user.email,
+      user.name || user.username || "User",
+      String(report._id)
+    );
+    const adminEmail = process.env.ADMIN_EMAIL || "admin@clearvalue.com";
+    await sendAdminApprovalRequestEmail(
+      adminEmail,
+      user.name || user.username || "User",
+      user.email,
+      String(report._id)
+    );
+
+    console.log(`[PreviewFilesJob] Completed for report ${reportId}`);
+  } catch (e) {
+    console.error(`[PreviewFilesJob] Error for report ${reportId}:`, e);
+    throw e;
+  }
+}
+
 export async function runAssetReportJob({
   user,
   images,

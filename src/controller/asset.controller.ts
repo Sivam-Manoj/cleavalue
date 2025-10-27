@@ -2,11 +2,8 @@ import { Response } from "express";
 import upload from "../utils/multerStorage.js";
 import { AuthRequest } from "../middleware/auth.middleware.js";
 import { endProgress, getProgress } from "../utils/progressStore.js";
-import { generateImagesZip } from "../jobs/assetReportJob.js";
 import AssetReport from "../models/asset.model.js";
-import { uploadBufferToR2 } from "../utils/r2Storage/r2Upload.js";
-import { generateAssetDocxFromReport } from "../service/assetDocxService.js";
-import { generateAssetXlsxFromReport } from "../service/xlsx/assetXlsxService.js";
+import { queuePreviewFilesJob } from "../jobs/assetReportJob.js";
 
 export type AssetGroupingMode =
   | "single_lot"
@@ -232,88 +229,17 @@ export const submitForApproval = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Build generation payload using user-edited preview_data
-    const userObj = report.user as any;
-    const reportData = {
-      ...report.toObject(),
-      ...report.preview_data,
-      inspector_name: userObj?.name || userObj?.username || "",
-      user_email: userObj?.email || "",
-      user_cv_url: userObj?.cvUrl || (report as any)?.user_cv_url,
-      user_cv_filename: userObj?.cvFilename || (report as any)?.user_cv_filename,
-    } as any;
-
-    // Generate preview files for admin review (DOCX, XLSX, Images ZIP)
-    try {
-      // DOCX
-      const docxBuffer = await generateAssetDocxFromReport(reportData);
-      const docxFilename = `asset-preview-${report._id}.docx`;
-      await uploadBufferToR2(
-        docxBuffer,
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        process.env.R2_BUCKET_NAME!,
-        `previews/${docxFilename}`
-      );
-
-      // XLSX
-      const xlsxBuffer = await generateAssetXlsxFromReport(reportData);
-      const xlsxFilename = `asset-preview-${report._id}.xlsx`;
-      await uploadBufferToR2(
-        xlsxBuffer,
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        process.env.R2_BUCKET_NAME!,
-        `previews/${xlsxFilename}`
-      );
-
-      // Images ZIP (use original uploaded image URLs)
-      const imgZipBuffer = await generateImagesZip(report.imageUrls || []);
-      const imagesFilename = `asset-preview-images-${report._id}.zip`;
-      await uploadBufferToR2(
-        imgZipBuffer,
-        "application/zip",
-        process.env.R2_BUCKET_NAME!,
-        `previews/${imagesFilename}`
-      );
-
-      // Save public CDN URLs to preview_files for admin UI
-      report.preview_files = {
-        docx: `https://images.sellsnap.store/previews/${docxFilename}`,
-        excel: `https://images.sellsnap.store/previews/${xlsxFilename}`,
-        images: `https://images.sellsnap.store/previews/${imagesFilename}`,
-      };
-    } catch (fileErr) {
-      console.error("[submitForApproval] Failed to generate one or more preview files:", fileErr);
-      // Continue submission even if file generation partially fails
-    }
-
     // Update status and timestamps
     report.status = 'pending_approval';
     report.preview_submitted_at = new Date();
     report.approval_requested_at = new Date();
     await report.save();
 
-    // Send emails
-    const { sendPreviewSubmittedEmail, sendAdminApprovalRequestEmail } = await import("../service/assetEmailService.js");
-    const user = report.user as any;
-    
-    // Email to user
-    await sendPreviewSubmittedEmail(
-      user.email,
-      user.name || user.username || 'User',
-      String(report._id)
-    );
+    // Queue background job to generate preview files and send notifications when ready
+    await queuePreviewFilesJob(String(report._id));
 
-    // Email to admin
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@clearvalue.com';
-    await sendAdminApprovalRequestEmail(
-      adminEmail,
-      user.name || user.username || 'User',
-      user.email,
-      String(report._id)
-    );
-
-    res.status(200).json({
-      message: "Report submitted for approval successfully",
+    res.status(202).json({
+      message: "Submission received. Preparing files in background; you'll get an email when ready.",
       data: {
         reportId: report._id,
         status: report.status,
