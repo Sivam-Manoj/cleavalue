@@ -91,30 +91,30 @@ export async function buildValuationTable(
   const i18n = {
     en: {
       title: "VALUATION COMPARISON TABLE",
-      subtitle: "Multiple Valuation Methods with AI Analysis",
+      subtitle: "Multiple Valuation Methods with Software Analysis",
       baseFMV: "Base Fair Market Value",
       method: "Method",
       value: "Value",
       timeline: "Timeline",
-      explanation: "AI Explanation",
+      explanation: "Software Explanation",
     },
     fr: {
       title: "TABLEAU COMPARATIF D'ÉVALUATION",
-      subtitle: "Plusieurs Méthodes avec Analyse IA",
+      subtitle: "Plusieurs Méthodes avec Analyse Logicielle",
       baseFMV: "Juste Valeur Marchande de Base",
       method: "Méthode",
       value: "Valeur",
       timeline: "Délai",
-      explanation: "Explication IA",
+      explanation: "Explication Logicielle",
     },
     es: {
       title: "TABLA COMPARATIVA DE VALUACIÓN",
-      subtitle: "Múltiples Métodos con Análisis IA",
+      subtitle: "Múltiples Métodos con Análisis de Software",
       baseFMV: "Valor Justo de Mercado Base",
       method: "Método",
       value: "Valor",
       timeline: "Plazo",
-      explanation: "Explicación IA",
+      explanation: "Explicación de Software",
     },
   };
 

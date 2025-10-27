@@ -45,43 +45,28 @@ export function buildTOC(reportData: any): Array<Paragraph | Table> {
   // 7. Purpose of This Report
   entries.push({ label: tr.purposeHeading });
   
-  // 8. Identification of Assets Appraised
-  entries.push({ label: tr.identHeading });
-  
-  // 9. Scope of Work
+  // 8. Scope of Work
   entries.push({ label: tr.scopeHeading });
   
-  // 10. Observations and Comments
-  entries.push({ label: tr.observationsHeading });
+  // 9. Factors Affecting Value
+  entries.push({ label: "Factors Affecting Value" });
   
-  // 11. Intended Users
-  entries.push({ label: tr.intendedHeading });
-  
-  // 12. Value Terminology
+  // 10. Value Terminology
   entries.push({ label: tr.valueTermHeading });
   
-  // 13. Definitions and Obsolescence
-  entries.push({ label: tr.definitionsHeading });
-  
-  // 14. Limiting Conditions and Critical Assumptions
+  // 11. Limiting Conditions and Critical Assumptions
   entries.push({ label: tr.limitingHeading });
   
-  // 15. Company, Subject Asset Description
-  entries.push({ label: tr.companySubjectHeading });
-  
-  // 16. Approaches to Value
+  // 12. Approaches to Value
   entries.push({ label: tr.approachesHeading });
   
-  // 17. Valuation Process and Methodology
+  // 13. Valuation Process and Methodology
   entries.push({ label: tr.valProcessHeading });
   
-  // 18. Code of Ethics
+  // 14. Code of Ethics
   entries.push({ label: tr.codeEthicsHeading });
   
-  // 19. Experience
-  entries.push({ label: tr.experienceHeading });
-  
-  // 20. Results (lots/catalogue/per_item/combined)
+  // 15. Results (lots/catalogue/per_item/combined)
   const gm = String(reportData?.grouping_mode || "");
   if (gm === "combined") {
     const modes: string[] = Array.isArray(reportData?.combined_modes)
@@ -96,13 +81,17 @@ export function buildTOC(reportData: any): Array<Paragraph | Table> {
     else entries.push({ label: tr.results });
   }
   
-  // 21. Market Overview
+  // 16. Market Overview
   entries.push({ label: tr.marketOverview });
   
-  // 22. Appendix
+  // 17. Appendix
   const hasImages =
     Array.isArray(reportData?.imageUrls) && reportData.imageUrls.length > 0;
   if (hasImages) entries.push({ label: tr.appendix });
+  
+  // 18. Appraiser CV (if available)
+  const hasCv = !!(reportData?.user_cv_url);
+  if (hasCv) entries.push({ label: "Appraiser CV" });
 
   const headerRow = new TableRow({
     cantSplit: true,

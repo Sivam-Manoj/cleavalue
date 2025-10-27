@@ -8,6 +8,10 @@ import {
   WidthType,
   ShadingType,
   TextRun,
+  Document,
+  Packer,
+  HeadingLevel,
+  AlignmentType,
 } from "docx";
 
 export function formatDateUS(dateString?: string): string {
@@ -103,4 +107,25 @@ export function buildKeyValueTable(
         })
     ),
   });
+}
+
+/**
+ * Create a simple one-page DOCX buffer with a centered heading
+ */
+export async function createSimpleHeadingDocx(heading: string): Promise<Buffer> {
+  const doc = new Document({
+    sections: [
+      {
+        children: [
+          new Paragraph({
+            text: heading,
+            heading: HeadingLevel.HEADING_1,
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 400, after: 200 },
+          }),
+        ],
+      },
+    ],
+  });
+  return await Packer.toBuffer(doc);
 }

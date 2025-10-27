@@ -8,6 +8,7 @@ import salvageRoutes from "./routes/salvage.routes.js";
 import assetRoutes from "./routes/asset.routes.js";
 import pdfReportRoutes from "./routes/pdfReport.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
+import savedInputRoutes from "./routes/savedInput.routes.js";
 import connectDB from "./config/database.js";
 import dotenv from "dotenv";
 import cors from "cors";
@@ -59,6 +60,7 @@ const startServer = async () => {
     app.use("/api/asset", assetRoutes);
     app.use("/api/reports", pdfReportRoutes);
     app.use("/api/admin", adminRoutes);
+    app.use("/api/saved-inputs", savedInputRoutes);
 
     app.listen(port, () => {
       console.log(`Server running at http://localhost:${port}`);

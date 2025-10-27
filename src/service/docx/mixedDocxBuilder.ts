@@ -175,10 +175,10 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
       codeEthicsHeading: "Code of Ethics",
       competencyHeading: "Competency",
       competencyBody:
-        "The appraiser has the appropriate knowledge and experience to develop credible results for the purpose and use outlined in this report.",
+        "Under CPPAG, McDougall Auctioneers Ltd. must disclose if there is a lack of knowledge and/or experience that would not allow us to complete this appraisal in a competent manner or to develop credible results. McDougall Auctioneers Ltd. and the appraiser performing this appraisal have performed valuations of assets like the Subject Assets for various purposes in the past. In addition, the appraiser performing this appraisal has the appropriate knowledge and experience to be able to develop credible results for the purpose and use outlined in this report.",
       confidentialityHeading: "Confidentiality",
       confidentialityBody:
-        "This report and supporting file documentation are confidential. Distribution to parties other than the client requires prior written consent.",
+        "This report and supporting file documentation are confidential. Neither all nor any part of the contents of this appraisal (including the report and the supporting file documentation) shall be disclosed to any party, or conveyed orally or in writing through advertising, public relations, news, sales, or in any other manner without the prior written consent and approval of McDougall Auctioneers Ltd. This Appraisal Report provides a summary discussion of the data, analysis, and reasoning used by the appraiser to arrive at the opinions of value identified herein. A copy of this report and the data, reasoning, and analysis supporting our value conclusions shall remain in our files and be retained for a period of at least five (5) years after preparation, or at least two (2) years after final disposition of any judicial proceeding as required by the Records Keeping section of CPPAG. As this is an Appraisal Report, the conclusions and data contained herein can only be used by the Client for the purpose stated. The opinions and conclusions set forth in this report may not be understood properly by anyone else without additional information which is contained in the appraiser’s work file. Neither this report, nor any of the data contained herein should be distributed to another party.",
       experienceHeading: "EXPERIENCE",
       experienceBody1:
         "McDougall Auctioneers is one of Western Canada’s leading full-service auction and valuation firms, with over 40 years of experience in marketing, selling, and appraising assets across a diverse range of industries. Headquartered in Saskatchewan and operating throughout Canada and the United States, McDougall Auctioneers has built a reputation for impartial, defensible valuations that meet or exceed industry and regulatory standards.",
@@ -660,6 +660,21 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
   // Additional narrative sections (aligned with Catalogue report)
   const purposeClient = String(reportData?.client_name || "XYZ Ltd");
   const ccy = String((reportData as any)?.currency || "CAD");
+  const isFMV: boolean = ((): boolean => {
+    try {
+      const p = String(
+        (reportData as any)?.appraisal_purpose || ""
+      ).toLowerCase();
+      return (
+        p.includes("fmv") ||
+        p.includes("fair market") ||
+        !!(reportData as any)?.valuation?.fair_market_value ||
+        !!(reportData as any)?.valuation_data?.baseFMV
+      );
+    } catch {
+      return false;
+    }
+  })();
 
   // Conditions of Appraisal
   children.push(
@@ -690,23 +705,9 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
   children.push(
     new Paragraph({
       style: "BodyLarge",
-      text: t.purposeBody(purposeClient),
-    })
-  );
-
-  // Identification of Assets Appraised
-  children.push(
-    new Paragraph({
-      text: t.identHeading,
-      heading: HeadingLevel.HEADING_1,
-      spacing: { before: 200, after: 80 },
-    })
-  );
-  children.push(goldDivider());
-  children.push(
-    new Paragraph({
-      style: "BodyLarge",
-      text: t.identBody,
+      text: isFMV
+        ? `The purpose of this appraisal report is to provide an opinion of value of the subject for internal consideration and to assist ${purposeClient} and the specified personnel within their corporation in establishing a current Fair Market Value (FMV) for financial considerations. This report is not intended to be used for any other purpose. Based on the purpose of the appraisal, we have valued the subject assets under the premise of FMV.`
+        : t.purposeBody(purposeClient),
     })
   );
 
@@ -742,31 +743,45 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
     })
   );
 
-  // Observations and Comments
+  // Factors Affecting Value
   children.push(
     new Paragraph({
-      text: t.observationsHeading,
+      text: "Factors Affecting Value",
       heading: HeadingLevel.HEADING_1,
-      spacing: { before: 200, after: 60 },
+      pageBreakBefore: true,
+      spacing: { after: 80 },
     })
   );
   children.push(goldDivider());
   children.push(
-    new Paragraph({ style: "BodyLarge", text: t.observationsBody })
+    new Paragraph({ text: "AGE & CONDITION:", heading: HeadingLevel.HEADING_2 })
   );
-
-  // Intended Users
   children.push(
     new Paragraph({
-      text: t.intendedHeading,
-      heading: HeadingLevel.HEADING_1,
-      spacing: { before: 200, after: 60 },
+      style: "BodyLarge",
+      text: "The assets are of average age and appear to be in average condition. Regular maintenance and cleaning appears to have been completed as required. This is based on a visual inspection only and no review of maintenance records.",
     })
   );
-  children.push(goldDivider());
-  children.push(new Paragraph({ style: "BodyLarge", text: t.intendedBody }));
+  children.push(
+    new Paragraph({ text: "QUALITY:", heading: HeadingLevel.HEADING_2 })
+  );
+  children.push(
+    new Paragraph({
+      style: "BodyLarge",
+      text: "Some items are brand names that are recognized in the industry.",
+    })
+  );
+  children.push(
+    new Paragraph({ text: "ANALYSIS:", heading: HeadingLevel.HEADING_2 })
+  );
+  children.push(
+    new Paragraph({
+      style: "BodyLarge",
+      text: "In a general overview listing of these items, some assets are household, and some assets are for a chiropractor and massage clinic. Sentimental items do not reflect the actual physical value of an item and therefore we must value accordingly. The values given are based off the information provided.",
+    })
+  );
 
-  // Value Terminology — OLV
+  // Value Terminology
   children.push(
     new Paragraph({
       text: t.valueTermHeading,
@@ -775,62 +790,35 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
     })
   );
   children.push(goldDivider());
-  children.push(
-    new Paragraph({
-      text: t.valueOLVHeading,
-      heading: HeadingLevel.HEADING_2,
-      spacing: { after: 40 },
-    })
-  );
-  children.push(
-    new Paragraph({ style: "BodyLarge", text: t.valueOLVBody(ccy) })
-  );
-  children.push(
-    new Paragraph({ style: "BodyLarge", text: t.valueOLVScenarioBody })
-  );
-
-  // Definitions and Obsolescence
-  children.push(
-    new Paragraph({
-      text: t.definitionsHeading,
-      heading: HeadingLevel.HEADING_1,
-      pageBreakBefore: true,
-      spacing: { after: 80 },
-    })
-  );
-  children.push(goldDivider());
-  children.push(
-    new Paragraph({
-      text: t.physicalDetHeading,
-      heading: HeadingLevel.HEADING_2,
-    })
-  );
-  children.push(new Paragraph({ style: "BodyLarge", text: t.physicalDetBody }));
-  children.push(
-    new Paragraph({
-      text: t.functionalObsHeading,
-      heading: HeadingLevel.HEADING_2,
-    })
-  );
-  children.push(
-    new Paragraph({ style: "BodyLarge", text: t.functionalObsBody })
-  );
-  children.push(
-    new Paragraph({
-      text: t.economicObsHeading,
-      heading: HeadingLevel.HEADING_2,
-    })
-  );
-  children.push(new Paragraph({ style: "BodyLarge", text: t.economicObsBody }));
-  children.push(
-    new Paragraph({
-      text: t.depreciationHeading,
-      heading: HeadingLevel.HEADING_2,
-    })
-  );
-  children.push(
-    new Paragraph({ style: "BodyLarge", text: t.depreciationBody })
-  );
+  if (isFMV) {
+    children.push(
+      new Paragraph({
+        text: "Fair Market Value (FMV)",
+        heading: HeadingLevel.HEADING_2,
+        spacing: { after: 40 },
+      })
+    );
+    children.push(
+      new Paragraph({
+        style: "BodyLarge",
+        text: "The estimated price at which the assets would change hands between a willing buyer and a willing seller, neither being under any compulsion to buy or sell and both having reasonable knowledge of relevant facts.",
+      })
+    );
+  } else {
+    children.push(
+      new Paragraph({
+        text: t.valueOLVHeading,
+        heading: HeadingLevel.HEADING_2,
+        spacing: { after: 40 },
+      })
+    );
+    children.push(
+      new Paragraph({ style: "BodyLarge", text: t.valueOLVBody(ccy) })
+    );
+    children.push(
+      new Paragraph({ style: "BodyLarge", text: t.valueOLVScenarioBody })
+    );
+  }
 
   // Limiting Conditions and Critical Assumptions
   children.push(
@@ -842,17 +830,25 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
     })
   );
   children.push(goldDivider());
+  // Preamble replacing removed "Asset Conditions"
   children.push(
-    new Paragraph({ text: t.assetCondHeading, heading: HeadingLevel.HEADING_2 })
+    new Paragraph({
+      style: "BodyLarge",
+      text: "This appraisal report and the above noted recovery values are based on a subject to the following conditions, qualifications, assumptions, and limitations:",
+    })
   );
-  children.push(new Paragraph({ style: "BodyLarge", text: t.assetCondBody }));
   children.push(
     new Paragraph({
       text: t.titleAssetsHeading,
       heading: HeadingLevel.HEADING_2,
     })
   );
-  children.push(new Paragraph({ style: "BodyLarge", text: t.titleAssetsBody }));
+  children.push(
+    new Paragraph({
+      style: "BodyLarge",
+      text: "No investigation has been made of, and no responsibility is assumed for, the legal description or for legal matters including title or encumbrances. Unless otherwise noted in this report, title to the property is assumed to be good and marketable. The property is valued as if it is free and clear of liens, easements, encroachments, and other encumbrances unless otherwise stated, and all improvements are assumed to lie within property boundaries. Conducting a title search is outside the scope of this appraisal.",
+    })
+  );
   children.push(
     new Paragraph({
       text: t.responsibleOwnHeading,
@@ -860,7 +856,10 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
     })
   );
   children.push(
-    new Paragraph({ style: "BodyLarge", text: t.responsibleOwnBody })
+    new Paragraph({
+      style: "BodyLarge",
+      text: "It is assumed that subject assets are under responsible ownership and competent management. No allowance has been made for possible liens or encumbrances that may be against the property other than those discussed in the report.",
+    })
   );
   children.push(
     new Paragraph({
@@ -869,7 +868,10 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
     })
   );
   children.push(
-    new Paragraph({ style: "BodyLarge", text: t.statedPurposeBody })
+    new Paragraph({
+      style: "BodyLarge",
+      text: "This appraisal and report have been made only for the purpose stated within the transmittal letter and the body of this appraisal report. This report cannot be used for any other purpose.",
+    })
   );
   children.push(
     new Paragraph({
@@ -880,10 +882,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
   children.push(
     new Paragraph({
       style: "BodyLarge",
-      text: t.valuationDateBody(
-        formatDateUS(reportData?.effective_date) || "",
-        ccy
-      ),
+      text: "The valuation date to which the conclusions and opinions expressed in this report apply is set forth in the transmittal letter and in the report. The dollar amount of any value reported is based on the purchasing power of the Canadian dollar (or the currency specified in the report) as of that date.",
     })
   );
   children.push(
@@ -895,15 +894,18 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
   children.push(
     new Paragraph({
       style: "BodyLarge",
-      text: t.inspectionBody(
-        formatMonthYear(reportData?.inspection_date) || undefined
-      ),
+      text: "The subject assets were inspected as noted in the body of the report. When the date of inspection differs from the valuation date, we have assumed no material change in the condition of the property unless otherwise noted in the report.",
     })
   );
   children.push(
     new Paragraph({ text: t.hazardousHeading, heading: HeadingLevel.HEADING_2 })
   );
-  children.push(new Paragraph({ style: "BodyLarge", text: t.hazardousBody }));
+  children.push(
+    new Paragraph({
+      style: "BodyLarge",
+      text: "No allowance has been made nor was any consideration given to potential environmental problems and the possible impact those problems would have on the findings withing this appraisal. It is assumed that there is full compliance with all applicable environmental regulations and laws unless non-compliance is stated, defined and considered in the appraisal report. We have not been engaged nor are we qualified to detect the existence of hazardous material, which may or may not be present on or near the property. The presence of potentially hazardous substances such as asbestos, urea-formaldehyde foam insulation, industrial wastes, etc. may affect the value of the property. The value estimate herein is predicated on the assumption that there is no such material on, in or near the property that would cause a loss in vale. No responsibility is assumed for any such conditions or for any expertise or engineering knowledge required to discover them. The client should retain an expert in this field if further information is desired.",
+    })
+  );
   children.push(
     new Paragraph({
       text: t.changeMarketHeading,
@@ -911,7 +913,10 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
     })
   );
   children.push(
-    new Paragraph({ style: "BodyLarge", text: t.changeMarketBody })
+    new Paragraph({
+      style: "BodyLarge",
+      text: "McDougall Auctioneers Ltd. is not responsible for changes in market conditions and no obligation is assumed to revise this report to reflect events or conditions which occur subsequent to the valuation date. Additionally, McDougall Auctioneers Ltd. cannot be held responsible for the inability of the owner to locate a purchaser at the appraised value.",
+    })
   );
   children.push(
     new Paragraph({
@@ -919,38 +924,45 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
       heading: HeadingLevel.HEADING_2,
     })
   );
-  children.push(new Paragraph({ style: "BodyLarge", text: t.unexpectedBody }));
-
-  // Company, Subject Asset Description
   children.push(
     new Paragraph({
-      text: t.companySubjectHeading,
-      heading: HeadingLevel.HEADING_1,
-      pageBreakBefore: true,
-      spacing: { after: 80 },
+      style: "BodyLarge",
+      text: "It is assumed that there are no hidden or non-apparent conditions of the property that would affect the value of the subject assets. No responsibility is assumed for such conditions or for arranging for engineering studies that may be required to discover them.",
     })
   );
-  children.push(goldDivider());
+  // Additional limiting statements
   children.push(
     new Paragraph({
-      text: t.companyDiscussionHeading,
+      text: "CONFIDENTIALITY / MARKETING",
       heading: HeadingLevel.HEADING_2,
     })
   );
   children.push(
     new Paragraph({
       style: "BodyLarge",
-      text: t.companyDiscussionBody(purposeClient),
+      text: "This report and supporting files documentation are confidential. No part of the contents of this appraisal (including the report and the supporting file documentation) shall be disclosed to any party, or conveyed orally or in writing through advertising, public relations, news, sales, or in any other manner without the prior written consent and approval of both McDougall Auctioneers Ltd. and the client.",
+    })
+  );
+  children.push(
+    new Paragraph({ text: "COURT TESTIMONY", heading: HeadingLevel.HEADING_2 })
+  );
+  children.push(
+    new Paragraph({
+      style: "BodyLarge",
+      text: "Neither McDougall Auctioneers Ltd. or any individuals signing or associated with this report shall be required by reason of this report to give further consultation, to provide testimony, or appear in court or other legal proceedings unless specific arrangements for such services have been made.",
     })
   );
   children.push(
     new Paragraph({
-      text: t.subjectAssetsHeading,
-      heading: HeadingLevel.HEADING_2,
+      style: "BodyLarge",
+      text: "Since conclusions by the appraiser are based upon judgements, isolation of any single element as the sole basis for comparison to the whole appraisal may be inaccurate.",
     })
   );
   children.push(
-    new Paragraph({ style: "BodyLarge", text: t.subjectAssetsBody })
+    new Paragraph({
+      style: "BodyLarge",
+      text: "The effective date of the appraisal establishes the current value and is not prospective or retrospective.",
+    })
   );
 
   // Approaches to Value
@@ -1082,42 +1094,28 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
   children.push(
     new Paragraph({ text: t.confidentialityBody, style: "BodyLarge" })
   );
-
-  // EXPERIENCE
-  children.push(
-    new Paragraph({
-      text: t.experienceHeading,
-      heading: HeadingLevel.HEADING_1,
-      pageBreakBefore: true,
-      spacing: { after: 160 },
-    })
-  );
-  children.push(goldDivider());
+  // Signature block (as requested)
   children.push(
     new Paragraph({
       style: "BodyLarge",
-      children: [new TextRun({ text: t.experienceBody1 })],
-      spacing: { after: 120 },
+      children: [new TextRun({ text: "______________________________", color: "A3A3A3" })],
+      spacing: { before: 120, after: 20 },
     })
+  );
+  children.push(
+    new Paragraph({ style: "BodyLarge", children: [new TextRun({ text: "Sincerely," })], spacing: { after: 80 } })
   );
   children.push(
     new Paragraph({
       style: "BodyLarge",
-      children: [new TextRun({ text: t.experienceBody2 })],
-      spacing: { after: 120 },
+      children: [new TextRun({ text: String(reportData?.appraiser || "Appraiser Name") })],
+      spacing: { after: 40 },
     })
   );
   children.push(
     new Paragraph({
       style: "BodyLarge",
-      children: [new TextRun({ text: t.experienceBody3 })],
-      spacing: { after: 120 },
-    })
-  );
-  children.push(
-    new Paragraph({
-      style: "BodyLarge",
-      children: [new TextRun({ text: t.experienceBody4 })],
+      children: [new TextRun({ text: "McDougall Auctioneers Ltd." })],
       spacing: { after: 120 },
     })
   );
@@ -1382,26 +1380,22 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
   );
   children.push(...appendixChildren);
 
-  // Final page: Appraiser CV link (if provided by user)
-  if (reportData?.user_cv_url) {
+  // Optional: Appraiser CV link (shown only if explicitly allowed)
+  if (reportData?.user_cv_url && reportData?.show_cv_link === true) {
     children.push(
       new Paragraph({
         children: [
-          new TextRun({
-            text: "Appraiser CV: ",
-            bold: true,
-            color: "1F2937",
-          }),
+          new TextRun({ text: "Appraiser CV: ", bold: true, color: "1F2937" }),
           new TextRun({
             text: String(reportData.user_cv_filename || reportData.user_cv_url),
             color: "1D4ED8",
-            underline: {}
+            underline: {},
           }),
           new TextRun({ text: "\n" }),
           new TextRun({
             text: String(reportData.user_cv_url),
             color: "1D4ED8",
-            underline: {}
+            underline: {},
           }),
         ],
         spacing: { before: 300, after: 200 },
@@ -1441,7 +1435,12 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
           basedOn: "Normal",
           next: "Normal",
           quickFormat: true,
-          run: { font: "Times New Roman", size: 28, bold: true, color: "111827" },
+          run: {
+            font: "Times New Roman",
+            size: 28,
+            bold: true,
+            color: "111827",
+          },
           paragraph: { spacing: { before: 180, after: 100 } },
         },
         {
@@ -1450,7 +1449,12 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
           basedOn: "Normal",
           next: "Normal",
           quickFormat: true,
-          run: { font: "Times New Roman", size: 28, bold: true, color: "111827" },
+          run: {
+            font: "Times New Roman",
+            size: 28,
+            bold: true,
+            color: "111827",
+          },
           paragraph: { spacing: { before: 140, after: 80 } },
         },
         {
@@ -1459,7 +1463,12 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
           basedOn: "Normal",
           next: "Normal",
           quickFormat: true,
-          run: { font: "Times New Roman", size: 28, bold: true, color: "111827" },
+          run: {
+            font: "Times New Roman",
+            size: 28,
+            bold: true,
+            color: "111827",
+          },
           paragraph: {
             spacing: { before: 160, after: 120 },
             alignment: AlignmentType.CENTER,
@@ -1557,11 +1566,11 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
         },
         headers: { default: new Header({ children: [] }) },
         footers: { default: new Footer({ children: [] }) },
-        children: await buildCertificateOfAppraisal(
+        children: (await buildCertificateOfAppraisal(
           reportData,
           contentWidthTw,
           reportDate
-        ) as any,
+        )) as any,
       },
       // Main content (with header/footer). Continue page numbering.
       {

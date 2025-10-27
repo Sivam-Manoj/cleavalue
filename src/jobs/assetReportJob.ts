@@ -7,6 +7,7 @@ import {
   type AssetAnalysisResult,
 } from "../service/assetOpenAIService.js";
 import { generateAssetDocxFromReport } from "../service/assetDocxService.js";
+import User from "../models/user.model.js";
 import { generateAssetPdfFromReport } from "../service/assetPdfService.js";
 import { generateAssetXlsxFromReport } from "../service/xlsx/assetXlsxService.js";
 import {
@@ -1204,10 +1205,19 @@ export async function runAssetReportJob({
         console.log(
           `[AssetReportJob] DOCX generation start for report ${newReport._id} at ${new Date(t0).toISOString()}`
         );
+        let userCvUrl: string | undefined;
+        let userCvFilename: string | undefined;
+        try {
+          const u = await User.findById(user.id).select("cvUrl cvFilename");
+          userCvUrl = (u as any)?.cvUrl || undefined;
+          userCvFilename = (u as any)?.cvFilename || undefined;
+        } catch {}
         const buf = await generateAssetDocxFromReport({
           ...reportObject,
           inspector_name: user?.name || "",
           user_email: user?.email || "",
+          user_cv_url: userCvUrl,
+          user_cv_filename: userCvFilename,
           language: ((): "en" | "fr" | "es" => {
             const l = String(
               (reportObject as any)?.language || details?.language || ""

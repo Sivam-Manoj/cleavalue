@@ -61,7 +61,7 @@ export function buildFooterTable(
   appraiserName?: string | null,
   appraiserEmail?: string | null
 ): Table {
-  const site = "www.McDougallBay.com";
+  const site = "www.mcdougallauction.com";
   const phone = "(800) 263-4193";
   const address = "301 – 15 Great Plains Road, Emerald Park, SK  S4L 1C6";
   const appraiser = appraiserName ? String(appraiserName) : "";

@@ -8,15 +8,19 @@ export function buildTransmittalLetter(
 ): Paragraph[] {
   const children: Paragraph[] = [];
 
-  const clientName = String(reportData?.client_name || "XYZ Ltd");
-  const exclusiveUseBy = String(
-    (reportData as any)?.exclusive_use_by || "Borger Group of Companies"
-  );
-  const attentionName = String(
-    (reportData as any)?.attention || (reportData as any)?.contact_name || "LLL"
-  );
+  const clientName = String(reportData?.client_name || "").trim() || "Client";
+  const ownerName = String(reportData?.owner_name || "").trim() || clientName;
+  const exclusiveUseBy = String((reportData as any)?.exclusive_use_by || clientName);
+  const attentionName =
+    String((reportData as any)?.attention || (reportData as any)?.contact_name || clientName).trim();
   const lang = getLang(reportData);
   const tr = t(lang);
+  const purposeRaw = String(reportData?.appraisal_purpose || "").toLowerCase();
+  const isFMV =
+    purposeRaw.includes("fmv") ||
+    purposeRaw.includes("fair market") ||
+    !!(reportData as any)?.valuation?.fair_market_value ||
+    !!(reportData as any)?.valuation_data?.baseFMV;
 
   children.push(
     new Paragraph({
@@ -66,7 +70,7 @@ export function buildTransmittalLetter(
   children.push(
     new Paragraph({
       style: "BodyLarge",
-      children: [new TextRun({ text: tr.dear })],
+      children: [new TextRun({ text: `Dear ${attentionName},` })],
       keepLines: true,
       keepNext: true,
       spacing: { after: 100 },
@@ -77,7 +81,7 @@ export function buildTransmittalLetter(
       style: "BodyLarge",
       children: [
         new TextRun({
-          text: tr.exclusiveUseSentence(clientName, exclusiveUseBy),
+          text: `At your request, we have prepared an appraisal of certain equipment owned by ${ownerName}, a copy of which is enclosed. This appraisal report is intended for exclusive use by ${exclusiveUseBy} and is intended only for establishing values of the listed equipment.`,
         }),
       ],
       keepLines: true,
@@ -90,7 +94,9 @@ export function buildTransmittalLetter(
       style: "BodyLarge",
       children: [
         new TextRun({
-          text: tr.premiseSentence,
+          text: isFMV
+            ? "The subject assets were appraised under the premise of Fair Market Value for internal consideration."
+            : tr.premiseSentence,
         }),
       ],
       keepLines: true,
@@ -102,9 +108,7 @@ export function buildTransmittalLetter(
     new Paragraph({
       style: "BodyLarge",
       children: [
-        new TextRun({
-          text: tr.approachesSentence,
-        }),
+        new TextRun({ text: tr.approachesSentence }),
       ],
       keepLines: true,
       keepNext: true,
@@ -116,7 +120,9 @@ export function buildTransmittalLetter(
       style: "BodyLarge",
       children: [
         new TextRun({
-          text: tr.opinionSentence,
+          text: isFMV
+            ? "After a thorough analysis of the assets and information made available to us, it is our opinion that as of the Effective Date, these assets have a Fair Market Value in Canadian Funds as shown on the certificate that we have prepared."
+            : tr.opinionSentence,
         }),
       ],
       keepLines: true,
@@ -159,14 +165,49 @@ export function buildTransmittalLetter(
       spacing: { before: 60, after: 120 },
     })
   );
+  // Simple signature placeholders on the Transmittal Letter
+  children.push(
+    new Paragraph({
+      style: "BodyLarge",
+      children: [new TextRun({ text: "______________________________", color: "A3A3A3" })],
+      spacing: { after: 20 },
+    })
+  );
+  children.push(
+    new Paragraph({
+      style: "BodyLarge",
+      children: [new TextRun({ text: tr.appraiserSignature || "Appraiser Signature", color: "6B7280" })],
+      spacing: { after: 40 },
+    })
+  );
+  children.push(
+    new Paragraph({
+      style: "BodyLarge",
+      children: [new TextRun({ text: `${tr.dateLabel || 'Date: '}${reportDate}`, color: "6B7280" })],
+      spacing: { after: 100 },
+    })
+  );
   const appraiserLine = `${reportData?.appraiser || "Certified Appraiser"}`;
+  const appraiserDesignation =
+    [
+      (reportData as any)?.appraiser_designations,
+      (reportData as any)?.appraiser_credentials,
+      (reportData as any)?.appraiser_letters,
+    ]
+      .filter((x) => typeof x === "string" && x.trim())
+      .join(", ");
   const companyLine = `${reportData?.appraisal_company || "McDougall Auctioneers"}`
     .replace(/\bLtd\.?\b/gi, "")
     .trim() || "McDougall Auctioneers";
   children.push(
     new Paragraph({
       style: "BodyLarge",
-      children: [new TextRun({ text: appraiserLine })],
+      children: [
+        new TextRun({ text: appraiserLine }),
+        ...(appraiserDesignation
+          ? [new TextRun({ text: `, ${appraiserDesignation}` })]
+          : []),
+      ],
       keepLines: true,
       keepNext: true,
       spacing: { after: 80 },
