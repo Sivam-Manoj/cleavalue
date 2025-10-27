@@ -2112,37 +2112,24 @@ export async function runDocxGenerationJob(reportId: string) {
     const previewDocxUrl: string | undefined = (report as any)?.preview_files?.docx;
     const previewXlsxUrl: string | undefined = (report as any)?.preview_files?.excel || (report as any)?.preview_files?.xlsx;
     const previewImagesUrl: string | undefined = (report as any)?.preview_files?.images;
+    if (!previewDocxUrl || !previewXlsxUrl || !previewImagesUrl) {
+      throw new Error(`[DocxGenJob] Missing preview_files URLs for report ${reportId}`);
+    }
     let docxBuffer: Buffer | undefined;
     let xlsxBuffer: Buffer | undefined;
     let imagesZipBuffer: Buffer | undefined;
     try {
-      if (previewDocxUrl) {
-        const res = await axios.get(previewDocxUrl, { responseType: "arraybuffer" });
-        docxBuffer = Buffer.from(res.data as ArrayBuffer);
-      }
-      if (previewXlsxUrl) {
-        const res = await axios.get(previewXlsxUrl, { responseType: "arraybuffer" });
-        xlsxBuffer = Buffer.from(res.data as ArrayBuffer);
-      }
-      if (previewImagesUrl) {
-        const res = await axios.get(previewImagesUrl, { responseType: "arraybuffer" });
-        imagesZipBuffer = Buffer.from(res.data as ArrayBuffer);
-      }
+      const [docxRes, xlsxRes, imagesRes] = await Promise.all([
+        axios.get(previewDocxUrl, { responseType: "arraybuffer" }),
+        axios.get(previewXlsxUrl, { responseType: "arraybuffer" }),
+        axios.get(previewImagesUrl, { responseType: "arraybuffer" }),
+      ]);
+      docxBuffer = Buffer.from(docxRes.data as ArrayBuffer);
+      xlsxBuffer = Buffer.from(xlsxRes.data as ArrayBuffer);
+      imagesZipBuffer = Buffer.from(imagesRes.data as ArrayBuffer);
     } catch (e) {
-      console.error("[DocxGenJob] Failed to fetch preview files; falling back to generation", e);
-    }
-    // Fallback: if any file missing, generate it now (rare)
-    if (!docxBuffer) {
-      console.log("[DocxGenJob] Fallback generate DOCX");
-      docxBuffer = await generateAssetDocxFromReport(reportData);
-    }
-    if (!xlsxBuffer) {
-      console.log("[DocxGenJob] Fallback generate XLSX");
-      xlsxBuffer = await generateAssetXlsxFromReport(reportData);
-    }
-    if (!imagesZipBuffer) {
-      console.log("[DocxGenJob] Fallback generate Images ZIP");
-      imagesZipBuffer = await generateImagesZip(Array.isArray((report as any)?.imageUrls) ? (report as any).imageUrls : []);
+      console.error("[DocxGenJob] Failed to download one or more preview files", e);
+      throw e;
     }
 
     // Save local copies for user download API
