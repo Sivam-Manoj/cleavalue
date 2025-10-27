@@ -1023,8 +1023,9 @@ export async function runAssetReportJob({
           "calculate_valuations",
           "Generating AI valuation comparison table",
           async () => {
-            const { generateComparisonTableWithAI } =
-              await import("../service/assetValuationService.js");
+            const { generateComparisonTableWithAI } = await import(
+              "../service/assetValuationService.js"
+            );
 
             // Calculate total FMV from all lots
             const totalFMV = lots.reduce((sum, lot) => {
@@ -1095,76 +1096,73 @@ export async function runAssetReportJob({
 
     const reportObject = newReport.toObject();
     // Generate PDF, DOCX, and XLSX in parallel
-    const [pdfBuffer, docxBuffer, xlsxBuffer] =
-      await Promise.all([
-        withStep("generate_pdf", "Generating PDF", async () => {
-          const t0 = Date.now();
-          console.log(
-            `[AssetReportJob] PDF generation start for report ${newReport._id} at ${new Date(t0).toISOString()}`
-          );
-          const buf = await generateAssetPdfFromReport({
-            ...reportObject,
-            inspector_name: user?.name || "",
-            user_email: user?.email || "",
-            language: selectedLanguage,
-          });
-          const t1 = Date.now();
-          console.log(
-            `[AssetReportJob] PDF generation finished in ${t1 - t0}ms for report ${newReport._id}`
-          );
-          return buf;
-        }),
-        withStep("generate_docx", "Generating DOCX", async () => {
-          const t0 = Date.now();
-          console.log(
-            `[AssetReportJob] DOCX generation start for report ${newReport._id} at ${new Date(t0).toISOString()}`
-          );
-          const buf = await generateAssetDocxFromReport({
-            ...reportObject,
-            inspector_name: user?.name || "",
-            user_email: user?.email || "",
-            language: ((): "en" | "fr" | "es" => {
-              const l = String(
-                (reportObject as any)?.language || details?.language || ""
-              ).toLowerCase();
-              return l === "fr" || l === "es" ? (l as any) : "en";
-            })(),
-            ...(groupingMode === "combined" && analysis?.combined
-              ? {
-                  grouping_mode: "combined",
-                  combined: (analysis as any).combined,
-                  combined_modes: Array.isArray(
-                    (analysis as any).combined_modes
-                  )
-                    ? (analysis as any).combined_modes
-                    : undefined,
-                }
-              : {}),
-          });
-          const t1 = Date.now();
-          console.log(
-            `[AssetReportJob] DOCX generation finished in ${t1 - t0}ms for report ${newReport._id}`
-          );
-          return buf;
-        }),
-        withStep("generate_xlsx", "Generating Excel", async () => {
-          const t0 = Date.now();
-          console.log(
-            `[AssetReportJob] XLSX generation start for report ${newReport._id} at ${new Date(t0).toISOString()}`
-          );
-          const buf = await generateAssetXlsxFromReport({
-            ...reportObject,
-            inspector_name: user?.name || "",
-            language:
-              (reportObject as any)?.language || details?.language || "en",
-          });
-          const t1 = Date.now();
-          console.log(
-            `[AssetReportJob] XLSX generation finished in ${t1 - t0}ms for report ${newReport._id}`
-          );
-          return buf;
-        }),
-      ]);
+    const [pdfBuffer, docxBuffer, xlsxBuffer] = await Promise.all([
+      withStep("generate_pdf", "Generating PDF", async () => {
+        const t0 = Date.now();
+        console.log(
+          `[AssetReportJob] PDF generation start for report ${newReport._id} at ${new Date(t0).toISOString()}`
+        );
+        const buf = await generateAssetPdfFromReport({
+          ...reportObject,
+          inspector_name: user?.name || "",
+          user_email: user?.email || "",
+          language: selectedLanguage,
+        });
+        const t1 = Date.now();
+        console.log(
+          `[AssetReportJob] PDF generation finished in ${t1 - t0}ms for report ${newReport._id}`
+        );
+        return buf;
+      }),
+      withStep("generate_docx", "Generating DOCX", async () => {
+        const t0 = Date.now();
+        console.log(
+          `[AssetReportJob] DOCX generation start for report ${newReport._id} at ${new Date(t0).toISOString()}`
+        );
+        const buf = await generateAssetDocxFromReport({
+          ...reportObject,
+          inspector_name: user?.name || "",
+          user_email: user?.email || "",
+          language: ((): "en" | "fr" | "es" => {
+            const l = String(
+              (reportObject as any)?.language || details?.language || ""
+            ).toLowerCase();
+            return l === "fr" || l === "es" ? (l as any) : "en";
+          })(),
+          ...(groupingMode === "combined" && analysis?.combined
+            ? {
+                grouping_mode: "combined",
+                combined: (analysis as any).combined,
+                combined_modes: Array.isArray((analysis as any).combined_modes)
+                  ? (analysis as any).combined_modes
+                  : undefined,
+              }
+            : {}),
+        });
+        const t1 = Date.now();
+        console.log(
+          `[AssetReportJob] DOCX generation finished in ${t1 - t0}ms for report ${newReport._id}`
+        );
+        return buf;
+      }),
+      withStep("generate_xlsx", "Generating Excel", async () => {
+        const t0 = Date.now();
+        console.log(
+          `[AssetReportJob] XLSX generation start for report ${newReport._id} at ${new Date(t0).toISOString()}`
+        );
+        const buf = await generateAssetXlsxFromReport({
+          ...reportObject,
+          inspector_name: user?.name || "",
+          language:
+            (reportObject as any)?.language || details?.language || "en",
+        });
+        const t1 = Date.now();
+        console.log(
+          `[AssetReportJob] XLSX generation finished in ${t1 - t0}ms for report ${newReport._id}`
+        );
+        return buf;
+      }),
+    ]);
 
     const reportsDir = path.resolve(process.cwd(), "reports");
     await fs.mkdir(reportsDir, { recursive: true });
@@ -1518,30 +1516,36 @@ export async function generateImagesZip(imageUrls: string[]): Promise<Buffer> {
     try {
       const chunks: Buffer[] = [];
       const archive = archiver("zip", { zlib: { level: 9 } });
-      
+
       // Collect data chunks
       archive.on("data", (chunk: Buffer) => chunks.push(chunk));
       archive.on("end", () => resolve(Buffer.concat(chunks)));
       archive.on("error", (err: any) => reject(err));
-      
+
       // Download and add each image to the archive
       for (let i = 0; i < imageUrls.length; i++) {
         const imageUrl = imageUrls[i];
         try {
-          const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
+          const response = await axios.get(imageUrl, {
+            responseType: "arraybuffer",
+          });
           const imageBuffer = Buffer.from(response.data as ArrayBuffer);
-          
+
           // Extract filename from URL or use index
           const urlParts = imageUrl.split("/");
-          const filename = urlParts[urlParts.length - 1] || `image-${i + 1}.jpg`;
-          
+          const filename =
+            urlParts[urlParts.length - 1] || `image-${i + 1}.jpg`;
+
           archive.append(imageBuffer, { name: filename });
         } catch (err) {
-          console.error(`[generateImagesZip] Failed to download image ${imageUrl}:`, err);
+          console.error(
+            `[generateImagesZip] Failed to download image ${imageUrl}:`,
+            err
+          );
           // Continue with other images even if one fails
         }
       }
-      
+
       // Finalize the archive
       archive.finalize();
     } catch (error) {
@@ -1563,77 +1567,431 @@ export async function runAssetPreviewJob({
 }: AssetJobInput) {
   try {
     if (progressId) startProgress(progressId);
-    
+
     // Phase 1: Upload images to R2
-    console.log(`[PreviewJob] Uploading ${images.length} images for user ${user.id}`);
-    
-    const uploadedImageUrls: string[] = [];
-    for (const img of images) {
-      // Sanitize filename: remove special characters, replace spaces with hyphens
-      const sanitizedName = img.originalname
-        .replace(/[^a-zA-Z0-9._-]/g, '-') // Replace special chars with hyphens
-        .replace(/--+/g, '-') // Replace multiple hyphens with single
-        .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
-      
-      const fileName = `uploads/asset/${Date.now()}-${sanitizedName}`;
-      
-      // Upload to R2
-      await uploadBufferToR2(
-        img.buffer,
-        img.mimetype || "image/jpeg",
-        process.env.R2_BUCKET_NAME!,
-        fileName
-      );
-      
-      // Use public domain URL (not the internal R2 URL)
-      const publicUrl = `https://images.sellsnap.store/${fileName}`;
-      uploadedImageUrls.push(publicUrl);
-    }
-    
+    console.log(
+      `[PreviewJob] Uploading ${images.length} images for user ${user.id}`
+    );
+
+    const uploadedImageUrls: string[] = await (async () => {
+      const concurrency = 6;
+      const out: string[] = new Array(images.length);
+      let idx = 0;
+      async function uploadOne(i: number) {
+        const img = images[i] as any;
+        if (!img) return;
+        const sanitizedName = String(img.originalname || `image-${i + 1}.jpg`)
+          .replace(/[^a-zA-Z0-9._-]/g, "-")
+          .replace(/--+/g, "-")
+          .replace(/^-|-$/g, "");
+        const fileName = `uploads/asset/${Date.now()}-${i + 1}-${sanitizedName}`;
+        await uploadBufferToR2(
+          img.buffer,
+          img.mimetype || "image/jpeg",
+          process.env.R2_BUCKET_NAME!,
+          fileName
+        );
+        out[i] = `https://images.sellsnap.store/${fileName}`;
+      }
+      const workers: Promise<void>[] = [];
+      for (let w = 0; w < Math.min(concurrency, images.length); w++) {
+        workers.push(
+          (async function run() {
+            while (true) {
+              const i = idx++;
+              if (i >= images.length) break;
+              await uploadOne(i);
+            }
+          })()
+        );
+      }
+      await Promise.all(workers);
+      return out.filter(Boolean);
+    })();
+
     // Phase 2: AI Processing
     console.log(`[PreviewJob] Starting AI analysis`);
-    const analysisResult = await analyzeAssetImages(
-      uploadedImageUrls,
-      details.grouping_mode || "mixed",
-      details.language || "en",
-      details.currency || "CAD"
-    );
-    
-    // Enrich with VIN data if applicable
-    if (analysisResult.lots) {
-      await enrichLotsWithVin(analysisResult.lots);
+    const groupingMode: AssetGroupingMode =
+      (details.grouping_mode as any) || "mixed";
+    const selectedLanguage = details.language || "en";
+    const selectedCurrency = details.currency || "CAD";
+    let lots: any[] = [];
+    let analysis: any = null;
+    const imageUrls = uploadedImageUrls;
+
+    if (groupingMode === "mixed") {
+      type MixedMap = {
+        count: number;
+        extraCount: number;
+        cover_index?: number;
+        mode: "single_lot" | "per_item" | "per_photo";
+      };
+      const rawLots: any[] = Array.isArray(details?.mixed_lots)
+        ? details.mixed_lots
+        : [];
+      const mappings: MixedMap[] = rawLots
+        .map((x: any) => {
+          const m = String(x?.mode || "").trim();
+          const mode =
+            m === "per_item" || m === "per_photo" || m === "single_lot"
+              ? (m as any)
+              : undefined;
+          return {
+            count: Math.max(0, parseInt(String(x?.count ?? 0), 10) || 0),
+            extraCount: Math.max(
+              0,
+              parseInt(String(x?.extra_count ?? 0), 10) || 0
+            ),
+            cover_index:
+              typeof x?.cover_index === "number"
+                ? x.cover_index
+                : typeof x?.coverIndex === "number"
+                  ? x.coverIndex
+                  : 0,
+            mode,
+          } as MixedMap;
+        })
+        .filter(
+          (m: MixedMap) => Number.isFinite(m.count) && m.count > 0 && !!m.mode
+        );
+
+      // Clamp to total images
+      const totalImages = imageUrls.length;
+      let useMappings: MixedMap[] = [...mappings];
+      let sum = useMappings.reduce((s, m) => s + m.count, 0);
+      let overflow = Math.max(0, sum - totalImages);
+      while (overflow > 0 && useMappings.length) {
+        const last = useMappings[useMappings.length - 1];
+        const reduceBy = Math.min(overflow, last.count);
+        last.count -= reduceBy;
+        overflow -= reduceBy;
+        if (last.count <= 0) useMappings.pop();
+      }
+
+      let base = 0;
+      let lotCounter = 0;
+      const mixedTrace: any[] = [];
+      for (let lotIdx = 0; lotIdx < useMappings.length; lotIdx++) {
+        const {
+          count,
+          extraCount,
+          cover_index,
+          mode: subMode,
+        } = useMappings[lotIdx];
+        const end = Math.min(imageUrls.length, base + Math.max(0, count));
+        const extraEnd = Math.min(
+          imageUrls.length,
+          end + Math.max(0, extraCount)
+        );
+        const aiEnd = Math.min(end, base + Math.max(0, Math.min(30, count)));
+        const aiLocalIdxs = Array.from(
+          { length: Math.max(0, aiEnd - base) },
+          (_, i) => base + i
+        );
+        const subUrls = aiLocalIdxs.map((i) => imageUrls[i]);
+        const extraImageIdxs = Array.from(
+          { length: Math.max(0, extraEnd - end) },
+          (_, i) => end + i
+        );
+        const extraImageUrls = extraImageIdxs
+          .map((i) => imageUrls[i])
+          .filter(Boolean);
+        if (subUrls.length === 0 || !subMode) {
+          base = extraEnd;
+          continue;
+        }
+        try {
+          const aiRes = await analyzeAssetImages(
+            subUrls,
+            subMode,
+            selectedLanguage,
+            selectedCurrency
+          );
+          if (!analysis) analysis = { mixed: [] };
+          if (!Array.isArray(analysis.mixed)) analysis.mixed = [];
+          mixedTrace.push({ mode: subMode, result: aiRes });
+          const lotResults = Array.isArray(aiRes?.lots) ? aiRes.lots : [];
+          for (const lot of lotResults as any[]) {
+            const localIdxs: number[] = Array.isArray(lot?.image_indexes)
+              ? Array.from(
+                  new Set<number>(
+                    (lot.image_indexes as any[])
+                      .map((n: any) => parseInt(String(n), 10))
+                      .filter(
+                        (n: number) =>
+                          Number.isFinite(n) && n >= 0 && n < aiLocalIdxs.length
+                      )
+                  )
+                )
+              : [];
+            const mappedIdxs: number[] = localIdxs.map((li) => aiLocalIdxs[li]);
+            const directUrl: string | undefined =
+              typeof lot?.image_url === "string" && lot.image_url
+                ? lot.image_url
+                : undefined;
+            if (directUrl) {
+              const gi = imageUrls.indexOf(directUrl);
+              if (gi >= 0) mappedIdxs.push(gi);
+            }
+            const idxs = Array.from(new Set(mappedIdxs)).filter(
+              (n) => Number.isFinite(n) && n >= 0 && n < imageUrls.length
+            );
+            const urlsFromIdx = idxs.map((i) => imageUrls[i]).filter(Boolean);
+            const coverLocal = Math.max(
+              0,
+              Math.min(
+                Math.max(0, count) - 1,
+                typeof cover_index === "number" ? cover_index : 0
+              )
+            );
+            const coverGlobal = base + coverLocal;
+            const coverUrl = imageUrls[coverGlobal];
+            const urlsSet = new Set<string>([
+              ...urlsFromIdx,
+              ...(coverUrl ? [coverUrl] : []),
+            ]);
+            const urls = Array.from(urlsSet);
+            // For per_photo, split into one lot per image index
+            if (subMode === "per_photo" && idxs.length > 0) {
+              for (const idx of idxs) {
+                const photoUrl = imageUrls[idx];
+                lotCounter += 1;
+                const splitLotId = `lot-${String(lotCounter).padStart(3, "0")}`;
+                const out = {
+                  ...lot,
+                  lot_id: splitLotId,
+                  image_url: photoUrl,
+                  image_indexes: [idx],
+                  image_urls: [photoUrl],
+                  extra_image_indexes: [],
+                  extra_image_urls: [],
+                  tags: Array.isArray(lot?.tags)
+                    ? Array.from(
+                        new Set([
+                          ...(lot.tags as any[]).map(String),
+                          `mode:${subMode}`,
+                        ])
+                      )
+                    : [`mode:${subMode}`],
+                  mixed_group_index: lotIdx + 1,
+                  sub_mode: subMode,
+                } as any;
+                lots.push(out);
+              }
+            } else {
+              lotCounter += 1;
+              const uniqueLotId = `lot-${String(lotCounter).padStart(3, "0")}`;
+              const primaryIdx =
+                Array.isArray(idxs) && idxs.length ? idxs[0] : undefined;
+              const primaryFromIdx =
+                primaryIdx != null ? imageUrls[primaryIdx] : undefined;
+              const primaryUrl =
+                directUrl || primaryFromIdx || urls[0] || coverUrl || undefined;
+              const out = {
+                ...lot,
+                lot_id: uniqueLotId,
+                image_url:
+                  subMode === "per_item"
+                    ? primaryUrl
+                    : coverUrl || directUrl || urls[0] || undefined,
+                image_indexes:
+                  subMode === "per_item"
+                    ? ((): number[] => {
+                        if (primaryIdx != null && Number.isFinite(primaryIdx))
+                          return [primaryIdx];
+                        if (directUrl) {
+                          const gi = imageUrls.indexOf(directUrl);
+                          if (gi >= 0) return [gi];
+                        }
+                        return [];
+                      })()
+                    : idxs,
+                image_urls:
+                  subMode === "per_item"
+                    ? primaryUrl
+                      ? [primaryUrl]
+                      : []
+                    : urls,
+                extra_image_indexes: extraImageIdxs,
+                extra_image_urls: extraImageUrls,
+                tags: Array.isArray(lot?.tags)
+                  ? Array.from(
+                      new Set([
+                        ...(lot.tags as any[]).map(String),
+                        `mode:${subMode}`,
+                      ])
+                    )
+                  : [`mode:${subMode}`],
+                mixed_group_index: lotIdx + 1,
+                sub_mode: subMode,
+              } as any;
+              lots.push(out);
+            }
+          }
+        } catch (e) {
+          console.error(
+            `[PreviewJob] AI analysis failed for mixed lot #${lotIdx + 1} (${subMode}):`,
+            e
+          );
+        }
+        base = extraEnd;
+      }
+      analysis = { ...(analysis || {}), mixed: mixedTrace };
+    } else if (groupingMode === "combined") {
+      const urlsForAI = imageUrls.slice(0, 50);
+      if (urlsForAI.length > 0) {
+        try {
+          const perItemRes = await analyzeAssetImages(
+            urlsForAI,
+            "per_item",
+            selectedLanguage,
+            selectedCurrency
+          );
+          analysis = perItemRes;
+          const perItemLots: any[] = (perItemRes?.lots || []).map(
+            (lot: any) => {
+              const firstIdx =
+                Array.isArray(lot?.image_indexes) && lot.image_indexes.length
+                  ? lot.image_indexes[0]
+                  : undefined;
+              return {
+                ...lot,
+                image_index: Number.isFinite(firstIdx) ? firstIdx : undefined,
+              };
+            }
+          );
+          const perPhotoLots: any[] = [];
+          for (let i = 0; i < imageUrls.length; i++) {
+            const match = perItemLots.find(
+              (l: any) =>
+                Array.isArray(l?.image_indexes) && l.image_indexes.includes(i)
+            );
+            if (match) perPhotoLots.push({ ...match, image_index: i });
+          }
+          lots = perItemLots;
+          (analysis as any).combined = {
+            per_item: perItemLots,
+            per_photo: perPhotoLots,
+            single_lot: perItemLots,
+          };
+          (analysis as any).combined_modes = [
+            "single_lot",
+            "per_item",
+            "per_photo",
+          ];
+        } catch (e) {
+          console.error("[PreviewJob] Error during combined AI analysis:", e);
+        }
+      }
+    } else {
+      const urlsForAI = imageUrls.slice(0, 10);
+      if (urlsForAI.length > 0) {
+        try {
+          const baseRes = await analyzeAssetImages(
+            urlsForAI,
+            groupingMode,
+            selectedLanguage,
+            selectedCurrency
+          );
+          analysis = baseRes;
+          lots = (baseRes?.lots || []).map((lot: any) => {
+            const total = imageUrls.length;
+            const idxs: number[] = Array.isArray(lot?.image_indexes)
+              ? Array.from(
+                  new Set<number>(
+                    (lot.image_indexes as any[])
+                      .map((n: any) => parseInt(String(n), 10))
+                      .filter(
+                        (n: number) => Number.isFinite(n) && n >= 0 && n < total
+                      )
+                  )
+                )
+              : [];
+            const directUrl: string | undefined =
+              typeof lot?.image_url === "string" && lot.image_url
+                ? lot.image_url
+                : undefined;
+            if (groupingMode === "per_item" && directUrl) {
+              const inferred = imageUrls.indexOf(directUrl);
+              if (inferred >= 0) {
+                if (idxs.length === 0 || idxs[0] !== inferred)
+                  idxs.splice(0, idxs.length, inferred);
+              }
+            }
+            if (idxs.length === 0 && directUrl) {
+              const inferred = imageUrls.indexOf(directUrl);
+              if (inferred >= 0) idxs.push(inferred);
+            }
+            let urls: string[] = [];
+            if (groupingMode === "per_item") {
+              const primaryUrl =
+                directUrl || (idxs[0] != null ? imageUrls[idxs[0]] : undefined);
+              urls = primaryUrl ? [primaryUrl] : [];
+            } else {
+              const urlsSet = new Set<string>([
+                ...idxs.map((i) => imageUrls[i]).filter(Boolean),
+                ...(directUrl ? [directUrl] : []),
+              ]);
+              urls = Array.from(urlsSet);
+            }
+            return { ...lot, image_indexes: idxs, image_urls: urls };
+          });
+        } catch (e) {
+          console.error("[PreviewJob] Error during asset AI analysis:", e);
+        }
+      }
     }
-    
+
+    // Enrich with VIN data if applicable
+    if (Array.isArray(lots) && lots.length) {
+      try {
+        await enrichLotsWithVin(lots);
+      } catch (e) {
+        console.error("[PreviewJob] VIN enrichment failed:", e);
+      }
+    }
+
     // Phase 3: Calculate valuation data if requested
     let valuationData = null;
-    if (details.include_valuation_table && details.valuation_methods?.length > 0) {
-      const { generateComparisonTableWithAI } = await import("../service/assetValuationService.js");
-      
+    if (
+      details.include_valuation_table &&
+      details.valuation_methods?.length > 0
+    ) {
+      const { generateComparisonTableWithAI } = await import(
+        "../service/assetValuationService.js"
+      );
+
       // Calculate total FMV
-      const totalFMV = analysisResult.lots.reduce((sum, lot) => {
+      const totalFMV = (lots || []).reduce((sum, lot) => {
         const value = lot.estimated_value?.replace(/[^0-9.-]+/g, "") || "0";
         return sum + parseFloat(value);
       }, 0);
-      
+
       valuationData = await generateComparisonTableWithAI(
         totalFMV,
         details.valuation_methods,
-        analysisResult.lots[0]?.title || "Asset",
-        analysisResult.lots[0]?.description || "",
-        analysisResult.lots[0]?.condition || "Good",
+        (lots?.[0]?.title as any) || "Asset",
+        (lots?.[0]?.description as any) || "",
+        (lots?.[0]?.condition as any) || "Good",
         details.industry || "General"
       );
     }
-    
+
     // Phase 4: Create AssetReport with preview_data
+    const sumFromLots = (lots || []).reduce((sum: number, lot: any) => {
+      const raw =
+        typeof lot?.estimated_value === "string" ? lot.estimated_value : "";
+      const num = parseFloat(String(raw).replace(/[^0-9.-]+/g, ""));
+      return sum + (Number.isFinite(num) ? num : 0);
+    }, 0);
     const newReport = new AssetReport({
       user: user.id,
       grouping_mode: details.grouping_mode || "mixed",
       imageUrls: uploadedImageUrls,
-      lots: analysisResult.lots,
-      status: 'preview', // NEW: Set to preview status
+      lots,
+      status: "preview", // NEW: Set to preview status
       preview_data: {
-        lots: analysisResult.lots,
+        lots,
         client_name: details.client_name,
         contract_no: details.contract_no,
         effective_date: details.effective_date,
@@ -1643,19 +2001,23 @@ export async function runAssetPreviewJob({
         appraisal_company: details.appraisal_company,
         industry: details.industry,
         inspection_date: details.inspection_date,
-        currency: details.currency || 'CAD',
-        language: details.language || 'en',
+        currency: details.currency || "CAD",
+        language: details.language || "en",
         include_valuation_table: details.include_valuation_table,
         valuation_methods: details.valuation_methods,
         valuation_data: valuationData,
-        total_appraised_value: analysisResult.total_value,
-        total_value: analysisResult.total_value,
-        // Include AI analysis data for editing
-        market_overview: analysisResult.market_overview,
-        comparable_sales: analysisResult.comparable_sales,
-        valuation_explanation: analysisResult.valuation_explanation,
-        condition_notes: analysisResult.condition_notes,
-        recommendations: analysisResult.recommendations,
+        total_appraised_value: sumFromLots,
+        total_value: sumFromLots,
+        // Narrative fields (if provided by AI)
+        ...(analysis && typeof analysis === "object"
+          ? {
+              market_overview: (analysis as any).market_overview,
+              comparable_sales: (analysis as any).comparable_sales,
+              valuation_explanation: (analysis as any).valuation_explanation,
+              condition_notes: (analysis as any).condition_notes,
+              recommendations: (analysis as any).recommendations,
+            }
+          : {}),
       },
       // Store original metadata
       client_name: details.client_name,
@@ -1665,85 +2027,38 @@ export async function runAssetPreviewJob({
       appraiser: details.appraiser,
       appraisal_company: details.appraisal_company,
       industry: details.industry,
-      currency: details.currency || 'CAD',
-      language: details.language || 'en',
+      currency: details.currency || "CAD",
+      language: details.language || "en",
       include_valuation_table: details.include_valuation_table,
       valuation_methods: details.valuation_methods,
       valuation_data: valuationData,
-      analysis: analysisResult,
+      analysis,
     });
-    
+
     await newReport.save();
-    console.log(`[PreviewJob] Report saved with ID: ${newReport._id}, Status: preview`);
-    
-    // Phase 5: Generate preview files (DOCX, Excel, Images) for admin review
-    console.log(`[PreviewJob] Generating preview files for report ${newReport._id}`);
-    
-    const reportData = {
-      ...newReport.toObject(),
-      ...newReport.preview_data,
-      inspector_name: user?.name || "",
-      user_email: user?.email || "",
-    };
-    
-    try {
-      // Generate DOCX
-      const docxBuffer = await generateAssetDocxFromReport(reportData);
-      const docxFilename = `asset-preview-${newReport._id}.docx`;
-      const docxUrl = await uploadBufferToR2(
-        docxBuffer,
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        process.env.R2_BUCKET_NAME!,
-        `previews/${docxFilename}`
-      );
-      
-      // Generate Excel
-      const excelBuffer = await generateAssetXlsxFromReport(reportData);
-      const excelFilename = `asset-preview-${newReport._id}.xlsx`;
-      const excelUrl = await uploadBufferToR2(
-        excelBuffer,
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        process.env.R2_BUCKET_NAME!,
-        `previews/${excelFilename}`
-      );
-      
-      // Generate Images ZIP
-      const zipBuffer = await generateImagesZip(uploadedImageUrls);
-      const zipFilename = `asset-preview-images-${newReport._id}.zip`;
-      const zipUrl = await uploadBufferToR2(
-        zipBuffer,
-        "application/zip",
-        process.env.R2_BUCKET_NAME!,
-        `previews/${zipFilename}`
-      );
-      
-      // Save preview file URLs to report
-      newReport.preview_files = {
-        docx: `https://images.sellsnap.store/previews/${docxFilename}`,
-        excel: `https://images.sellsnap.store/previews/${excelFilename}`,
-        images: `https://images.sellsnap.store/previews/${zipFilename}`,
-      };
-      await newReport.save();
-      
-      console.log(`[PreviewJob] Preview files generated successfully`);
-    } catch (fileError) {
-      console.error("[PreviewJob] Error generating preview files:", fileError);
-      // Continue even if file generation fails - user can still edit
-    }
-    
+    console.log(
+      `[PreviewJob] Report saved with ID: ${newReport._id}, Status: preview`
+    );
+
+    // Phase 5 removed: Files are generated at submit-for-approval, not here.
+
     // Phase 6: Send "Preview Ready" email
-    const { sendPreviewReadyEmail } = await import("../service/assetEmailService.js");
+    const { sendPreviewReadyEmail } = await import(
+      "../service/assetEmailService.js"
+    );
     await sendPreviewReadyEmail(
       user.email,
-      user.name || 'User',
+      user.name || "User",
       String(newReport._id)
     );
-    
+
     if (progressId) {
       endProgress(progressId, true, "Preview ready");
     }
-    
-    console.log(`[PreviewJob] Completed successfully for report ${newReport._id}`);
+
+    console.log(
+      `[PreviewJob] Completed successfully for report ${newReport._id}`
+    );
   } catch (error) {
     console.error("[PreviewJob] Error:", error);
     if (progressId) endProgress(progressId, false, "Error processing request");
@@ -1765,18 +2080,20 @@ export async function queueDocxGenerationJob(reportId: string) {
 export async function runDocxGenerationJob(reportId: string) {
   try {
     console.log(`[DocxGenJob] Starting for report ${reportId}`);
-    
-    const report = await AssetReport.findById(reportId).populate('user');
+
+    const report = await AssetReport.findById(reportId).populate("user");
     if (!report) {
       throw new Error(`Report ${reportId} not found`);
     }
-    
-    if (report.status !== 'approved') {
-      throw new Error(`Report ${reportId} status is ${report.status}, expected 'approved'`);
+
+    if (report.status !== "approved") {
+      throw new Error(
+        `Report ${reportId} status is ${report.status}, expected 'approved'`
+      );
     }
-    
+
     const user = report.user as any;
-    
+
     // Use preview_data (user-edited) for generation
     const reportData = {
       ...report.toObject(),
@@ -1784,89 +2101,93 @@ export async function runDocxGenerationJob(reportId: string) {
       inspector_name: user?.name || "",
       user_email: user?.email || "",
       user_cv_url: (user as any)?.cvUrl || (report as any)?.user_cv_url,
-      user_cv_filename: (user as any)?.cvFilename || (report as any)?.user_cv_filename,
+      user_cv_filename:
+        (user as any)?.cvFilename || (report as any)?.user_cv_filename,
     };
-    
-    // Generate DOCX
-    console.log(`[DocxGenJob] Generating DOCX`);
-    const docxBuffer = await generateAssetDocxFromReport(reportData);
+
+    // Promote preview files instead of regenerating
     const docxFilename = `asset-report-${reportId}.docx`;
-    const docxUrl = await uploadBufferToR2(
-      docxBuffer,
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      process.env.R2_BUCKET_NAME!,
-      `reports/${user._id}/${docxFilename}`
-    );
-    
-    // Generate PDF
-    console.log(`[DocxGenJob] Generating PDF`);
-    const pdfBuffer = await generateAssetPdfFromReport(reportData);
-    const pdfFilename = `asset-report-${reportId}.pdf`;
-    const pdfUrl = await uploadBufferToR2(
-      pdfBuffer,
-      "application/pdf",
-      process.env.R2_BUCKET_NAME!,
-      `reports/${user._id}/${pdfFilename}`
-    );
-    
-    // Generate XLSX
-    console.log(`[DocxGenJob] Generating XLSX`);
-    const xlsxBuffer = await generateAssetXlsxFromReport(reportData);
     const xlsxFilename = `asset-report-${reportId}.xlsx`;
-    const xlsxUrl = await uploadBufferToR2(
-      xlsxBuffer,
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      process.env.R2_BUCKET_NAME!,
-      `reports/${user._id}/${xlsxFilename}`
-    );
-    
+    const imagesZipFilename = `asset-report-images-${reportId}.zip`;
+    const previewDocxUrl: string | undefined = (report as any)?.preview_files?.docx;
+    const previewXlsxUrl: string | undefined = (report as any)?.preview_files?.excel || (report as any)?.preview_files?.xlsx;
+    const previewImagesUrl: string | undefined = (report as any)?.preview_files?.images;
+    let docxBuffer: Buffer | undefined;
+    let xlsxBuffer: Buffer | undefined;
+    let imagesZipBuffer: Buffer | undefined;
+    try {
+      if (previewDocxUrl) {
+        const res = await axios.get(previewDocxUrl, { responseType: "arraybuffer" });
+        docxBuffer = Buffer.from(res.data as ArrayBuffer);
+      }
+      if (previewXlsxUrl) {
+        const res = await axios.get(previewXlsxUrl, { responseType: "arraybuffer" });
+        xlsxBuffer = Buffer.from(res.data as ArrayBuffer);
+      }
+      if (previewImagesUrl) {
+        const res = await axios.get(previewImagesUrl, { responseType: "arraybuffer" });
+        imagesZipBuffer = Buffer.from(res.data as ArrayBuffer);
+      }
+    } catch (e) {
+      console.error("[DocxGenJob] Failed to fetch preview files; falling back to generation", e);
+    }
+    // Fallback: if any file missing, generate it now (rare)
+    if (!docxBuffer) {
+      console.log("[DocxGenJob] Fallback generate DOCX");
+      docxBuffer = await generateAssetDocxFromReport(reportData);
+    }
+    if (!xlsxBuffer) {
+      console.log("[DocxGenJob] Fallback generate XLSX");
+      xlsxBuffer = await generateAssetXlsxFromReport(reportData);
+    }
+    if (!imagesZipBuffer) {
+      console.log("[DocxGenJob] Fallback generate Images ZIP");
+      imagesZipBuffer = await generateImagesZip(Array.isArray((report as any)?.imageUrls) ? (report as any).imageUrls : []);
+    }
+
     // Save local copies for user download API
     const localDir = path.resolve(process.cwd(), "reports", String(user._id));
-    try { await fs.mkdir(localDir, { recursive: true }); } catch {}
+    try {
+      await fs.mkdir(localDir, { recursive: true });
+    } catch {}
     const localDocxPath = path.join(localDir, docxFilename);
-    const localPdfPath = path.join(localDir, pdfFilename);
     const localXlsxPath = path.join(localDir, xlsxFilename);
-    // Generate Images ZIP from final image URLs and save locally
-    const imagesZipFilename = `asset-report-images-${reportId}.zip`;
-    const imagesZipBuffer = await generateImagesZip(
-      Array.isArray((report as any)?.imageUrls) ? (report as any).imageUrls : []
-    );
     const localImagesZipPath = path.join(localDir, imagesZipFilename);
     await Promise.all([
-      fs.writeFile(localDocxPath, docxBuffer),
-      fs.writeFile(localPdfPath, pdfBuffer),
-      fs.writeFile(localXlsxPath, xlsxBuffer),
-      fs.writeFile(localImagesZipPath, imagesZipBuffer),
+      fs.writeFile(localDocxPath, docxBuffer as Buffer),
+      fs.writeFile(localXlsxPath, xlsxBuffer as Buffer),
+      fs.writeFile(localImagesZipPath, imagesZipBuffer as Buffer),
     ]);
 
     // Prepare common fields required by PdfReport schema
     const addressStr = String(
-      (report as any)?.client_name || (report as any)?.preview_data?.client_name || "Asset Report"
+      (report as any)?.client_name ||
+        (report as any)?.preview_data?.client_name ||
+        "Asset Report"
     );
     const currency = String(
-      (report as any)?.preview_data?.currency || (report as any)?.currency || "CAD"
+      (report as any)?.preview_data?.currency ||
+        (report as any)?.currency ||
+        "CAD"
     );
-    const rawTotal = (report as any)?.preview_data?.total_value ?? (report as any)?.preview_data?.total_appraised_value;
-    const totalNum = typeof rawTotal === "number" ? rawTotal : parseFloat(String(rawTotal || "0").replace(/[^0-9.-]+/g, ""));
+    const rawTotal =
+      (report as any)?.preview_data?.total_value ??
+      (report as any)?.preview_data?.total_appraised_value;
+    const totalNum =
+      typeof rawTotal === "number"
+        ? rawTotal
+        : parseFloat(String(rawTotal || "0").replace(/[^0-9.-]+/g, ""));
     const fairMarketValueStr = Number.isFinite(totalNum)
-      ? new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(totalNum)
+      ? new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency,
+          maximumFractionDigits: 0,
+        }).format(totalNum)
       : currency;
-    const contractNo = (report as any)?.contract_no || (report as any)?.preview_data?.contract_no || undefined;
-
-    // Create PdfReport records (approved)
-    const pdfRec = new PdfReport({
-      user: user._id,
-      report: reportId,
-      reportType: "Asset",
-      reportModel: "AssetReport",
-      fileType: "pdf",
-      filePath: path.relative(process.cwd(), localPdfPath),
-      filename: pdfFilename,
-      approvalStatus: "approved",
-      address: addressStr,
-      fairMarketValue: fairMarketValueStr,
-      contract_no: contractNo,
-    });
+    const contractNo =
+      (report as any)?.contract_no ||
+      (report as any)?.preview_data?.contract_no ||
+      undefined;
 
     const docxRec = new PdfReport({
       user: user._id,
@@ -1910,8 +2231,12 @@ export async function runDocxGenerationJob(reportId: string) {
       contract_no: contractNo,
     });
 
-    await Promise.all([pdfRec.save(), docxRec.save(), xlsxRec.save(), imagesRec.save()]);
-    
+    await Promise.all([
+      docxRec.save(),
+      xlsxRec.save(),
+      imagesRec.save(),
+    ]);
+
     console.log(`[DocxGenJob] Completed successfully for report ${reportId}`);
   } catch (error) {
     console.error(`[DocxGenJob] Error for report ${reportId}:`, error);
