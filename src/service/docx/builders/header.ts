@@ -37,12 +37,12 @@ export function buildHeaderTable(
             margins: { top: 40, bottom: 20, left: 40, right: 40 },
             children: [
               new Paragraph({
-                alignment: AlignmentType.CENTER,
+                alignment: AlignmentType.LEFT,
                 children: logoBuffer
                   ? [
                       new ImageRun({
                         data: logoBuffer as any,
-                        transformation: { width: 400, height: 142 },
+                        transformation: { width: 260, height: 92 },
                       } as any),
                     ]
                   : [new TextRun({ text: "McDougall Auctioneers", bold: true, size: 28 })],
