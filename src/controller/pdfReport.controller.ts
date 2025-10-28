@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import PdfReport from "../models/pdfReport.model.js";
+import AssetReport from "../models/asset.model.js";
 import fs from "fs/promises";
 import path from "path";
 import type { AuthRequest } from "../middleware/auth.middleware.js";
@@ -148,8 +149,6 @@ export const getReportStats = async (req: AuthRequest, res: Response) => {
       if (!groups.has(key)) groups.set(key, r);
     }
 
-    const totalReports = groups.size;
-
     let totalFairMarketValue = 0;
     for (const r of groups.values()) {
       const fmv = (r as any)?.fairMarketValue;
@@ -162,6 +161,35 @@ export const getReportStats = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    const pendingAssets = await AssetReport.find({
+      user: req.userId,
+      status: { $in: ["preview", "pending_approval"] },
+    })
+      .select("_id preview_data lots")
+      .lean();
+
+    for (const ar of pendingAssets || []) {
+      const key = String((ar as any)._id);
+      if (groups.has(key)) continue;
+      let total = 0;
+      const pd = (ar as any).preview_data || {};
+      const raw = (pd as any).total_value ?? (pd as any).total_appraised_value;
+      if (typeof raw === "number") {
+        total = raw;
+      } else if (raw != null) {
+        const parsed = parseFloat(String(raw).replace(/[^0-9.-]+/g, ""));
+        total = Number.isFinite(parsed) ? parsed : 0;
+      } else if (Array.isArray((ar as any).lots)) {
+        total = ((ar as any).lots as any[]).reduce((acc: number, lot: any) => {
+          const v = parseFloat(String(lot?.estimated_value || "").replace(/[^0-9.-]+/g, ""));
+          return acc + (Number.isFinite(v) ? v : 0);
+        }, 0);
+      }
+      if (total > 0) totalFairMarketValue += total;
+      groups.set(key, ar);
+    }
+
+    const totalReports = groups.size;
     res.json({ totalReports, totalFairMarketValue });
   } catch (error) {
     console.error("Error in getReportStats:", error);
