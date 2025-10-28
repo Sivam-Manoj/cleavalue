@@ -990,10 +990,16 @@ export async function runAssetReportJob({
               const lotImages: number[] = Array.isArray(lot?.image_indexes)
                 ? lot.image_indexes
                 : [];
+              const extraLotImages: number[] = Array.isArray(
+                (lot as any)?.extra_image_indexes
+              )
+                ? (lot as any).extra_image_indexes
+                : [];
+              const combinedIdxs: number[] = [...lotImages, ...extraLotImages];
 
-              // For each image in this lot, create rename mapping
-              for (let i = 0; i < lotImages.length; i++) {
-                const globalIdx = lotImages[i];
+              // For each image in this lot (including extras), create rename mapping with continuous index
+              for (let i = 0; i < combinedIdxs.length; i++) {
+                const globalIdx = combinedIdxs[i];
                 if (globalIdx >= 0 && globalIdx < imageUrls.length) {
                   const oldUrl = imageUrls[globalIdx];
                   // Format: mode-lotNum.imageNum.jpg (e.g., "bundle-1.1.jpg", "peritem-2.1.jpg")
@@ -1068,13 +1074,18 @@ export async function runAssetReportJob({
                 if (lot.image_urls.length > 0) {
                   lot.image_url = lot.image_urls[0];
                 }
-
-                // Update catalogue items if present
-                if (Array.isArray(lot?.items)) {
-                  for (const item of lot.items) {
-                    if (typeof item?.image_index === "number") {
-                      item.image_url = imageUrls[item.image_index];
-                    }
+              }
+              // Update extra_image_urls if present
+              if (Array.isArray((lot as any)?.extra_image_indexes)) {
+                (lot as any).extra_image_urls = (lot as any).extra_image_indexes
+                  .map((idx: number) => imageUrls[idx])
+                  .filter(Boolean);
+              }
+              // Update catalogue items if present
+              if (Array.isArray(lot?.items)) {
+                for (const item of lot.items) {
+                  if (typeof item?.image_index === "number") {
+                    item.image_url = imageUrls[item.image_index];
                   }
                 }
               }
@@ -1373,9 +1384,15 @@ export async function runAssetReportJob({
           const lotImages: number[] = Array.isArray(lot?.image_indexes)
             ? lot.image_indexes
             : [];
+          const extraLotImages: number[] = Array.isArray(
+            (lot as any)?.extra_image_indexes
+          )
+            ? (lot as any).extra_image_indexes
+            : [];
+          const combinedIdxs: number[] = [...lotImages, ...extraLotImages];
 
-          for (let i = 0; i < lotImages.length; i++) {
-            const globalIdx = lotImages[i];
+          for (let i = 0; i < combinedIdxs.length; i++) {
+            const globalIdx = combinedIdxs[i];
             const fileName = modePrefix
               ? `${modePrefix}-${lotNum}.${i + 1}.jpg`
               : `${lotNum}.${i + 1}.jpg`;
