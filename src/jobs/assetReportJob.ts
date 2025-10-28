@@ -65,7 +65,8 @@ export async function runPreviewFilesJob(reportId: string) {
     console.log(`[PreviewFilesJob] Starting for report ${reportId}`);
     const report = await AssetReport.findById(reportId).populate("user");
     if (!report) throw new Error(`Report ${reportId} not found`);
-    if (!report.preview_data) throw new Error(`Report ${reportId} missing preview_data`);
+    if (!report.preview_data)
+      throw new Error(`Report ${reportId} missing preview_data`);
 
     const user = report.user as any;
     const reportData = {
@@ -74,12 +75,15 @@ export async function runPreviewFilesJob(reportId: string) {
       inspector_name: user?.name || user?.username || "",
       user_email: user?.email || "",
       user_cv_url: (user as any)?.cvUrl || (report as any)?.user_cv_url,
-      user_cv_filename: (user as any)?.cvFilename || (report as any)?.user_cv_filename,
+      user_cv_filename:
+        (user as any)?.cvFilename || (report as any)?.user_cv_filename,
     } as any;
 
     const docxBuffer = await generateAssetDocxFromReport(reportData);
     const xlsxBuffer = await generateAssetXlsxFromReport(reportData);
-    const imagesZip = await generateImagesZip(Array.isArray((report as any)?.imageUrls) ? (report as any).imageUrls : []);
+    const imagesZip = await generateImagesZip(
+      Array.isArray((report as any)?.imageUrls) ? (report as any).imageUrls : []
+    );
 
     const docxFilename = `asset-preview-${reportId}.docx`;
     const xlsxFilename = `asset-preview-${reportId}.xlsx`;
@@ -113,9 +117,8 @@ export async function runPreviewFilesJob(reportId: string) {
     } as any;
     await report.save();
 
-    const { sendPreviewSubmittedEmail, sendAdminApprovalRequestEmail } = await import(
-      "../service/assetEmailService.js"
-    );
+    const { sendPreviewSubmittedEmail, sendAdminApprovalRequestEmail } =
+      await import("../service/assetEmailService.js");
     await sendPreviewSubmittedEmail(
       user.email,
       user.name || user.username || "User",
@@ -2221,11 +2224,17 @@ export async function runDocxGenerationJob(reportId: string) {
     const docxFilename = `asset-report-${reportId}.docx`;
     const xlsxFilename = `asset-report-${reportId}.xlsx`;
     const imagesZipFilename = `asset-report-images-${reportId}.zip`;
-    const previewDocxUrl: string | undefined = (report as any)?.preview_files?.docx;
-    const previewXlsxUrl: string | undefined = (report as any)?.preview_files?.excel || (report as any)?.preview_files?.xlsx;
-    const previewImagesUrl: string | undefined = (report as any)?.preview_files?.images;
+    const previewDocxUrl: string | undefined = (report as any)?.preview_files
+      ?.docx;
+    const previewXlsxUrl: string | undefined =
+      (report as any)?.preview_files?.excel ||
+      (report as any)?.preview_files?.xlsx;
+    const previewImagesUrl: string | undefined = (report as any)?.preview_files
+      ?.images;
     if (!previewDocxUrl || !previewXlsxUrl || !previewImagesUrl) {
-      throw new Error(`[DocxGenJob] Missing preview_files URLs for report ${reportId}`);
+      throw new Error(
+        `[DocxGenJob] Missing preview_files URLs for report ${reportId}`
+      );
     }
     let docxBuffer: Buffer | undefined;
     let xlsxBuffer: Buffer | undefined;
@@ -2240,7 +2249,10 @@ export async function runDocxGenerationJob(reportId: string) {
       xlsxBuffer = Buffer.from(xlsxRes.data as ArrayBuffer);
       imagesZipBuffer = Buffer.from(imagesRes.data as ArrayBuffer);
     } catch (e) {
-      console.error("[DocxGenJob] Failed to download one or more preview files", e);
+      console.error(
+        "[DocxGenJob] Failed to download one or more preview files",
+        e
+      );
       throw e;
     }
 
@@ -2330,11 +2342,7 @@ export async function runDocxGenerationJob(reportId: string) {
       contract_no: contractNo,
     });
 
-    await Promise.all([
-      docxRec.save(),
-      xlsxRec.save(),
-      imagesRec.save(),
-    ]);
+    await Promise.all([docxRec.save(), xlsxRec.save(), imagesRec.save()]);
 
     console.log(`[DocxGenJob] Completed successfully for report ${reportId}`);
   } catch (error) {
