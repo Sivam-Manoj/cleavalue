@@ -65,14 +65,16 @@ export async function buildPerItemTable(
   }
 
   const w = {
-    lot: Math.round(contentWidthTw * 0.12),
-    title: Math.round(contentWidthTw * 0.2),
-    sn: Math.round(contentWidthTw * 0.15),
-    desc: Math.round(contentWidthTw * 0.21),
-    details: Math.round(contentWidthTw * 0.14),
-    value: Math.round(contentWidthTw * 0.12),
-    image: Math.round(contentWidthTw * 0.06),
+    lot: Math.round(contentWidthTw * 0.10),
+    title: Math.round(contentWidthTw * 0.17),
+    sn: Math.round(contentWidthTw * 0.13),
+    desc: Math.round(contentWidthTw * 0.16),
+    details: Math.round(contentWidthTw * 0.12),
+    value: Math.round(contentWidthTw * 0.14),
+    image: Math.round(contentWidthTw * 0.24),
   };
+  const imgPx = Math.max(112, Math.floor((w.image / 1440) * 96));
+  const imgPxH = Math.floor((imgPx * 3) / 4);
   const cellMargins = { top: 80, bottom: 80, left: 60, right: 60 };
 
   const header = new TableRow({
@@ -369,7 +371,7 @@ export async function buildPerItemTable(
                     children: [
                       new ImageRun({
                         data: imgBuf as any,
-                        transformation: { width: 96, height: 72 },
+                        transformation: { width: imgPx, height: imgPxH },
                       } as any),
                     ],
                   }),

@@ -10,7 +10,34 @@ export async function buildAppendixPhotoGallery(
   const children: Array<Paragraph | Table> = [];
   const lang = getLang(reportData);
   const tr = t(lang);
-  const gallery = rootImageUrls.slice(0, Math.min(12, rootImageUrls.length));
+  const lots: any[] = Array.isArray(reportData?.lots) ? reportData.lots : [];
+  let gallery: string[] = [];
+  if (lots.length) {
+    for (const lot of lots) {
+      const urls: string[] = [];
+      if (Array.isArray(lot?.image_urls) && lot.image_urls.length) {
+        urls.push(...(lot.image_urls as string[]));
+      } else if (Array.isArray(lot?.image_indexes)) {
+        urls.push(
+          ...((lot.image_indexes as number[])
+            .map((i) => (Number.isFinite(i) && i >= 0 ? rootImageUrls[i] : undefined))
+            .filter(Boolean) as string[])
+        );
+      }
+      if (Array.isArray((lot as any)?.extra_image_urls) && (lot as any).extra_image_urls.length) {
+        urls.push(...(((lot as any).extra_image_urls) as string[]));
+      } else if (Array.isArray((lot as any)?.extra_image_indexes)) {
+        urls.push(
+          ...((((lot as any).extra_image_indexes) as number[])
+            .map((i) => (Number.isFinite(i) && i >= 0 ? rootImageUrls[i] : undefined))
+            .filter(Boolean) as string[])
+        );
+      }
+      if (urls.length) gallery.push(...urls);
+    }
+  } else {
+    gallery = rootImageUrls.slice();
+  }
   const buffers = await Promise.all(gallery.map((u) => fetchImageBuffer(u)));
   const valid = buffers.filter((b): b is Buffer => !!b);
   if (!valid.length) return children;
