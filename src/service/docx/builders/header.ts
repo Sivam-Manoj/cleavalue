@@ -42,7 +42,7 @@ export function buildHeaderTable(
                   ? [
                       new ImageRun({
                         data: logoBuffer as any,
-                        transformation: { width: 180, height: 64 },
+                        transformation: { width: 400, height: 142 },
                       } as any),
                     ]
                   : [new TextRun({ text: "McDougall Auctioneers", bold: true, size: 28 })],
