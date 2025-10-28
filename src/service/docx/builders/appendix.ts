@@ -11,32 +11,43 @@ export async function buildAppendixPhotoGallery(
   const lang = getLang(reportData);
   const tr = t(lang);
   const lots: any[] = Array.isArray(reportData?.lots) ? reportData.lots : [];
-  let gallery: string[] = [];
+  const grouping: string = String(reportData?.grouping_mode || "");
+  const usedSet = new Set<string>();
+  const gallery: string[] = [];
+  const add = (u?: string) => {
+    if (!u) return;
+    if (!usedSet.has(u)) {
+      usedSet.add(u);
+      gallery.push(u);
+    }
+  };
   if (lots.length) {
     for (const lot of lots) {
-      const urls: string[] = [];
-      if (Array.isArray(lot?.image_urls) && lot.image_urls.length) {
-        urls.push(...(lot.image_urls as string[]));
-      } else if (Array.isArray(lot?.image_indexes)) {
-        urls.push(
-          ...((lot.image_indexes as number[])
-            .map((i) => (Number.isFinite(i) && i >= 0 ? rootImageUrls[i] : undefined))
-            .filter(Boolean) as string[])
-        );
+      const sub: string = String((lot as any)?.sub_mode || grouping || "");
+      // Always include the primary image used in the table row when present
+      if (typeof (lot as any)?.image_url === "string" && (lot as any).image_url) {
+        add((lot as any).image_url as string);
+      } else if (Array.isArray((lot as any)?.image_indexes) && (lot as any).image_indexes.length) {
+        const firstIdx = (lot as any).image_indexes[0];
+        const mapped = Number.isFinite(firstIdx) && firstIdx >= 0 ? rootImageUrls[firstIdx] : undefined;
+        add(mapped);
       }
-      if (Array.isArray((lot as any)?.extra_image_urls) && (lot as any).extra_image_urls.length) {
-        urls.push(...(((lot as any).extra_image_urls) as string[]));
-      } else if (Array.isArray((lot as any)?.extra_image_indexes)) {
-        urls.push(
-          ...((((lot as any).extra_image_indexes) as number[])
-            .map((i) => (Number.isFinite(i) && i >= 0 ? rootImageUrls[i] : undefined))
-            .filter(Boolean) as string[])
-        );
+      // In single_lot tables, multiple images may be shown; include all declared for that lot
+      if (sub === "single_lot") {
+        if (Array.isArray((lot as any)?.image_urls) && (lot as any).image_urls.length) {
+          for (const u of (lot as any).image_urls as string[]) add(u);
+        } else if (Array.isArray((lot as any)?.image_indexes) && (lot as any).image_indexes.length) {
+          for (const idx of (lot as any).image_indexes as number[]) {
+            const mapped = Number.isFinite(idx) && idx >= 0 ? rootImageUrls[idx] : undefined;
+            add(mapped);
+          }
+        }
       }
-      if (urls.length) gallery.push(...urls);
+      // Intentionally exclude extra_image_* from appendix to avoid duplicates and grouping noise
     }
   } else {
-    gallery = rootImageUrls.slice();
+    // Fallback to all unique root images when no lots are present
+    for (const u of rootImageUrls) add(u);
   }
   const buffers = await Promise.all(gallery.map((u) => fetchImageBuffer(u)));
   const valid = buffers.filter((b): b is Buffer => !!b);

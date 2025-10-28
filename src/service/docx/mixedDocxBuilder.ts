@@ -1564,7 +1564,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
             },
           },
         },
-        headers: { default: new Header({ children: [headerTable] }) },
+        headers: { default: new Header({ children: [] }) },
         footers: { default: new Footer({ children: [] }) },
         children: (await buildCertificateOfAppraisal(
           reportData,

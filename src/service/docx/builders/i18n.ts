@@ -49,7 +49,7 @@ export function t(lang: Lang) {
       page: 'Page ',
       appendixPhotos: 'Appendix: Photo Gallery',
       transmittalLetter: 'TRANSMITTAL LETTER',
-      certificateOfAppraisal: 'Certificate of Appraisal',
+      certificateOfAppraisal: 'Certificate of Value',
       preparedFor: 'Prepared For',
       reportDate: 'Report Date',
       // Transmittal specific
@@ -68,7 +68,7 @@ export function t(lang: Lang) {
       client: 'Client',
       purpose: 'Purpose',
       preparedBy: 'Prepared By',
-      certificateTitle: 'CERTIFICATE OF APPRAISAL',
+      certificateTitle: 'CERTIFICATE OF VALUE',
       certificateBody: 'This is to certify that the assets described herein have been appraised in accordance with accepted professional standards.',
       valueSeeDetails: 'Value: see details',
       appraiserSignature: 'Appraiser Signature',
