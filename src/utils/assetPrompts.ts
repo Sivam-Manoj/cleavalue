@@ -651,9 +651,10 @@ Grouping mode: per_photo
   - If no clear lot sticker/label is visible, set 'lot_number' to null. The server will auto-assign sequential lot numbers and order.
 
   Focus Box Guidance:
-  - If the image contains a VISIBLE red rectangular focus box overlay (a red-stroked rectangle drawn on top of the image), treat that rectangle as the intended area of interest.
-  - Prioritize the subject INSIDE that rectangle. Choose the single lot that best represents the content within the box. If multiple candidates are visible, prefer the one most centered within the box.
-  - If nothing clear falls within the focus box, fall back to the primary central subject of the image.
+  - CRITICAL: If the image contains a VISIBLE red rectangular focus box overlay (a red-stroked rectangle drawn on top of the image), you MUST ONLY analyze and return the item(s) INSIDE that red box.
+  - STRICTLY IGNORE everything outside the red focus box when it is present.
+  - Choose the single lot that best represents the content within the box. If multiple candidates are visible, prefer the one most centered within the box.
+  - If no red focus box is visible, analyze the entire image normally.
 `;
 
   const perItem = `
@@ -680,10 +681,10 @@ Grouping mode: per_item ("everything you see")
   - If no clear lot sticker/label is visible, set 'lot_number' to null. The server will auto-assign sequential lot numbers and order.
 
   Focus Box Guidance:
-  - If the image contains a VISIBLE red rectangular focus box overlay (a red-stroked rectangle drawn on top of the image), treat that rectangle as the intended area of interest.
-  - PRIORITIZE detecting and returning items that are fully within or clearly intersect that rectangle.
-  - If multiple items are inside, return each as its own lot (per_item). Deprioritize items entirely outside the box unless needed to complete an item that is only partially outside/inside.
-  - If no focus box is visible, analyze the entire image normally.
+  - CRITICAL: If the image contains a VISIBLE red rectangular focus box overlay (a red-stroked rectangle drawn on top of the image), you MUST ONLY analyze and return items that are INSIDE that red box.
+  - STRICTLY IGNORE all items outside the red focus box when it is present.
+  - If multiple items are inside the box, return each as its own lot (per_item mode).
+  - If no red focus box is visible, analyze the entire image normally and return all items.
 `;
 
   const singleLot = `
@@ -704,6 +705,12 @@ Grouping mode: single_lot
   - Detect any visible numeric lot sticker/label in the image(s). Examples include: "Lot 12", "Lot #12", "#105", or a prominent numeric sticker. If clearly present, set 'lot_number' to the numeric value only (no prefixes like 'Lot' or '#').
   - Avoid confusing years (e.g., 2008), prices, phone numbers, horsepower, or model numbers with lot numbers. Prefer numbers adjacent to "Lot"/"LOT" or printed tags/stickers.
   - If no clear lot sticker/label is visible, set 'lot_number' to null. The server will auto-assign sequential lot numbers and order.
+
+  Focus Box Guidance:
+  - CRITICAL: If ANY image contains a VISIBLE red rectangular focus box overlay (a red-stroked rectangle drawn on top of the image), you MUST ONLY analyze and include items that are INSIDE that red box from that image.
+  - STRICTLY IGNORE all items outside the red focus box when it is present.
+  - For images without a red focus box, analyze the entire image normally.
+  - Combine all analyzed items across all images into ONE lot as per single_lot mode.
 
   - Example numbered lines:
     1. 2002 Kenworth T800 T/A Truck Tractor, CAT C15 475 HP Diesel Engine, 18 Spd Trans, A/R Susp., WetKit, Sliding 5th Wheel, 16,000 lb Front, 46,000 lb Rear, Aluminum Wheels, Front Tires 385/65R22.5, Rear Tires 11R24.5, New CVI
