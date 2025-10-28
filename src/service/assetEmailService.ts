@@ -25,20 +25,14 @@ export async function sendPreviewReadyEmail(
         <p style="font-size: 16px; color: #374151; line-height: 1.6;">
           Great news! Your asset report has been processed by our software and is now ready for preview.
         </p>
-        
+
         <p style="font-size: 16px; color: #374151; line-height: 1.6;">
-          Please review the extracted data and make any necessary edits before submitting for admin approval.
+          Please ensure you’ve verified and authenticated all details before submission. You will receive an email notification once your Manager has completed their review.
         </p>
-        
-        <div style="background: #FEE2E2; border-left: 4px solid #DC2626; padding: 15px; margin: 20px 0;">
-          <p style="margin: 0; color: #991B1B; font-weight: bold;">Next Steps:</p>
-          <ul style="margin: 10px 0; color: #991B1B;">
-            <li>Click the "Preview" button in your reports page</li>
-            <li>Review all extracted information</li>
-            <li>Edit any values that need correction</li>
-            <li>Submit for admin approval when ready</li>
-          </ul>
-        </div>
+
+        <p style="font-size: 16px; color: #374151; line-height: 1.6;">
+          Thank you!
+        </p>
         
         <div style="text-align: center; margin: 30px 0;">
           <a href="${process.env.CLIENT_URL}/reports?highlight=${reportId}" 
