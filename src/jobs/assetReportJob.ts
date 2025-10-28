@@ -81,9 +81,44 @@ export async function runPreviewFilesJob(reportId: string) {
 
     const docxBuffer = await generateAssetDocxFromReport(reportData);
     const xlsxBuffer = await generateAssetXlsxFromReport(reportData);
-    const imagesZip = await generateImagesZip(
-      Array.isArray((report as any)?.imageUrls) ? (report as any).imageUrls : []
-    );
+    const allUrls: string[] = Array.isArray((report as any)?.imageUrls)
+      ? (report as any).imageUrls
+      : [];
+    const lotsForNames: any[] = Array.isArray((report as any)?.preview_data?.lots)
+      ? (report as any).preview_data.lots
+      : [];
+    const renameMap: Record<string, string> = {};
+    let lotCounter = 0;
+    for (const lot of lotsForNames) {
+      lotCounter += 1;
+      const lotNoSimple = lotCounter; // no padding
+      const urls: string[] = [];
+      if (Array.isArray(lot?.image_urls)) {
+        urls.push(...(lot.image_urls as string[]));
+      } else if (Array.isArray(lot?.image_indexes)) {
+        urls.push(
+          ...(lot.image_indexes as number[])
+            .map((i: number) => allUrls[i])
+            .filter(Boolean)
+        );
+      }
+      if (Array.isArray(lot?.extra_image_urls)) {
+        urls.push(...(lot.extra_image_urls as string[]));
+      } else if (Array.isArray(lot?.extra_image_indexes)) {
+        urls.push(
+          ...(lot.extra_image_indexes as number[])
+            .map((i: number) => allUrls[i])
+            .filter(Boolean)
+        );
+      }
+      let seq = 0;
+      for (const u of urls) {
+        if (!u || renameMap[u]) continue;
+        seq += 1;
+        renameMap[u] = `${lotNoSimple}.${seq}.jpg`;
+      }
+    }
+    const imagesZip = await generateImagesZip(allUrls, renameMap);
 
     const docxFilename = `asset-preview-${reportId}.docx`;
     const xlsxFilename = `asset-preview-${reportId}.xlsx`;
@@ -1624,9 +1659,12 @@ export async function runAssetReportJob({
 }
 
 /**
- * Helper function to generate a ZIP buffer from image URLs
+ * Helper function to generate a ZIP buffer from image URLs with optional rename map
  */
-export async function generateImagesZip(imageUrls: string[]): Promise<Buffer> {
+export async function generateImagesZip(
+  imageUrls: string[],
+  renameMap?: Record<string, string>
+): Promise<Buffer> {
   return new Promise(async (resolve, reject) => {
     try {
       const chunks: Buffer[] = [];
@@ -1637,6 +1675,9 @@ export async function generateImagesZip(imageUrls: string[]): Promise<Buffer> {
       archive.on("end", () => resolve(Buffer.concat(chunks)));
       archive.on("error", (err: any) => reject(err));
 
+      // Track used names to avoid duplicates
+      const used = new Set<string>();
+
       // Download and add each image to the archive
       for (let i = 0; i < imageUrls.length; i++) {
         const imageUrl = imageUrls[i];
@@ -1646,10 +1687,24 @@ export async function generateImagesZip(imageUrls: string[]): Promise<Buffer> {
           });
           const imageBuffer = Buffer.from(response.data as ArrayBuffer);
 
-          // Extract filename from URL or use index
-          const urlParts = imageUrl.split("/");
-          const filename =
-            urlParts[urlParts.length - 1] || `image-${i + 1}.jpg`;
+          // Pick filename: prefer mapped name, else derive from URL
+          let desired = renameMap?.[imageUrl];
+          if (!desired || typeof desired !== "string") {
+            const clean = imageUrl.split("?")[0];
+            const urlParts = clean.split("/");
+            const last = urlParts[urlParts.length - 1] || `image-${i + 1}.jpg`;
+            desired = last || `image-${i + 1}.jpg`;
+          }
+          // Ensure unique within archive
+          let filename = desired;
+          if (used.has(filename)) {
+            const base = filename.replace(/\.[^.]+$/, "");
+            const ext = (filename.match(/\.[^.]+$/) || [".jpg"])[0];
+            let k = 2;
+            while (used.has(`${base} (${k})${ext}`)) k++;
+            filename = `${base} (${k})${ext}`;
+          }
+          used.add(filename);
 
           archive.append(imageBuffer, { name: filename });
         } catch (err) {
@@ -1699,14 +1754,32 @@ export async function runAssetPreviewJob({
           .replace(/[^a-zA-Z0-9._-]/g, "-")
           .replace(/--+/g, "-")
           .replace(/^-|-$/g, "");
-        const fileName = `uploads/asset/${Date.now()}-${i + 1}-${sanitizedName}`;
-        await uploadBufferToR2(
-          img.buffer,
-          img.mimetype || "image/jpeg",
-          process.env.R2_BUCKET_NAME!,
-          fileName
-        );
-        out[i] = `https://images.sellsnap.store/${fileName}`;
+        const safeBase = sanitizedName.replace(/\.[^./\\]+$/, "");
+        const jpgFile = `uploads/asset/${Date.now()}-${i + 1}-${safeBase}.jpg`;
+        try {
+          const { buffer } = await processImageWithLogo(
+            img.buffer,
+            "public/logoNobg.png",
+            { maxBytes: 1024 * 1024 }
+          );
+          await uploadBufferToR2(
+            buffer,
+            "image/jpeg",
+            process.env.R2_BUCKET_NAME!,
+            jpgFile
+          );
+          out[i] = `https://images.sellsnap.store/${jpgFile}`;
+        } catch (e) {
+          // Fallback: upload original buffer as-is
+          const fallbackName = `uploads/asset/${Date.now()}-${i + 1}-${sanitizedName}`;
+          await uploadBufferToR2(
+            img.buffer,
+            img.mimetype || "image/jpeg",
+            process.env.R2_BUCKET_NAME!,
+            fallbackName
+          );
+          out[i] = `https://images.sellsnap.store/${fallbackName}`;
+        }
       }
       const workers: Promise<void>[] = [];
       for (let w = 0; w < Math.min(concurrency, images.length); w++) {
