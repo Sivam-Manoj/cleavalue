@@ -165,8 +165,12 @@ export const getReportStats = async (req: AuthRequest, res: Response) => {
       user: req.userId,
       status: { $in: ["preview", "pending_approval"] },
     })
-      .select("_id preview_data lots")
+      .select("_id preview_data lots valuation_methods valuation_data include_valuation_table")
       .lean();
+
+    // Track valuation method breakdown
+    const methodCounts: Record<string, number> = { FMV: 0, OLV: 0, FLV: 0, TKV: 0 };
+    const methodValues: Record<string, number> = { FMV: 0, OLV: 0, FLV: 0, TKV: 0 };
 
     for (const ar of pendingAssets || []) {
       const key = String((ar as any)._id);
@@ -187,10 +191,40 @@ export const getReportStats = async (req: AuthRequest, res: Response) => {
       }
       if (total > 0) totalFairMarketValue += total;
       groups.set(key, ar);
+
+      // Process valuation breakdown if available
+      if ((ar as any).include_valuation_table && (ar as any).valuation_data) {
+        const vData = (ar as any).valuation_data;
+        const methods = vData.methods || [];
+        
+        for (const m of methods) {
+          const method = String(m.method || "").toUpperCase();
+          if (method === "FMV" || method === "FML") {
+            methodCounts.FMV += 1;
+            methodValues.FMV += m.value || 0;
+          } else if (method === "OLV") {
+            methodCounts.OLV += 1;
+            methodValues.OLV += m.value || 0;
+          } else if (method === "FLV") {
+            methodCounts.FLV += 1;
+            methodValues.FLV += m.value || 0;
+          } else if (method === "TKV") {
+            methodCounts.TKV += 1;
+            methodValues.TKV += m.value || 0;
+          }
+        }
+      }
     }
 
     const totalReports = groups.size;
-    res.json({ totalReports, totalFairMarketValue });
+    res.json({ 
+      totalReports, 
+      totalFairMarketValue,
+      breakdown: {
+        counts: methodCounts,
+        values: methodValues,
+      },
+    });
   } catch (error) {
     console.error("Error in getReportStats:", error);
     res.status(500).json({ message: "Server error", error });
