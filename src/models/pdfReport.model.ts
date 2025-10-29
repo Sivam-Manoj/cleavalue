@@ -17,6 +17,20 @@ export interface IPdfReport extends Document {
   reviewedBy?: mongoose.Schema.Types.ObjectId | null;
   reviewedAt?: Date | null;
   contract_no?: string;
+  valuation_methods?: Array<'FML' | 'TKV' | 'OLV' | 'FLV'>;
+  valuation_data?: {
+    baseFMV: number;
+    methods: Array<{
+      method: string;
+      fullName: string;
+      description: string;
+      percentage: number;
+      value: number;
+      saleConditions: string;
+      timeline: string;
+      useCase: string;
+    }>;
+  };
 }
 
 const PdfReportSchema: Schema = new Schema(
@@ -95,6 +109,8 @@ const PdfReportSchema: Schema = new Schema(
       type: Date,
       default: null,
     },
+    valuation_methods: [{ type: String, enum: ['FML', 'TKV', 'OLV', 'FLV'] }],
+    valuation_data: { type: Schema.Types.Mixed },
   },
   { timestamps: true }
 );

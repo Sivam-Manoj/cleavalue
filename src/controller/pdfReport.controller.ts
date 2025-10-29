@@ -126,10 +126,28 @@ export const getAllReports = async (req: Request, res: Response) => {
 export const getReportsByUser = async (req: AuthRequest, res: Response) => {
   try {
     const reports = await PdfReport.find({ user: req.userId })
+      .populate({
+        path: 'report',
+        select: 'valuation_data include_valuation_table valuation_methods',
+      })
       .sort({ createdAt: -1 })
       .lean();
-    // Add 'type' alias for front-end compatibility
-    const result = (reports || []).map((r: any) => ({ ...r, type: r.type ?? r.reportType }));
+    // Add 'type' alias and extract valuation data for front-end compatibility
+    const result = (reports || []).map((r: any) => {
+      const populatedReport = r.report as any;
+      let valuationMethods: any[] = [];
+      if (populatedReport?.include_valuation_table && populatedReport?.valuation_data?.methods) {
+        valuationMethods = populatedReport.valuation_data.methods.map((m: any) => ({
+          method: m.method,
+          value: m.value,
+        }));
+      }
+      return { 
+        ...r, 
+        type: r.type ?? r.reportType,
+        valuationMethods: valuationMethods.length > 0 ? valuationMethods : undefined,
+      };
+    });
     res.json(result);
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
@@ -150,6 +168,12 @@ export const getReportStats = async (req: AuthRequest, res: Response) => {
     }
 
     let totalFairMarketValue = 0;
+    // Track valuation method breakdown
+    const methodCounts: Record<string, number> = { FMV: 0, OLV: 0, FLV: 0, TKV: 0 };
+    const methodValues: Record<string, number> = { FMV: 0, OLV: 0, FLV: 0, TKV: 0 };
+    const processedReports = new Set<string>();
+
+    // Process completed PdfReports (already approved/generated)
     for (const r of groups.values()) {
       const fmv = (r as any)?.fairMarketValue;
       if (fmv && typeof fmv === "string") {
@@ -159,18 +183,40 @@ export const getReportStats = async (req: AuthRequest, res: Response) => {
           if (!isNaN(value)) totalFairMarketValue += value;
         } catch {}
       }
+
+      // Process valuation breakdown from PdfReport
+      const reportKey = String((r as any).report || (r as any)._id);
+      if ((r as any).valuation_data && !processedReports.has(reportKey)) {
+        processedReports.add(reportKey);
+        const vData = (r as any).valuation_data;
+        const methods = vData.methods || [];
+        
+        for (const m of methods) {
+          const method = String(m.method || "").toUpperCase();
+          if (method === "FMV" || method === "FML") {
+            methodCounts.FMV += 1;
+            methodValues.FMV += m.value || 0;
+          } else if (method === "OLV") {
+            methodCounts.OLV += 1;
+            methodValues.OLV += m.value || 0;
+          } else if (method === "FLV") {
+            methodCounts.FLV += 1;
+            methodValues.FLV += m.value || 0;
+          } else if (method === "TKV") {
+            methodCounts.TKV += 1;
+            methodValues.TKV += m.value || 0;
+          }
+        }
+      }
     }
 
+    // Process pending AssetReports (not yet approved)
     const pendingAssets = await AssetReport.find({
       user: req.userId,
       status: { $in: ["preview", "pending_approval"] },
     })
       .select("_id preview_data lots valuation_methods valuation_data include_valuation_table")
       .lean();
-
-    // Track valuation method breakdown
-    const methodCounts: Record<string, number> = { FMV: 0, OLV: 0, FLV: 0, TKV: 0 };
-    const methodValues: Record<string, number> = { FMV: 0, OLV: 0, FLV: 0, TKV: 0 };
 
     for (const ar of pendingAssets || []) {
       const key = String((ar as any)._id);
@@ -192,8 +238,9 @@ export const getReportStats = async (req: AuthRequest, res: Response) => {
       if (total > 0) totalFairMarketValue += total;
       groups.set(key, ar);
 
-      // Process valuation breakdown if available
-      if ((ar as any).include_valuation_table && (ar as any).valuation_data) {
+      // Process valuation breakdown from pending AssetReport if not already processed
+      if ((ar as any).include_valuation_table && (ar as any).valuation_data && !processedReports.has(key)) {
+        processedReports.add(key);
         const vData = (ar as any).valuation_data;
         const methods = vData.methods || [];
         

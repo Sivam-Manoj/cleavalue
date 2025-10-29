@@ -1548,6 +1548,8 @@ export async function runAssetReportJob({
       fairMarketValue,
       contract_no:
         (reportObject as any)?.contract_no || details?.contract_no || "",
+      valuation_methods: (reportObject as any)?.valuation_methods,
+      valuation_data: (reportObject as any)?.valuation_data,
     });
     const docxRec = new PdfReport({
       filename: docxFilename,
@@ -1561,6 +1563,8 @@ export async function runAssetReportJob({
       fairMarketValue,
       contract_no:
         (reportObject as any)?.contract_no || details?.contract_no || "",
+      valuation_methods: (reportObject as any)?.valuation_methods,
+      valuation_data: (reportObject as any)?.valuation_data,
     });
     const xlsxRec = new PdfReport({
       filename: xlsxFilename,
@@ -1574,6 +1578,8 @@ export async function runAssetReportJob({
       fairMarketValue,
       contract_no:
         (reportObject as any)?.contract_no || details?.contract_no || "",
+      valuation_methods: (reportObject as any)?.valuation_methods,
+      valuation_data: (reportObject as any)?.valuation_data,
     });
     const imagesRec = new PdfReport({
       filename: imagesZipFilename,
@@ -1588,6 +1594,8 @@ export async function runAssetReportJob({
       fairMarketValue,
       contract_no:
         (reportObject as any)?.contract_no || details?.contract_no || "",
+      valuation_methods: (reportObject as any)?.valuation_methods,
+      valuation_data: (reportObject as any)?.valuation_data,
     });
     await Promise.all([
       withStep(
@@ -2385,6 +2393,8 @@ export async function runDocxGenerationJob(reportId: string) {
       address: addressStr,
       fairMarketValue: fairMarketValueStr,
       contract_no: contractNo,
+      valuation_methods: (report as any)?.valuation_methods,
+      valuation_data: (report as any)?.valuation_data,
     });
 
     const xlsxRec = new PdfReport({
@@ -2399,6 +2409,8 @@ export async function runDocxGenerationJob(reportId: string) {
       address: addressStr,
       fairMarketValue: fairMarketValueStr,
       contract_no: contractNo,
+      valuation_methods: (report as any)?.valuation_methods,
+      valuation_data: (report as any)?.valuation_data,
     });
 
     const imagesRec = new PdfReport({
@@ -2413,6 +2425,8 @@ export async function runDocxGenerationJob(reportId: string) {
       address: addressStr,
       fairMarketValue: fairMarketValueStr,
       contract_no: contractNo,
+      valuation_methods: (report as any)?.valuation_methods,
+      valuation_data: (report as any)?.valuation_data,
     });
 
     await Promise.all([docxRec.save(), xlsxRec.save(), imagesRec.save()]);
