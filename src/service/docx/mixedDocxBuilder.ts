@@ -518,6 +518,8 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
     }
   }
 
+  const includeCover = !(reportData as any)?.custom_cover;
+
   const children: Array<Paragraph | Table | TableOfContents> = [];
   const reportDate = formatDateUS(
     reportData?.createdAt || new Date().toISOString()
@@ -759,7 +761,9 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
   children.push(
     new Paragraph({
       style: "BodyLarge",
-      text: "The assets are of average age and appear to be in average condition. Regular maintenance and cleaning appears to have been completed as required. This is based on a visual inspection only and no review of maintenance records.",
+      text:
+        (reportData as any)?.factors_age_condition ||
+        "The assets are of average age and appear to be in average condition. Regular maintenance and cleaning appears to have been completed as required. This is based on a visual inspection only and no review of maintenance records.",
     })
   );
   children.push(
@@ -768,7 +772,9 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
   children.push(
     new Paragraph({
       style: "BodyLarge",
-      text: "Some items are brand names that are recognized in the industry.",
+      text:
+        (reportData as any)?.factors_quality ||
+        "Some items are brand names that are recognized in the industry.",
     })
   );
   children.push(
@@ -777,7 +783,9 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
   children.push(
     new Paragraph({
       style: "BodyLarge",
-      text: "In a general overview listing of these items, some assets are household, and some assets are for a chiropractor and massage clinic. Sentimental items do not reflect the actual physical value of an item and therefore we must value accordingly. The values given are based off the information provided.",
+      text:
+        (reportData as any)?.factors_analysis ||
+        "In a general overview listing of these items, some assets are household, and some assets are for a chiropractor and massage clinic. Sentimental items do not reflect the actual physical value of an item and therefore we must value accordingly. The values given are based off the information provided.",
     })
   );
 
@@ -1404,6 +1412,102 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
   }
 
   // Finalize document with sections and pack
+  const docSections: any[] = [];
+  if (includeCover) {
+    docSections.push({
+      properties: {
+        page: {
+          margin: {
+            top: convertInchesToTwip(0),
+            right: convertInchesToTwip(0),
+            bottom: convertInchesToTwip(0),
+            left: convertInchesToTwip(0),
+          },
+        },
+      },
+      headers: { default: new Header({ children: [] }) },
+      footers: { default: new Footer({ children: [] }) },
+      children: [
+        await buildCover(
+          reportData,
+          logoBuffer,
+          contentWidthTw,
+          t.assetReport,
+          heroImageBuffer
+        ),
+      ],
+    });
+  }
+
+  docSections.push({
+    properties: {
+      page: {
+        margin: {
+          top: convertInchesToTwip(1),
+          right: convertInchesToTwip(1),
+          bottom: convertInchesToTwip(0.1),
+          left: convertInchesToTwip(1),
+        },
+      },
+    },
+    headers: { default: new Header({ children: [headerTable] }) },
+    footers: { default: new Footer({ children: [footerTable] }) },
+    children: buildTOC(reportData),
+  });
+
+  docSections.push({
+    properties: {
+      page: {
+        margin: {
+          top: convertInchesToTwip(1),
+          right: convertInchesToTwip(1),
+          bottom: convertInchesToTwip(0.1),
+          left: convertInchesToTwip(1),
+        },
+        pageNumbers: { start: 1 },
+      },
+    },
+    headers: { default: new Header({ children: [headerTable] }) },
+    footers: { default: new Footer({ children: [footerTable] }) },
+    children: buildTransmittalLetter(reportData, reportDate),
+  });
+
+  docSections.push({
+    properties: {
+      page: {
+        margin: {
+          top: convertInchesToTwip(0),
+          right: convertInchesToTwip(0),
+          bottom: convertInchesToTwip(0),
+          left: convertInchesToTwip(0),
+        },
+      },
+    },
+    headers: { default: new Header({ children: [] }) },
+    footers: { default: new Footer({ children: [] }) },
+    children: (await buildCertificateOfAppraisal(
+      reportData,
+      contentWidthTw,
+      reportDate
+    )) as any,
+  });
+
+  docSections.push({
+    properties: {
+      page: {
+        margin: {
+          top: convertInchesToTwip(1),
+          right: convertInchesToTwip(1),
+          bottom: convertInchesToTwip(0.1),
+          left: convertInchesToTwip(1),
+        },
+      },
+    },
+    headers: { default: new Header({ children: [headerTable] }) },
+    footers: { default: new Footer({ children: [footerTable] }) },
+    children,
+  });
+
   const doc = new Document({
     creator:
       (reportData?.appraiser as string) ||
@@ -1430,57 +1534,12 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
           paragraph: { spacing: { line: 276, after: 120 } },
         },
         {
-          id: "Heading1",
-          name: "Heading 1",
-          basedOn: "Normal",
-          next: "Normal",
-          quickFormat: true,
-          run: {
-            font: "Times New Roman",
-            size: 28,
-            bold: true,
-            color: "111827",
-          },
-          paragraph: { spacing: { before: 180, after: 100 } },
-        },
-        {
-          id: "Heading2",
-          name: "Heading 2",
-          basedOn: "Normal",
-          next: "Normal",
-          quickFormat: true,
-          run: {
-            font: "Times New Roman",
-            size: 28,
-            bold: true,
-            color: "111827",
-          },
-          paragraph: { spacing: { before: 140, after: 80 } },
-        },
-        {
-          id: "Title",
-          name: "Title",
-          basedOn: "Normal",
-          next: "Normal",
-          quickFormat: true,
-          run: {
-            font: "Times New Roman",
-            size: 28,
-            bold: true,
-            color: "111827",
-          },
-          paragraph: {
-            spacing: { before: 160, after: 120 },
-            alignment: AlignmentType.CENTER,
-          },
-        },
-        {
           id: "BodyLarge",
           name: "Body Large",
           basedOn: "Normal",
-          next: "Normal",
+          next: "BodyLarge",
           quickFormat: true,
-          run: { font: "Times New Roman", size: 22, color: "111827" },
+          run: { font: "Times New Roman", size: 24, color: "111827" },
           paragraph: { spacing: { line: 276, before: 0, after: 80 } },
         },
         {
@@ -1494,103 +1553,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
         },
       ],
     },
-    sections: [
-      // Cover (no header/footer)
-      {
-        properties: {
-          page: {
-            margin: {
-              top: convertInchesToTwip(0),
-              right: convertInchesToTwip(0),
-              bottom: convertInchesToTwip(0),
-              left: convertInchesToTwip(0),
-            },
-          },
-        },
-        headers: { default: new Header({ children: [] }) },
-        footers: { default: new Footer({ children: [] }) },
-        children: [
-          await buildCover(
-            reportData,
-            logoBuffer,
-            contentWidthTw,
-            t.assetReport,
-            heroImageBuffer
-          ),
-        ],
-      },
-      // Table of Contents
-      {
-        properties: {
-          page: {
-            margin: {
-              top: convertInchesToTwip(1),
-              right: convertInchesToTwip(1),
-              bottom: convertInchesToTwip(0.1),
-              left: convertInchesToTwip(1),
-            },
-          },
-        },
-        headers: { default: new Header({ children: [headerTable] }) },
-        footers: { default: new Footer({ children: [footerTable] }) },
-        children: buildTOC(reportData),
-      },
-      // Transmittal Letter (Start page numbering here at 1)
-      {
-        properties: {
-          page: {
-            margin: {
-              top: convertInchesToTwip(1),
-              right: convertInchesToTwip(1),
-              bottom: convertInchesToTwip(0.1),
-              left: convertInchesToTwip(1),
-            },
-            pageNumbers: { start: 1 },
-          },
-        },
-        headers: { default: new Header({ children: [headerTable] }) },
-        footers: { default: new Footer({ children: [footerTable] }) },
-        children: buildTransmittalLetter(reportData, reportDate),
-      },
-      // Certificate of Appraisal (with beautiful HTML-generated image)
-      {
-        properties: {
-          page: {
-            margin: {
-              top: convertInchesToTwip(0),
-              right: convertInchesToTwip(0),
-              bottom: convertInchesToTwip(0),
-              left: convertInchesToTwip(0),
-            },
-          },
-        },
-        headers: { default: new Header({ children: [] }) },
-        footers: { default: new Footer({ children: [] }) },
-        children: (await buildCertificateOfAppraisal(
-          reportData,
-          contentWidthTw,
-          reportDate
-        )) as any,
-      },
-      // Main content (with header/footer). Continue page numbering.
-      {
-        properties: {
-          page: {
-            margin: {
-              top: convertInchesToTwip(1),
-              right: convertInchesToTwip(1),
-              bottom: convertInchesToTwip(0.1),
-              left: convertInchesToTwip(1),
-            },
-          },
-        },
-        headers: { default: new Header({ children: [headerTable] }) },
-        footers: {
-          default: new Footer({ children: [footerTable] }),
-        },
-        children,
-      },
-    ],
+    sections: docSections,
   });
 
   const buf = await Packer.toBuffer(doc);

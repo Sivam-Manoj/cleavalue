@@ -2202,6 +2202,11 @@ export async function runAssetPreviewJob({
         include_valuation_table: details.include_valuation_table,
         valuation_methods: details.valuation_methods,
         valuation_data: valuationData,
+        // New cover + factors fields
+        prepared_for: details.prepared_for,
+        factors_age_condition: details.factors_age_condition,
+        factors_quality: details.factors_quality,
+        factors_analysis: details.factors_analysis,
         total_appraised_value: sumFromLots,
         total_value: sumFromLots,
         // Narrative fields (if provided by AI)
