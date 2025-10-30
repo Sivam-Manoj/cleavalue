@@ -152,8 +152,26 @@ export const getReportsByUser = async (req: AuthRequest, res: Response) => {
           value: m.value,
         }));
       }
+      
+      // Ensure fairMarketValue is properly formatted with currency
+      let fmv = r.fairMarketValue;
+      if (fmv && typeof fmv === 'number') {
+        // If it's a raw number, format it with default currency
+        const currency = r.currency || 'CAD';
+        fmv = new Intl.NumberFormat('en-US', { 
+          style: 'currency', 
+          currency, 
+          maximumFractionDigits: 0 
+        }).format(fmv);
+      } else if (!fmv || fmv === '0' || fmv === 0) {
+        // If empty or zero, show currency code
+        const currency = r.currency || 'CAD';
+        fmv = `${currency} 0.00`;
+      }
+      
       return { 
-        ...r, 
+        ...r,
+        fairMarketValue: fmv,
         type: r.type ?? r.reportType,
         valuationMethods: valuationMethods.length > 0 ? valuationMethods : undefined,
       };
