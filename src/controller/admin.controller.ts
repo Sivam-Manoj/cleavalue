@@ -10,6 +10,7 @@ import {
   setAdminBlocked,
 } from "../service/adminService.js";
 import PdfReport from "../models/pdfReport.model.js";
+import AssetReport from "../models/asset.model.js";
 import { sendEmail } from "../utils/sendVerificationEmail.js";
 
 export const seed = async (req: Request, res: Response) => {
@@ -413,55 +414,124 @@ export const getAdminReports = async (req: Request, res: Response) => {
       200
     );
 
-    const filter: any = {};
+    // Build filters for PdfReports
+    const pdfFilter: any = {};
     if (q) {
       const regex = new RegExp(q, "i");
-      filter.$or = [{ filename: regex }, { address: regex }];
+      pdfFilter.$or = [{ filename: regex }, { address: regex }];
     }
-    if (reportType) {
-      filter.reportType = reportType;
+    if (reportType && reportType !== 'Asset') {
+      pdfFilter.reportType = reportType;
     }
     if (from || to) {
-      filter.createdAt = {};
-      if (from) filter.createdAt.$gte = new Date(from);
-      if (to) filter.createdAt.$lte = new Date(to);
+      pdfFilter.createdAt = {};
+      if (from) pdfFilter.createdAt.$gte = new Date(from);
+      if (to) pdfFilter.createdAt.$lte = new Date(to);
     }
 
+    // Build filters for AssetReports
+    const assetFilter: any = { status: 'approved' };
+    if (q) {
+      const regex = new RegExp(q, "i");
+      assetFilter.$or = [
+        { 'preview_data.client_name': regex },
+        { 'preview_data.prepared_for': regex }
+      ];
+    }
+    if (reportType && reportType === 'Asset') {
+      // Include only AssetReports
+    } else if (reportType) {
+      // Exclude AssetReports if filtering by other types
+      assetFilter._id = null; // Never match
+    }
+    if (from || to) {
+      assetFilter.createdAt = {};
+      if (from) assetFilter.createdAt.$gte = new Date(from);
+      if (to) assetFilter.createdAt.$lte = new Date(to);
+    }
+
+    // Handle user email filter
+    let userIds: any[] = [];
     if (userEmail) {
       const users = await User.find({
         email: new RegExp(userEmail, "i"),
       }).select("_id");
       if (users.length) {
-        filter.user = { $in: users.map((u) => u._id) };
+        userIds = users.map((u) => u._id);
+        pdfFilter.user = { $in: userIds };
+        assetFilter.user = { $in: userIds };
       } else {
         return res.status(200).json({ items: [], total: 0, page, limit });
       }
     }
 
-    // First, get unique report groups with pagination
-    const groupsAgg = await (PdfReport as any).aggregate([
-      { $match: filter },
+    // Fetch PdfReports (legacy reports)
+    const pdfGroupsAgg = await (PdfReport as any).aggregate([
+      { $match: pdfFilter },
       { $group: { _id: { $ifNull: ["$report", "$_id"] }, maxCreatedAt: { $max: "$createdAt" } } },
-      { $sort: { maxCreatedAt: -1 } },
-      { $facet: {
-        total: [{ $count: "count" }],
-        groups: [
-          { $skip: (page - 1) * limit },
-          { $limit: limit }
-        ]
-      }}
+      { $sort: { maxCreatedAt: -1 } }
     ]);
 
-    const total = groupsAgg?.[0]?.total?.[0]?.count || 0;
-    const reportIds = (groupsAgg?.[0]?.groups || []).map((g: any) => g._id);
-
-    // Then fetch all records for these report groups
-    const items = reportIds.length > 0 ? await PdfReport.find({
-      ...filter,
-      $or: reportIds.map((id: any) => id ? { report: id } : { _id: id, report: { $exists: false } })
-    })
+    // Fetch approved AssetReports
+    const assetReports = await AssetReport.find(assetFilter)
       .populate("user", "email username")
-      .sort({ createdAt: -1 }) : [];
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Convert AssetReports to match PdfReport format
+    const assetItems = assetReports.map((r: any) => {
+      const previewData = r.preview_data || {};
+      const currency = String(previewData?.currency || r.currency || 'CAD').toUpperCase();
+      const baseFMV = previewData?.valuation_data?.baseFMV;
+      const lots: any[] = Array.isArray(previewData?.lots) ? previewData.lots : [];
+      const sumFromLots = lots.reduce((acc: number, lot: any) => {
+        const raw = typeof lot?.estimated_value === 'string' ? lot.estimated_value : '';
+        const num = parseFloat(String(raw).replace(/[^0-9.-]+/g, ''));
+        return acc + (Number.isFinite(num) ? num : 0);
+      }, 0);
+      const total = Number.isFinite(baseFMV as any) ? (baseFMV as number) : sumFromLots;
+      const fmvStr = total > 0 
+        ? new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(total)
+        : `${currency} 0.00`;
+
+      return {
+        _id: r._id,
+        filename: `${previewData.client_name || 'Asset Report'}.docx`,
+        address: previewData.client_name || previewData.prepared_for || 'Asset Report',
+        fairMarketValue: fmvStr,
+        user: r.user,
+        reportType: 'Asset',
+        createdAt: r.createdAt,
+        contract_no: previewData.contract_no,
+        fileType: 'docx',
+        approvalStatus: 'approved',
+        preview_files: r.preview_files,
+        report: r._id, // Use same ID for grouping
+      };
+    });
+
+    // Fetch PdfReport details for the groups
+    const reportIds = pdfGroupsAgg.map((g: any) => g._id);
+    const pdfItems = reportIds.length > 0 
+      ? await PdfReport.find({
+          ...pdfFilter,
+          $or: reportIds.map((id: any) => id ? { report: id } : { _id: id, report: { $exists: false } })
+        })
+        .populate("user", "email username")
+        .sort({ createdAt: -1 })
+        .lean()
+      : [];
+
+    // Combine both lists and sort by date
+    const allItems = [...pdfItems, ...assetItems].sort((a: any, b: any) => {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+    // Apply pagination to combined results
+    const total = allItems.length;
+    const startIdx = (page - 1) * limit;
+    const endIdx = startIdx + limit;
+    const items = allItems.slice(startIdx, endIdx);
 
     return res.status(200).json({ items, total, page, limit });
   } catch (e) {
