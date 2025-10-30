@@ -229,10 +229,9 @@ export const submitForApproval = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Update status and timestamps
-    report.status = 'pending_approval';
+    // Update status to 'preview' initially - will be changed to 'pending_approval' after files are created
+    report.status = 'preview';
     report.preview_submitted_at = new Date();
-    report.approval_requested_at = new Date();
     await report.save();
 
     // Queue background job to generate preview files and send notifications when ready
@@ -243,7 +242,7 @@ export const submitForApproval = async (req: AuthRequest, res: Response) => {
       data: {
         reportId: report._id,
         status: report.status,
-        approval_requested_at: report.approval_requested_at,
+        message: "Files are being prepared. Report will appear in approvals when ready."
       },
     });
   } catch (error) {

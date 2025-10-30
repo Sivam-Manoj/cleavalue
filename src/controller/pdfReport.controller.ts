@@ -125,15 +125,25 @@ export const getAllReports = async (req: Request, res: Response) => {
 // @access  Private
 export const getReportsByUser = async (req: AuthRequest, res: Response) => {
   try {
-    const reports = await PdfReport.find({ user: req.userId })
+    // Get old-style PdfReports
+    const pdfReports = await PdfReport.find({ user: req.userId })
       .populate({
         path: 'report',
         select: 'valuation_data include_valuation_table valuation_methods',
       })
       .sort({ createdAt: -1 })
       .lean();
-    // Add 'type' alias and extract valuation data for front-end compatibility
-    const result = (reports || []).map((r: any) => {
+    
+    // Get new-style approved AssetReports
+    const approvedAssetReports = await AssetReport.find({ 
+      user: req.userId,
+      status: 'approved'
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+    
+    // Convert PdfReports to result format
+    const pdfResults = (pdfReports || []).map((r: any) => {
       const populatedReport = r.report as any;
       let valuationMethods: any[] = [];
       if (populatedReport?.include_valuation_table && populatedReport?.valuation_data?.methods) {
@@ -148,7 +158,39 @@ export const getReportsByUser = async (req: AuthRequest, res: Response) => {
         valuationMethods: valuationMethods.length > 0 ? valuationMethods : undefined,
       };
     });
-    res.json(result);
+    
+    // Convert approved AssetReports to match PdfReport format
+    const assetResults = (approvedAssetReports || []).map((r: any) => {
+      const previewData = r.preview_data || {};
+      let valuationMethods: any[] = [];
+      if (r.include_valuation_table && r.valuation_data?.methods) {
+        valuationMethods = r.valuation_data.methods.map((m: any) => ({
+          method: m.method,
+          value: m.value,
+        }));
+      }
+      return {
+        _id: r._id,
+        user: r.user,
+        type: 'Asset',
+        reportType: 'Asset',
+        clientName: previewData.client_name || previewData.prepared_for || '',
+        fairMarketValue: previewData.total_value || previewData.total_appraised_value || 0,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+        status: 'approved',
+        approvalStatus: 'approved',
+        valuationMethods: valuationMethods.length > 0 ? valuationMethods : undefined,
+        preview_files: r.preview_files,
+      };
+    });
+    
+    // Combine and sort by createdAt (newest first)
+    const allReports = [...pdfResults, ...assetResults].sort((a: any, b: any) => {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+    
+    res.json(allReports);
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
   }

@@ -150,8 +150,16 @@ export async function runPreviewFilesJob(reportId: string) {
       excel: `https://images.sellsnap.store/previews/${xlsxFilename}`,
       images: `https://images.sellsnap.store/previews/${imagesFilename}`,
     } as any;
+    
+    // NOW set status to pending_approval (files are ready)
+    report.status = 'pending_approval';
+    report.approval_requested_at = new Date();
     await report.save();
+    
+    console.log(`✅ Files created and status set to pending_approval for report ${reportId}`);
 
+    // IMPORTANT: Send emails ONLY after files are created and status is set
+    // This ensures users and admins are notified only when everything is ready
     const { sendPreviewSubmittedEmail, sendAdminApprovalRequestEmail } =
       await import("../service/assetEmailService.js");
     await sendPreviewSubmittedEmail(
@@ -167,6 +175,7 @@ export async function runPreviewFilesJob(reportId: string) {
       String(report._id)
     );
 
+    console.log(`📧 Emails sent to user and admin`);
     console.log(`[PreviewFilesJob] Completed for report ${reportId}`);
   } catch (e) {
     console.error(`[PreviewFilesJob] Error for report ${reportId}:`, e);
