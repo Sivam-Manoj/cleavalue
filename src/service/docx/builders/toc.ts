@@ -77,24 +77,39 @@ export function buildTOC(reportData: any, skipPageBreak = false): Array<Paragrap
     entries.push({ label: "Appraiser CV" });
   }
 
-  // Create table header row
+  // Create table header row with proper spacing
   const headerRow = new TableRow({
     cantSplit: true,
+    tableHeader: true,
     children: [
       new TableCell({
+        margins: {
+          top: 100,
+          bottom: 100,
+          left: 100,
+          right: 100,
+        },
         children: [
           new Paragraph({
             children: [
               new TextRun({ 
                 text: tr.section, 
                 bold: true,
-                size: 22
+                size: 24,
+                color: "1F2937"
               })
             ],
+            spacing: { before: 80, after: 80 },
           }),
         ],
       }),
       new TableCell({
+        margins: {
+          top: 100,
+          bottom: 100,
+          left: 100,
+          right: 100,
+        },
         children: [
           new Paragraph({
             alignment: AlignmentType.RIGHT,
@@ -102,16 +117,18 @@ export function buildTOC(reportData: any, skipPageBreak = false): Array<Paragrap
               new TextRun({ 
                 text: tr.page.trim(), 
                 bold: true,
-                size: 22
+                size: 24,
+                color: "1F2937"
               })
             ],
+            spacing: { before: 80, after: 80 },
           }),
         ],
       }),
     ],
   });
 
-  // Build table rows with dotted leaders
+  // Build table rows with proper spacing and styling
   const rows: TableRow[] = [headerRow];
   let pageNumber = 1;
   
@@ -121,6 +138,12 @@ export function buildTOC(reportData: any, skipPageBreak = false): Array<Paragrap
         cantSplit: true,
         children: [
           new TableCell({
+            margins: {
+              top: 80,
+              bottom: 80,
+              left: 100,
+              right: 100,
+            },
             children: [
               new Paragraph({
                 tabStops: [
@@ -131,22 +154,35 @@ export function buildTOC(reportData: any, skipPageBreak = false): Array<Paragrap
                   },
                 ],
                 children: [
-                  new TextRun({ text: entry.label, size: 22 }),
+                  new TextRun({ 
+                    text: entry.label, 
+                    size: 22,
+                    color: "374151"
+                  }),
                   new TextRun({ text: "\t", size: 22 }),
                 ],
+                spacing: { before: 40, after: 40 },
               }),
             ],
           }),
           new TableCell({
+            margins: {
+              top: 80,
+              bottom: 80,
+              left: 100,
+              right: 100,
+            },
             children: [
               new Paragraph({
                 alignment: AlignmentType.RIGHT,
                 children: [
                   new TextRun({ 
                     text: pageNumber.toString(), 
-                    size: 22 
+                    size: 22,
+                    color: "374151"
                   })
                 ],
+                spacing: { before: 40, after: 40 },
               }),
             ],
           }),
@@ -156,23 +192,23 @@ export function buildTOC(reportData: any, skipPageBreak = false): Array<Paragrap
     pageNumber++;
   }
 
-  // Create table with proper styling
+  // Create table with professional styling
   const table = new Table({
     width: { 
       size: 100, 
       type: WidthType.PERCENTAGE 
     },
     columnWidths: [
-      Math.round(9040 * 0.8), // Section name column (80%)
-      Math.round(9040 * 0.2)  // Page number column (20%)
+      Math.round(9040 * 0.75), // Section name column (75%)
+      Math.round(9040 * 0.25)  // Page number column (25%)
     ],
     borders: {
-      top: { style: BorderStyle.SINGLE, size: 0, color: "FFFFFF" },
-      bottom: { style: BorderStyle.SINGLE, size: 0, color: "FFFFFF" },
-      left: { style: BorderStyle.SINGLE, size: 0, color: "FFFFFF" },
-      right: { style: BorderStyle.SINGLE, size: 0, color: "FFFFFF" },
-      insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "F3F4F6" },
-      insideVertical: { style: BorderStyle.SINGLE, size: 0, color: "FFFFFF" },
+      top: { style: BorderStyle.SINGLE, size: 6, color: "D1D5DB" },
+      bottom: { style: BorderStyle.SINGLE, size: 6, color: "D1D5DB" },
+      left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+      right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+      insideHorizontal: { style: BorderStyle.SINGLE, size: 3, color: "E5E7EB" },
+      insideVertical: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
     },
     rows,
   });

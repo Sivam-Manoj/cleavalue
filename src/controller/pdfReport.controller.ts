@@ -162,6 +162,21 @@ export const getReportsByUser = async (req: AuthRequest, res: Response) => {
     // Convert approved AssetReports to match PdfReport format
     const assetResults = (approvedAssetReports || []).map((r: any) => {
       const previewData = r.preview_data || {};
+      
+      // Calculate and format FMV with currency
+      const currency = String(previewData?.currency || r.currency || 'CAD').toUpperCase();
+      const baseFMV = previewData?.valuation_data?.baseFMV;
+      const lots: any[] = Array.isArray(previewData?.lots) ? previewData.lots : (Array.isArray(r.lots) ? r.lots : []);
+      const sumFromLots = (lots || []).reduce((acc: number, lot: any) => {
+        const raw = typeof lot?.estimated_value === 'string' ? lot.estimated_value : '';
+        const num = parseFloat(String(raw).replace(/[^0-9.-]+/g, ''));
+        return acc + (Number.isFinite(num) ? num : 0);
+      }, 0);
+      const total = Number.isFinite(baseFMV as any) ? (baseFMV as number) : sumFromLots;
+      const fmvStr = total > 0 
+        ? new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(total)
+        : `${currency} 0.00`;
+      
       let valuationMethods: any[] = [];
       if (r.include_valuation_table && r.valuation_data?.methods) {
         valuationMethods = r.valuation_data.methods.map((m: any) => ({
@@ -169,17 +184,21 @@ export const getReportsByUser = async (req: AuthRequest, res: Response) => {
           value: m.value,
         }));
       }
+      
       return {
         _id: r._id,
         user: r.user,
         type: 'Asset',
         reportType: 'Asset',
         clientName: previewData.client_name || previewData.prepared_for || '',
-        fairMarketValue: previewData.total_value || previewData.total_appraised_value || 0,
+        address: previewData.client_name || previewData.prepared_for || 'Asset Report',
+        filename: `${previewData.client_name || 'Asset Report'}.docx`,
+        fairMarketValue: fmvStr,
         createdAt: r.createdAt,
         updatedAt: r.updatedAt,
         status: 'approved',
         approvalStatus: 'approved',
+        contract_no: previewData.contract_no,
         valuationMethods: valuationMethods.length > 0 ? valuationMethods : undefined,
         preview_files: r.preview_files,
       };
