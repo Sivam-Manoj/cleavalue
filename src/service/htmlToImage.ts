@@ -1,5 +1,4 @@
 import puppeteer from "puppeteer";
-import Jimp from "jimp";
 import { readFile } from "fs/promises";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -57,15 +56,9 @@ export async function htmlToImageBuffer(
 
     await browser.close();
 
-    // Optimize with Jimp
-    const buffer = Buffer.from(screenshotBuffer);
-    const image = await Jimp.read(buffer);
-
-    if (format === "png") {
-      return await image.quality(quality).getBufferAsync(Jimp.MIME_PNG);
-    } else {
-      return await image.quality(quality).getBufferAsync(Jimp.MIME_JPEG);
-    }
+    // Return the screenshot buffer directly
+    // Puppeteer already handles quality via screenshot options
+    return Buffer.from(screenshotBuffer);
   } catch (error) {
     if (browser) {
       await browser.close();

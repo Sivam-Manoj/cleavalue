@@ -1,16 +1,29 @@
 /**
- * Generate Sample DOCX Reports for Testing
+ * Generate Sample Mixed DOCX Report for Testing
  * 
  * Usage:
  *   npm run test:docx        (fast - no build required)
  *   npm run sample:docx      (production - with build)
  * 
- * This script generates sample DOCX reports in the ./reports directory:
- * - Asset report with valuation comparison table
- * - Catalogue report with items
- * - Per-item report
+ * This script generates a sample mixed-mode DOCX report in the ./reports directory.
  * 
- * Tests certificate page, valuation table, and all DOCX features.
+ * Tests:
+ * - Custom cover page (merged from coverPage.docx template)
+ * - Headers with logo on all pages (except cover/certificate)
+ * - Footers with page numbers and corporate info
+ * - Certificate page with professional design
+ * - Valuation comparison table with multiple methods
+ * - Table of contents with proper page numbers
+ * - All mixed report sections (Bundle, Per Item, Per Photo)
+ * - Factors Affecting Value section with custom text
+ * 
+ * Technical Approach:
+ * Uses PizZip for OOXML-level manipulation to prepend the custom cover page
+ * while preserving all headers/footers in the main document. This avoids the
+ * header/footer corruption issues present in docx-merger library.
+ * 
+ * Cover page: NO headers/footers (clean design)
+ * Main document: YES headers/footers (preserved perfectly)
  */
 
 import { generateAssetDocxFromReport } from "../service/assetDocxService.js";
@@ -30,133 +43,110 @@ async function main() {
   }
 
   const now = new Date();
-  const sample: any = {
-    title: "Sample Asset Report",
-    grouping_mode: "asset",
+  const mixedSample: any = {
+    title: "Sample Mixed Report",
+    grouping_mode: "mixed",
     createdAt: now.toISOString(),
     client_name: "Acme Corp",
-    owner_name: "Acme Corp",
-    appraisal_purpose: "Internal Valuation",
+    owner_name: "John Smith",
+    appraisal_purpose: "Internal Valuation & Insurance",
     effective_date: now.toISOString(),
     appraiser: "Jane Doe",
-    appraisal_company: "ClearValue",
+    inspector_name: "Jane Doe",
+    user_email: "jane.doe@mcdougallauction.com",
+    appraisal_company: "McDougall Auctioneers",
     industry: "Construction & Manufacturing",
-    analysis: { summary: "This is a sample generated report.", total_value: "$123,456" },
-    total_appraised_value: "$123,456",
+    language: "en",
+    currency: "CAD",
+    contract_no: "CV-2025-001",
+    inspection_date: now.toISOString(),
+    prepared_for: "Acme Corp - John Smith",
+    analysis: { 
+      summary: "This is a sample generated mixed-mode report for testing purposes.", 
+      total_value: "$123,456 CAD" 
+    },
+    total_appraised_value: "$123,456 CAD",
     // Test valuation comparison table with multiple methods
     include_valuation_table: true,
     valuation_methods: ["FML", "OLV", "FLV"],
-    imageUrls: imgDataUrl ? [imgDataUrl] : [],
+    imageUrls: imgDataUrl ? [imgDataUrl, imgDataUrl] : [],
+    // Test Factors Affecting Value fields
+    factors_age_condition: "The assets are in good to excellent condition with regular maintenance records available.",
+    factors_quality: "High-quality industrial equipment from recognized manufacturers including Caterpillar and John Deere.",
+    factors_analysis: "Market demand for this type of equipment remains strong. Values reflect current market conditions and comparable sales data.",
+    // Mixed lots with different modes
     lots: [
       {
-        lot_id: "L-001",
-        title: "Forklift Model X",
-        description: "Electric forklift in good condition.",
+        lot_id: "MX-001",
+        title: "Warehouse Equipment Bundle",
+        mode: "single_lot",
+        description: "Complete warehouse equipment package including forklift, pallet jacks, and shelving systems.",
         condition: "Good",
-        estimated_value: "$25,000",
+        estimated_value: "$45,000",
         image_urls: imgDataUrl ? [imgDataUrl] : [],
-        tags: ["warehouse", "vehicle"],
+        tags: ["warehouse", "bundle"],
       },
       {
-        lot_id: "L-002",
-        title: "Conveyor System",
-        description: "Belt conveyor with 10m length.",
-        condition: "Fair",
-        estimated_value: "$15,000",
-        image_urls: imgDataUrl ? [imgDataUrl] : [],
-      },
-    ],
-  };
-
-  console.log("📄 Generating Asset Report with Valuation Table...");
-  const buffer = await generateAssetDocxFromReport(sample);
-  const reportsDir = path.resolve(process.cwd(), "reports");
-  await fs.mkdir(reportsDir, { recursive: true });
-  const filenameSafeDate = now.toISOString().replace(/[:.]/g, "-");
-  const outPath = path.join(reportsDir, `sample-asset-${filenameSafeDate}.docx`);
-  await fs.writeFile(outPath, buffer);
-  console.log("✅ Asset Report:", outPath);
-
-  // Generate catalogue grouping sample
-  const catalogueSample: any = {
-    ...sample,
-    title: "Sample Catalogue Report",
-    grouping_mode: "catalogue",
-    lots: [
-      {
-        lot_id: "CAT-001",
-        title: "Machinery Lot",
-        description: "Assorted industrial machinery.",
-        condition: "Good",
-        estimated_value: "$40,000",
+        lot_id: "MX-002",
+        title: "Manufacturing Tools - Per Item",
+        mode: "per_item",
+        description: "Individual manufacturing tools and equipment.",
+        condition: "Excellent",
+        estimated_value: "$32,000",
         image_urls: imgDataUrl ? [imgDataUrl] : [],
         items: [
           {
-            title: "Lathe Machine",
-            sn_vin: "LAT-9988",
-            description: "Precision lathe, lightly used.",
-            details: "3-phase, includes tooling kit.",
-            estimated_value: "$22,000",
+            title: "CNC Milling Machine",
+            serial_no_or_label: "CNC-2024-X1",
+            description: "5-axis CNC milling machine",
+            details: "Siemens control, automatic tool changer, 20HP spindle",
+            estimated_value: "$18,000",
             image_url: imgDataUrl,
           },
           {
-            title: "Drill Press",
-            sn_vin: "DRL-5521",
-            description: "Floor-standing drill press.",
-            details: "12-speed, includes safety guard.",
-            estimated_value: "$3,500",
+            title: "Hydraulic Press",
+            serial_no_or_label: "HP-8800",
+            description: "100-ton hydraulic press",
+            details: "Electric/hydraulic, includes safety guards and tooling",
+            estimated_value: "$14,000",
             image_url: imgDataUrl,
           },
         ],
       },
+      {
+        lot_id: "MX-003",
+        title: "Office Equipment - Per Photo",
+        mode: "per_photo",
+        description: "Various office equipment and furniture.",
+        condition: "Fair",
+        estimated_value: "$8,500",
+        image_urls: imgDataUrl ? [imgDataUrl, imgDataUrl] : [],
+      },
     ],
   };
-  console.log("\n📚 Generating Catalogue Report...");
-  const catalogueBuf = await generateAssetDocxFromReport(catalogueSample);
-  const catPath = path.join(reportsDir, `sample-catalogue-${filenameSafeDate}.docx`);
-  await fs.writeFile(catPath, catalogueBuf);
-  console.log("✅ Catalogue Report:", catPath);
 
-  // Generate per_item grouping sample
-  const perItemSample: any = {
-    ...sample,
-    title: "Sample Per-Item Report",
-    grouping_mode: "per_item",
-    lots: [
-      {
-        lot_id: "ITM-001",
-        title: "Dell Latitude Laptop",
-        serial_no_or_label: "SN-ABC12345",
-        description: "14\" business laptop.",
-        details: "i7, 16GB RAM, 512GB SSD",
-        estimated_value: "$1,200",
-        image_url: imgDataUrl,
-      },
-      {
-        lot_id: "ITM-002",
-        title: "Barcode Scanner",
-        serial_no_or_label: "BC-7788",
-        description: "Handheld barcode scanner.",
-        details: "USB-C, includes stand.",
-        estimated_value: "$250",
-        image_url: imgDataUrl,
-      },
-    ],
-  };
-  console.log("\n📦 Generating Per-Item Report...");
-  const perItemBuf = await generateAssetDocxFromReport(perItemSample);
-  const perItemPath = path.join(reportsDir, `sample-per_item-${filenameSafeDate}.docx`);
-  await fs.writeFile(perItemPath, perItemBuf);
-  console.log("✅ Per-Item Report:", perItemPath);
+  console.log("📄 Generating Mixed Report with Valuation Table...");
+  const buffer = await generateAssetDocxFromReport(mixedSample);
+  const reportsDir = path.resolve(process.cwd(), "reports");
+  await fs.mkdir(reportsDir, { recursive: true });
+  const filenameSafeDate = now.toISOString().replace(/[:.]/g, "-");
+  const outPath = path.join(reportsDir, `sample-mixed-${filenameSafeDate}.docx`);
+  await fs.writeFile(outPath, buffer);
+  console.log("✅ Mixed Report:", outPath);
   
-  console.log("\n🎉 All sample reports generated successfully!");
+  console.log("\n🎉 Sample report generated successfully!");
   console.log("📂 Check the ./reports directory");
-  console.log("\n📋 Generated files include:");
-  console.log("   - Certificate of Appraisal (HTML-generated)");
-  console.log("   - Valuation Comparison Table (FML, OLV, FLV)");
-  console.log("   - Transmittal Letter");
-  console.log("   - Table of Contents");
-  console.log("   - All report sections");
+  console.log("\n📋 Report includes:");
+  console.log("   ✅ Custom cover page (merged from coverPage.docx)");
+  console.log("   ✅ Headers with logo on all pages (except cover/cert)");
+  console.log("   ✅ Footers with page numbers");
+  console.log("   ✅ Certificate of Appraisal");
+  console.log("   ✅ Valuation Comparison Table (FML, OLV, FLV)");
+  console.log("   ✅ Transmittal Letter");
+  console.log("   ✅ Table of Contents");
+  console.log("   ✅ Factors Affecting Value section");
+  console.log("   ✅ Mixed lot results (Bundle, Per Item, Per Photo)");
+  console.log("\n💡 Using @scholarcy/docx-merger to preserve styles, tables, and images.");
 }
 
 main().catch((err) => {

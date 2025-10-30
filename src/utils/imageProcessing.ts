@@ -1,4 +1,4 @@
-import Jimp from "jimp";
+import {Jimp} from "jimp";
 import path from "path";
 import fs from "fs/promises";
 
@@ -31,15 +31,15 @@ export async function processImageWithLogo(
 
   // Read image and resize to exact target using a 'cover' crop
   const image = await Jimp.read(inputBuffer);
-  const imgW = image.getWidth();
-  const imgH = image.getHeight();
+  const imgW = image.width;
+  const imgH = image.height;
   const s = Math.max(targetW / Math.max(1, imgW), targetH / Math.max(1, imgH));
-  const resized = image.clone().resize(Math.ceil(imgW * s), Jimp.AUTO);
-  const rw = resized.getWidth();
-  const rh = resized.getHeight();
+  const resized = image.clone().resize({ w: Math.ceil(imgW * s) });
+  const rw = resized.width;
+  const rh = resized.height;
   const cropX = Math.max(0, Math.floor((rw - targetW) / 2));
   const cropY = Math.max(0, Math.floor((rh - targetH) / 2));
-  const base = resized.crop(cropX, cropY, targetW, targetH);
+  const base = resized.crop({ x: cropX, y: cropY, w: targetW, h: targetH });
 
   // Read logo and resize proportionally to image width
   const absLogoPath = path.isAbsolute(logoPath)
@@ -47,9 +47,9 @@ export async function processImageWithLogo(
     : path.resolve(process.cwd(), logoPath);
   const logo = await Jimp.read(await fs.readFile(absLogoPath));
   const logoTargetW = Math.max(24, Math.round(targetW * logoScale));
-  logo.resize(logoTargetW, Jimp.AUTO);
-  const lw = logo.getWidth();
-  const lh = logo.getHeight();
+  logo.resize({ w: logoTargetW });
+  const lw = logo.width;
+  const lh = logo.height;
 
   // Dynamic margin combines pixel and percent-based margins
   const dynMargin = Math.max(
@@ -64,18 +64,14 @@ export async function processImageWithLogo(
     : Math.max(0, dynMargin);
 
   // Composite logo
-  const composed = base.clone().composite(logo, left, top, {
-    mode: Jimp.BLEND_SOURCE_OVER,
-    opacitySource: 1,
-    opacityDest: 1,
-  });
+  const composed = base.clone().composite(logo, left, top);
 
   // Quality ramp-down only (preserve exact 1200x900 dimensions)
   let q = qualityStart;
-  let out = await composed.clone().quality(q).getBufferAsync(Jimp.MIME_JPEG);
+  let out = await composed.clone().quality(q).getBuffer("image/jpeg");
   while (out.length > maxBytes && q > qualityMin) {
     q = Math.max(qualityMin, q - 6);
-    out = await composed.clone().quality(q).getBufferAsync(Jimp.MIME_JPEG);
+    out = await composed.clone().quality(q).getBuffer("image/jpeg");
   }
   return { buffer: out, format: "jpeg" };
 }

@@ -20,9 +20,13 @@ export async function generateAssetDocxFromReport(
   reportData: any
 ): Promise<Buffer> {
   try {
+    // Check if cover page merging should be skipped (for testing or when merger causes issues)
+    const skipCoverMerge = process.env.SKIP_COVER_MERGE === "true" || (reportData as any)?._skipCoverMerge === true;
+    
     // Attempt to build templated cover page using docxtemplater first
     let coverBuf: Buffer | null = null;
     let mergerAvailable = false;
+    if (!skipCoverMerge) {
     try {
       const templatePath = path.resolve(process.cwd(), "public/coverPage.docx");
       const tplBuf = await fs.readFile(templatePath).catch(() => null as any);
@@ -61,10 +65,9 @@ export async function generateAssetDocxFromReport(
               }
             })();
             const userEmail = (reportData as any)?.user_email || "";
-            doc.setData({ preparedFor, reportDate, userEmail });
-            doc.render();
-            const out = doc.getZip().generate({ type: "nodebuffer" });
-            coverBuf = Buffer.from(out);
+            doc.render({ preparedFor, reportDate, userEmail });
+            // Use toBuffer() instead of getZip().generate() for modern API
+            coverBuf = doc.toBuffer ? doc.toBuffer() : Buffer.from(doc.getZip().generate({ type: "nodebuffer" }));
           } catch (e) {
             console.warn("Templated cover generation failed:", e);
             coverBuf = null;
@@ -79,24 +82,27 @@ export async function generateAssetDocxFromReport(
         } catch {}
       }
     } catch {}
+    } // end if (!skipCoverMerge)
 
     // Use unified mixedDocxBuilder; skip built-in cover only if we can merge a templated one
     const baseBuffer = await generateMixedDocx({
       ...(reportData || {}),
-      ...(coverBuf && mergerAvailable ? { custom_cover: true } : {}),
+      ...(coverBuf ? { custom_cover: true } : {}),
     });
 
     let withCoverBuffer: Buffer = baseBuffer;
-    if (coverBuf && mergerAvailable) {
+    if (coverBuf) {
+      console.log("📄 Merging custom cover page with base document (@scholarcy/docx-merger)...");
       try {
-        const DocxMergerMod: any = await import("docx-merger");
-        const DocxMerger = (DocxMergerMod as any)?.default || DocxMergerMod;
-        const merger = new DocxMerger({}, [coverBuf, baseBuffer]);
-        withCoverBuffer = await new Promise((resolve) => {
-          (merger as any).save("nodebuffer", (data: Buffer) => resolve(data));
-        });
+        // Import CommonJS module in ES module context
+        const { default: DocxMerger } = await import("@scholarcy/docx-merger");
+        const docx = new (DocxMerger as any)();
+        // Merge with cover first, then base document
+        await docx.initialize({}, [coverBuf.toString('binary'), baseBuffer.toString('binary')]);
+        const data = await docx.save('nodebuffer');
+        withCoverBuffer = Buffer.from(data);
       } catch (e) {
-        console.warn("Cover merge failed at runtime, using base buffer.");
+        console.warn("Cover merge failed, using base buffer:", e);
         withCoverBuffer = baseBuffer;
       }
     }
@@ -118,22 +124,20 @@ export async function generateAssetDocxFromReport(
       // Create a divider page with "Appraiser CV" heading
       const dividerBuffer = await createSimpleHeadingDocx("Appraiser CV");
 
-      // Try dynamic import of a merger; gracefully fallback if unavailable
       try {
-        const mergerModuleName = "docx-merger";
-        const mod: any = await (import(mergerModuleName) as Promise<any>).catch(
-          () => null
-        );
-        const DocxMerger = mod?.default || mod;
-        if (!DocxMerger) return withCoverBuffer;
-
-        const merger = new DocxMerger({}, [withCoverBuffer, dividerBuffer, cvBuffer]);
-        const merged: Buffer = await new Promise((resolve) => {
-          (merger as any).save("nodebuffer", (data: Buffer) => resolve(data));
-        });
-        return merged || withCoverBuffer;
-      } catch (e) {
-        console.warn("CV merge library not available, skipping CV append.");
+        // Import CommonJS module in ES module context
+        const { default: DocxMerger } = await import("@scholarcy/docx-merger");
+        const docx = new (DocxMerger as any)();
+        // Merge: base + divider + CV
+        await docx.initialize({}, [
+          withCoverBuffer.toString('binary'),
+          dividerBuffer.toString('binary'),
+          cvBuffer.toString('binary')
+        ]);
+        const data = await docx.save('nodebuffer');
+        return Buffer.from(data);
+      } catch (e2) {
+        console.warn("CV merge library not available, skipping CV append:", e2);
         return withCoverBuffer;
       }
     } catch (err) {

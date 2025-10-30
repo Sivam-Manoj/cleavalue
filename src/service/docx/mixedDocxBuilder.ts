@@ -20,8 +20,9 @@ import {
   TableRow,
   WidthType,
   BorderStyle,
+  SectionType,
 } from "docx";
-import { buildHeaderTable, buildFooterTable } from "./builders/header.js";
+import { buildHeaderTable, buildFooterTable, buildFooterTableWithoutPageNumber } from "./builders/header.js";
 import { buildAppendixPhotoGallery } from "./builders/appendix.js";
 import { buildCover } from "./builders/cover.js";
 import { buildTOC } from "./builders/toc.js";
@@ -500,6 +501,13 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
 
   // Footer table via builder (with corporate address and appraiser details)
   const footerTable = buildFooterTable(
+    contentWidthTw,
+    reportData?.appraiser || (reportData as any)?.inspector_name,
+    (reportData as any)?.user_email
+  );
+
+  // Footer for TOC (without page numbers)
+  const footerTableTOC = buildFooterTableWithoutPageNumber(
     contentWidthTw,
     reportData?.appraiser || (reportData as any)?.inspector_name,
     (reportData as any)?.user_email
@@ -1412,6 +1420,13 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
   }
 
   // Finalize document with sections and pack
+  // Document structure:
+  // 1. Cover (optional, no header/footer) - merged externally if custom_cover is set
+  // 2. TOC (has header, footer without page numbers)
+  // 3. Transmittal Letter (Page 1, has header/footer with page numbers)
+  // 4. Certificate of Appraisal (Page 2, no header/footer)
+  // 5. Main Content (Page 3+, has header/footer with page numbers)
+  // 6. Appraiser CV (optional, merged externally, no header/footer)
   const docSections: any[] = [];
   if (includeCover) {
     docSections.push({
@@ -1441,27 +1456,30 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
 
   docSections.push({
     properties: {
+      type: SectionType.NEXT_PAGE,
+      titlePage: false,
       page: {
         margin: {
-          top: convertInchesToTwip(1),
+          top: convertInchesToTwip(1.2),
           right: convertInchesToTwip(1),
-          bottom: convertInchesToTwip(0.1),
+          bottom: convertInchesToTwip(0.8),
           left: convertInchesToTwip(1),
         },
       },
     },
     headers: { default: new Header({ children: [headerTable] }) },
-    footers: { default: new Footer({ children: [footerTable] }) },
-    children: buildTOC(reportData),
+    footers: { default: new Footer({ children: [footerTableTOC] }) },
+    children: buildTOC(reportData, !includeCover),
   });
 
   docSections.push({
     properties: {
+      type: SectionType.NEXT_PAGE,
       page: {
         margin: {
-          top: convertInchesToTwip(1),
+          top: convertInchesToTwip(1.2),
           right: convertInchesToTwip(1),
-          bottom: convertInchesToTwip(0.1),
+          bottom: convertInchesToTwip(0.8),
           left: convertInchesToTwip(1),
         },
         pageNumbers: { start: 1 },
@@ -1474,6 +1492,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
 
   docSections.push({
     properties: {
+      type: SectionType.NEXT_PAGE,
       page: {
         margin: {
           top: convertInchesToTwip(0),
@@ -1494,11 +1513,12 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
 
   docSections.push({
     properties: {
+      type: SectionType.NEXT_PAGE,
       page: {
         margin: {
-          top: convertInchesToTwip(1),
+          top: convertInchesToTwip(1.2),
           right: convertInchesToTwip(1),
-          bottom: convertInchesToTwip(0.1),
+          bottom: convertInchesToTwip(0.8),
           left: convertInchesToTwip(1),
         },
       },
@@ -1517,6 +1537,21 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
       (reportData?.title as string) ||
       `${t.assetReport} - ${lots.length} ${t.lotsWord} (${t.mixed})`,
     features: { updateFields: true },
+    numbering: {
+      config: [
+        {
+          reference: "default-numbering",
+          levels: [
+            {
+              level: 0,
+              format: "decimal",
+              text: "%1.",
+              alignment: AlignmentType.START,
+            },
+          ],
+        },
+      ],
+    },
     styles: {
       default: {
         document: {

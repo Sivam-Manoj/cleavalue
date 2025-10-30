@@ -15,7 +15,7 @@ import {
 import { goldDivider } from "./utils.js";
 import { getLang, t } from "./i18n.js";
 
-export function buildTOC(reportData: any): Array<Paragraph | Table> {
+export function buildTOC(reportData: any, skipPageBreak = false): Array<Paragraph | Table> {
   const lang = getLang(reportData);
   const tr = t(lang);
   const entries: { label: string }[] = [];
@@ -125,10 +125,16 @@ export function buildTOC(reportData: any): Array<Paragraph | Table> {
           new TableCell({
             children: [
               new Paragraph({
+                tabStops: [
+                  {
+                    type: TabStopType.RIGHT,
+                    position: TabStopPosition.MAX,
+                    leader: "dot", // Dotted leader
+                  },
+                ],
                 children: [
                   new TextRun({ text: e.label, size: 22 }),
-                  new TextRun({ text: " ", size: 18 }),
-                  new TextRun({ text: ".".repeat(80), size: 16, color: "D1D5DB" }),
+                  new TextRun({ text: "\t", size: 22 }),
                 ],
               }),
             ],
@@ -165,7 +171,7 @@ export function buildTOC(reportData: any): Array<Paragraph | Table> {
     new Paragraph({
       text: tr.tableOfContents,
       heading: HeadingLevel.HEADING_1,
-      pageBreakBefore: true,
+      pageBreakBefore: !skipPageBreak,
       spacing: { after: 120 },
     }),
     goldDivider(),
