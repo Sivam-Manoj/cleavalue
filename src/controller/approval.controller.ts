@@ -98,9 +98,9 @@ export const approveReport = async (req: any, res: Response) => {
       assetReport.approval_processed_at = new Date();
       await assetReport.save();
       
-      // Queue DOCX generation
-      const { queueDocxGenerationJob } = await import("../jobs/assetReportJob.js");
-      queueDocxGenerationJob(String(assetReport._id));
+      // NO LONGER NEEDED: Use preview_files URLs directly instead of creating local copies
+      // const { queueDocxGenerationJob } = await import("../jobs/assetReportJob.js");
+      // queueDocxGenerationJob(String(assetReport._id));
       
       // Send approval email
       const to = (assetReport as any).user?.email as string | undefined;
@@ -113,7 +113,7 @@ export const approveReport = async (req: any, res: Response) => {
         );
       }
       
-      return res.status(200).json({ message: "AssetReport approved and DOCX generation queued" });
+      return res.status(200).json({ message: "AssetReport approved successfully" });
     }
     
     // Old workflow: PdfReport

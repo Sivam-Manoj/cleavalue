@@ -282,9 +282,9 @@ export const approveReport = async (req: AuthRequest, res: Response) => {
     report.approval_processed_at = new Date();
     await report.save();
 
-    // Queue DOCX generation job
-    const { queueDocxGenerationJob } = await import("../jobs/assetReportJob.js");
-    await queueDocxGenerationJob(String(report._id));
+    // NO LONGER NEEDED: Use preview_files URLs directly instead of creating local copies
+    // const { queueDocxGenerationJob } = await import("../jobs/assetReportJob.js");
+    // await queueDocxGenerationJob(String(report._id));
 
     // Send approval email
     const { sendReportApprovedEmail } = await import("../service/assetEmailService.js");
@@ -296,7 +296,7 @@ export const approveReport = async (req: AuthRequest, res: Response) => {
     );
 
     res.status(200).json({
-      message: "Report approved successfully. DOCX generation started.",
+      message: "Report approved successfully.",
       data: {
         reportId: report._id,
         status: report.status,
