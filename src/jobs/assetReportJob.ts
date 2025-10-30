@@ -312,7 +312,9 @@ export async function runAssetReportJob({
               fileName
             );
             fileUrl = `https://images.sellsnap.store/${fileName}`;
+            console.log(`✅ Logo added to image ${idx + 1}/${total}`);
           } catch (procErr) {
+            console.warn(`⚠️  Logo processing failed for image ${idx + 1}, using original:`, procErr);
             const fileName = `uploads/asset/${timestamp}-${file.originalname}`;
             await uploadToR2(file, process.env.R2_BUCKET_NAME!, fileName);
             fileUrl = `https://images.sellsnap.store/${fileName}`;
