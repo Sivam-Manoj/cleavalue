@@ -151,12 +151,14 @@ export async function runPreviewFilesJob(reportId: string) {
       images: `https://images.sellsnap.store/previews/${imagesFilename}`,
     } as any;
     
-    // NOW set status to pending_approval (files are ready)
-    report.status = 'pending_approval';
-    report.approval_requested_at = new Date();
+    // Status should already be 'pending_approval' (set when user clicked submit)
+    // Just update the approval_requested_at if not set
+    if (!report.approval_requested_at) {
+      report.approval_requested_at = new Date();
+    }
     await report.save();
     
-    console.log(`✅ Files created and status set to pending_approval for report ${reportId}`);
+    console.log(`✅ Files created for report ${reportId} (status: ${report.status})`);
 
     // IMPORTANT: Send emails ONLY after files are created and status is set
     // This ensures users and admins are notified only when everything is ready

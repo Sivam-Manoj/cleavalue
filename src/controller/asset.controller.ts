@@ -229,20 +229,21 @@ export const submitForApproval = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Update status to 'preview' initially - will be changed to 'pending_approval' after files are created
-    report.status = 'preview';
+    // Update status to 'pending_approval' immediately so it's removed from preview list
+    report.status = 'pending_approval';
     report.preview_submitted_at = new Date();
+    report.approval_requested_at = new Date();
     await report.save();
 
     // Queue background job to generate preview files and send notifications when ready
     await queuePreviewFilesJob(String(report._id));
 
     res.status(202).json({
-      message: "Submission received. Preparing files in background; you'll get an email when ready.",
+      message: "Report submitted for approval successfully! Files are being generated.",
       data: {
         reportId: report._id,
         status: report.status,
-        message: "Files are being prepared. Report will appear in approvals when ready."
+        message: "Your report is being processed. You'll receive an email when the admin reviews it."
       },
     });
   } catch (error) {
