@@ -79,13 +79,20 @@ export async function runPreviewFilesJob(reportId: string) {
         (user as any)?.cvFilename || (report as any)?.user_cv_filename,
     } as any;
 
-    console.log(`[PreviewFilesJob] Generating DOCX with NEW style (custom cover + CV merge)...`);
-    console.log(`[PreviewFilesJob] CV URL: ${reportData.user_cv_url || "NOT PROVIDED"}`);
-    console.log(`[PreviewFilesJob] Prepared For: ${reportData.prepared_for || reportData.client_name || "NOT SET"}`);
+    console.log(`\n${"=".repeat(80)}`);
+    console.log(`🚀 [PreviewFilesJob] GENERATING DOCX WITH NEW STYLE (CUSTOM COVER + CV MERGE)`);
+    console.log(`${"=".repeat(80)}`);
+    console.log(`📋 Report ID: ${reportId}`);
+    console.log(`👤 User: ${user?.name || user?.username || "Unknown"} (${user?.email})`);
+    console.log(`📄 Prepared For: ${reportData.prepared_for || reportData.client_name || "NOT SET"}`);
+    console.log(`🎓 CV URL: ${reportData.user_cv_url || "NOT PROVIDED - WILL SKIP CV"}`);
+    console.log(`${"=".repeat(80)}\n`);
     
     const docxBuffer = await generateAssetDocxFromReport(reportData);
     
-    console.log(`[PreviewFilesJob] DOCX generated successfully. Size: ${docxBuffer.length} bytes`);
+    console.log(`\n✅ [PreviewFilesJob] DOCX GENERATED SUCCESSFULLY!`);
+    console.log(`📦 Size: ${(docxBuffer.length / 1024 / 1024).toFixed(2)} MB`);
+    console.log(`🔗 Will be uploaded to: https://images.sellsnap.store/previews/asset-preview-${reportId}.docx\n`);
     const xlsxBuffer = await generateAssetXlsxFromReport(reportData);
     const allUrls: string[] = Array.isArray((report as any)?.imageUrls)
       ? (report as any).imageUrls
@@ -2340,7 +2347,11 @@ export async function runDocxGenerationJob(reportId: string) {
         (user as any)?.cvFilename || (report as any)?.user_cv_filename,
     };
 
-    // Promote preview files instead of regenerating
+    // Promote preview files - Download from R2 and save locally for user downloads
+    console.log(`\n${"=".repeat(80)}`);
+    console.log(`📥 [DocxGenJob] PROMOTING PREVIEW FILES TO APPROVED STATUS`);
+    console.log(`${"=".repeat(80)}`);
+    
     const docxFilename = `asset-report-${reportId}.docx`;
     const xlsxFilename = `asset-report-${reportId}.xlsx`;
     const imagesZipFilename = `asset-report-images-${reportId}.zip`;
@@ -2351,6 +2362,11 @@ export async function runDocxGenerationJob(reportId: string) {
       (report as any)?.preview_files?.xlsx;
     const previewImagesUrl: string | undefined = (report as any)?.preview_files
       ?.images;
+    
+    console.log(`🔗 Preview DOCX URL: ${previewDocxUrl || "MISSING!"}`);
+    console.log(`🔗 Preview XLSX URL: ${previewXlsxUrl || "MISSING!"}`);
+    console.log(`🔗 Preview Images URL: ${previewImagesUrl || "MISSING!"}`);
+    
     if (!previewDocxUrl || !previewXlsxUrl || !previewImagesUrl) {
       throw new Error(
         `[DocxGenJob] Missing preview_files URLs for report ${reportId}`
@@ -2360,6 +2376,7 @@ export async function runDocxGenerationJob(reportId: string) {
     let xlsxBuffer: Buffer | undefined;
     let imagesZipBuffer: Buffer | undefined;
     try {
+      console.log(`\n⬇️ Downloading preview files from R2...`);
       const [docxRes, xlsxRes, imagesRes] = await Promise.all([
         axios.get(previewDocxUrl, { responseType: "arraybuffer" }),
         axios.get(previewXlsxUrl, { responseType: "arraybuffer" }),
@@ -2368,15 +2385,20 @@ export async function runDocxGenerationJob(reportId: string) {
       docxBuffer = Buffer.from(docxRes.data as ArrayBuffer);
       xlsxBuffer = Buffer.from(xlsxRes.data as ArrayBuffer);
       imagesZipBuffer = Buffer.from(imagesRes.data as ArrayBuffer);
+      
+      console.log(`✅ Downloaded DOCX: ${(docxBuffer.length / 1024 / 1024).toFixed(2)} MB`);
+      console.log(`✅ Downloaded XLSX: ${(xlsxBuffer.length / 1024).toFixed(2)} KB`);
+      console.log(`✅ Downloaded Images: ${(imagesZipBuffer.length / 1024 / 1024).toFixed(2)} MB`);
     } catch (e) {
       console.error(
-        "[DocxGenJob] Failed to download one or more preview files",
+        "❌ [DocxGenJob] Failed to download one or more preview files",
         e
       );
       throw e;
     }
 
     // Save local copies for user download API
+    console.log(`\n💾 Saving files locally for user download API...`);
     const localDir = path.resolve(process.cwd(), "reports", String(user._id));
     try {
       await fs.mkdir(localDir, { recursive: true });
@@ -2389,6 +2411,11 @@ export async function runDocxGenerationJob(reportId: string) {
       fs.writeFile(localXlsxPath, xlsxBuffer as Buffer),
       fs.writeFile(localImagesZipPath, imagesZipBuffer as Buffer),
     ]);
+    
+    console.log(`✅ Saved to local filesystem:`);
+    console.log(`   📄 ${localDocxPath}`);
+    console.log(`   📊 ${localXlsxPath}`);
+    console.log(`   📦 ${localImagesZipPath}`);
 
     // Prepare common fields required by PdfReport schema
     const addressStr = String(
