@@ -1234,6 +1234,10 @@ export async function runAssetReportJob({
       include_valuation_table: includeValuationTable,
       valuation_methods: includeValuationTable ? valuationMethods : [],
       valuation_data: valuationData,
+      prepared_for: details?.prepared_for,
+      factors_age_condition: details?.factors_age_condition,
+      factors_quality: details?.factors_quality,
+      factors_analysis: details?.factors_analysis,
     });
 
     await withStep("save_report", "Persisting report to database", async () => {
@@ -2197,6 +2201,10 @@ export async function runAssetPreviewJob({
       imageUrls: uploadedImageUrls,
       lots,
       status: "preview", // NEW: Set to preview status
+      prepared_for: details.prepared_for,
+      factors_age_condition: details.factors_age_condition,
+      factors_quality: details.factors_quality,
+      factors_analysis: details.factors_analysis,
       preview_data: {
         lots,
         client_name: details.client_name,
@@ -2255,14 +2263,21 @@ export async function runAssetPreviewJob({
     // Phase 5 removed: Files are generated at submit-for-approval, not here.
 
     // Phase 6: Send "Preview Ready" email
-    const { sendPreviewReadyEmail } = await import(
-      "../service/assetEmailService.js"
-    );
-    await sendPreviewReadyEmail(
-      user.email,
-      user.name || "User",
-      String(newReport._id)
-    );
+    console.log(`[PreviewJob] Sending preview ready email to ${user.email}...`);
+    try {
+      const { sendPreviewReadyEmail } = await import(
+        "../service/assetEmailService.js"
+      );
+      await sendPreviewReadyEmail(
+        user.email,
+        user.name || "User",
+        String(newReport._id)
+      );
+      console.log(`📧 Preview ready email sent to ${user.email}`);
+    } catch (emailError) {
+      console.error(`[PreviewJob] Failed to send preview ready email:`, emailError);
+      // Continue even if email fails - don't block the workflow
+    }
 
     if (progressId) {
       endProgress(progressId, true, "Preview ready");

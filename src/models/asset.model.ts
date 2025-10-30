@@ -102,6 +102,11 @@ export interface IAssetReport extends Document {
   // Optional appraiser CV metadata
   user_cv_url?: string;
   user_cv_filename?: string;
+  // New report fields
+  prepared_for?: string;
+  factors_age_condition?: string;
+  factors_quality?: string;
+  factors_analysis?: string;
   // Valuation comparison table
   include_valuation_table?: boolean;
   valuation_methods?: Array<'FML' | 'TKV' | 'OLV' | 'FLV'>;
@@ -235,6 +240,10 @@ const AssetReportSchema: Schema<IAssetReport> = new Schema(
     currency: { type: String, default: 'CAD' },
     user_cv_url: { type: String },
     user_cv_filename: { type: String },
+    prepared_for: { type: String },
+    factors_age_condition: { type: String },
+    factors_quality: { type: String },
+    factors_analysis: { type: String },
     include_valuation_table: { type: Boolean, default: false },
     valuation_methods: [{ type: String, enum: ['FML', 'TKV', 'OLV', 'FLV'] }],
     valuation_data: { type: Schema.Types.Mixed },

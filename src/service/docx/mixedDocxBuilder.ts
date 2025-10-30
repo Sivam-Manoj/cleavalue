@@ -601,7 +601,16 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
       {
         label:
           lang === "fr"
-            ? "Date d’effet"
+            ? "Préparé pour"
+            : lang === "es"
+              ? "Preparado para"
+              : "Prepared For",
+        value: String(reportData?.prepared_for || ""),
+      },
+      {
+        label:
+          lang === "fr"
+            ? "Date d'effet"
             : lang === "es"
               ? "Fecha de vigencia"
               : "Effective Date",
@@ -610,7 +619,7 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
       {
         label:
           lang === "fr"
-            ? "Objet de l’évaluation"
+            ? "Objet de l'évaluation"
             : lang === "es"
               ? "Propósito de la tasación"
               : "Appraisal Purpose",
