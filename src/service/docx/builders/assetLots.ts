@@ -186,7 +186,7 @@ export async function buildAssetLots(
       );
     }
 
-    // Extra images (report-only, not processed by AI)
+    // Extra images (additional report images)
     let extraUrls: string[] = [];
     if (Array.isArray(lot?.extra_image_urls) && lot.extra_image_urls.length) {
       extraUrls = lot.extra_image_urls.filter(Boolean);
