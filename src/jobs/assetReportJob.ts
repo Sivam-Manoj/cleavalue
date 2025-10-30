@@ -79,7 +79,13 @@ export async function runPreviewFilesJob(reportId: string) {
         (user as any)?.cvFilename || (report as any)?.user_cv_filename,
     } as any;
 
+    console.log(`[PreviewFilesJob] Generating DOCX with NEW style (custom cover + CV merge)...`);
+    console.log(`[PreviewFilesJob] CV URL: ${reportData.user_cv_url || "NOT PROVIDED"}`);
+    console.log(`[PreviewFilesJob] Prepared For: ${reportData.prepared_for || reportData.client_name || "NOT SET"}`);
+    
     const docxBuffer = await generateAssetDocxFromReport(reportData);
+    
+    console.log(`[PreviewFilesJob] DOCX generated successfully. Size: ${docxBuffer.length} bytes`);
     const xlsxBuffer = await generateAssetXlsxFromReport(reportData);
     const allUrls: string[] = Array.isArray((report as any)?.imageUrls)
       ? (report as any).imageUrls

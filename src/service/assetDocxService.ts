@@ -26,24 +26,39 @@ export async function generateAssetDocxFromReport(
   reportData: any
 ): Promise<Buffer> {
   try {
+    console.log("📄 [AssetDOCX] Starting NEW report generation with custom cover + CV...");
+    
     // Step 1: Generate custom cover page from template
+    console.log("📄 [AssetDOCX] Step 1: Generating custom cover page...");
     const coverBuffer = await generateCoverPage(reportData);
+    console.log(`✅ [AssetDOCX] Cover page generated (${coverBuffer.length} bytes)`);
 
     // Step 2: Generate main report content (without built-in cover)
+    console.log("📄 [AssetDOCX] Step 2: Generating main report content...");
     const mainBuffer = await generateMixedDocx({
       ...reportData,
       custom_cover: true, // Skip built-in cover since we're merging our own
     });
+    console.log(`✅ [AssetDOCX] Main report generated (${mainBuffer.length} bytes)`);
 
     // Step 3: Fetch appraiser CV (if available)
+    console.log("📄 [AssetDOCX] Step 3: Fetching appraiser CV...");
     const cvBuffer = await fetchAppraiserCV(reportData.user_cv_url);
+    if (cvBuffer) {
+      console.log(`✅ [AssetDOCX] CV fetched (${cvBuffer.length} bytes)`);
+    } else {
+      console.log("⚠️  [AssetDOCX] No CV available - continuing without CV");
+    }
 
     // Step 4: Merge all documents
+    console.log("📄 [AssetDOCX] Step 4: Merging documents...");
     const finalBuffer = await mergeDocuments(coverBuffer, mainBuffer, cvBuffer);
+    console.log(`✅ [AssetDOCX] Final merged document (${finalBuffer.length} bytes)`);
+    console.log("🎉 [AssetDOCX] NEW style report generation completed successfully!");
 
     return finalBuffer;
   } catch (error) {
-    console.error("❌ Error generating Asset DOCX:", error);
+    console.error("❌ [AssetDOCX] Error generating Asset DOCX:", error);
     throw new Error("Failed to generate Asset DOCX report.");
   }
 }
