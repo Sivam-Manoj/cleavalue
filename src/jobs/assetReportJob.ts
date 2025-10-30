@@ -2321,18 +2321,24 @@ export async function queueDocxGenerationJob(reportId: string) {
 
 export async function runDocxGenerationJob(reportId: string) {
   try {
-    console.log(`[DocxGenJob] Starting for report ${reportId}`);
+    console.log(`\n⚠️  [DocxGenJob] CALLED FOR REPORT ${reportId}`);
+    console.log(`📍 Call stack trace:`, new Error().stack);
 
     const report = await AssetReport.findById(reportId).populate("user");
     if (!report) {
       throw new Error(`Report ${reportId} not found`);
     }
 
+    console.log(`📊 [DocxGenJob] Report status: ${report.status}`);
+    
     if (report.status !== "approved") {
+      console.error(`❌ [DocxGenJob] REJECTED - Report ${reportId} status is '${report.status}', expected 'approved'`);
       throw new Error(
         `Report ${reportId} status is ${report.status}, expected 'approved'`
       );
     }
+    
+    console.log(`✅ [DocxGenJob] Status check passed, proceeding with file generation...`);
 
     const user = report.user as any;
 
