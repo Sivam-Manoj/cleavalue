@@ -20,86 +20,77 @@ export function buildTOC(reportData: any, skipPageBreak = false): Array<Paragrap
   const tr = t(lang);
   const entries: { label: string }[] = [];
   
-  // Order matches the actual document structure
-  // Page numbering starts from Transmittal Letter (page 1)
+  // Build table of contents based on actual document structure
+  // Page numbering is estimated and starts from the transmittal letter
   
-  // 1. Transmittal Letter - Page 1
+  // Core document sections
   entries.push({ label: tr.transmittalLetter });
-  
-  // 2. Certificate of Appraisal - Page 2
   entries.push({ label: tr.certificateOfAppraisal });
-  
-  // Main content sections start from Page 3+
-  // 3. Report Summary
   entries.push({ label: tr.reportSummary });
-  
-  // 4. Summary of Value Conclusions
   entries.push({ label: tr.summaryOfValue });
-  
-  // 5. Report Details
   entries.push({ label: tr.reportDetails });
   
-  // 6. Conditions of Appraisal
+  // Appraisal methodology sections
   entries.push({ label: tr.conditionsHeading });
-  
-  // 7. Purpose of This Report
   entries.push({ label: tr.purposeHeading });
-  
-  // 8. Scope of Work
   entries.push({ label: tr.scopeHeading });
-  
-  // 9. Factors Affecting Value
   entries.push({ label: "Factors Affecting Value" });
-  
-  // 10. Value Terminology
   entries.push({ label: tr.valueTermHeading });
-  
-  // 11. Limiting Conditions and Critical Assumptions
   entries.push({ label: tr.limitingHeading });
-  
-  // 12. Approaches to Value
   entries.push({ label: tr.approachesHeading });
-  
-  // 13. Valuation Process and Methodology
   entries.push({ label: tr.valProcessHeading });
-  
-  // 14. Code of Ethics
   entries.push({ label: tr.codeEthicsHeading });
   
-  // 15. Results (lots/catalogue/per_item/combined)
-  const gm = String(reportData?.grouping_mode || "");
-  if (gm === "combined") {
+  // Results section (varies by grouping mode)
+  const groupingMode = String(reportData?.grouping_mode || "");
+  const hasLots = Array.isArray(reportData?.lots) && reportData.lots.length > 0;
+  
+  if (groupingMode === "combined") {
     const modes: string[] = Array.isArray(reportData?.combined_modes)
       ? reportData.combined_modes
       : ["per_item", "per_photo", "single_lot"];
+    
     if (modes.includes("per_item")) entries.push({ label: tr.perItemResults });
     if (modes.includes("per_photo")) entries.push({ label: tr.perPhotoResults });
     if (modes.includes("single_lot")) entries.push({ label: tr.singleLotResults });
-  } else if (Array.isArray(reportData?.lots) && reportData.lots.length) {
-    if (gm === "catalogue") entries.push({ label: tr.assetCatalogue });
-    else if (gm === "per_item") entries.push({ label: tr.perItemResults });
-    else entries.push({ label: tr.results });
+  } else if (hasLots) {
+    if (groupingMode === "catalogue") {
+      entries.push({ label: tr.assetCatalogue });
+    } else if (groupingMode === "per_item") {
+      entries.push({ label: tr.perItemResults });
+    } else {
+      entries.push({ label: tr.results });
+    }
   }
   
-  // 16. Market Overview
+  // Supporting sections
   entries.push({ label: tr.marketOverview });
   
-  // 17. Appendix
-  const hasImages =
-    Array.isArray(reportData?.imageUrls) && reportData.imageUrls.length > 0;
-  if (hasImages) entries.push({ label: tr.appendix });
+  // Optional sections based on content
+  const hasImages = Array.isArray(reportData?.imageUrls) && reportData.imageUrls.length > 0;
+  if (hasImages) {
+    entries.push({ label: tr.appendix });
+  }
   
-  // 18. Appraiser CV (if available)
   const hasCv = !!(reportData?.user_cv_url);
-  if (hasCv) entries.push({ label: "Appraiser CV" });
+  if (hasCv) {
+    entries.push({ label: "Appraiser CV" });
+  }
 
+  // Create table header row
   const headerRow = new TableRow({
     cantSplit: true,
     children: [
       new TableCell({
         children: [
           new Paragraph({
-            children: [new TextRun({ text: tr.section, bold: true })],
+            children: [
+              new TextRun({ 
+                text: tr.section, 
+                bold: true,
+                size: 22
+              })
+            ],
           }),
         ],
       }),
@@ -107,17 +98,24 @@ export function buildTOC(reportData: any, skipPageBreak = false): Array<Paragrap
         children: [
           new Paragraph({
             alignment: AlignmentType.RIGHT,
-            children: [new TextRun({ text: tr.page.trim(), bold: true })],
+            children: [
+              new TextRun({ 
+                text: tr.page.trim(), 
+                bold: true,
+                size: 22
+              })
+            ],
           }),
         ],
       }),
     ],
   });
 
+  // Build table rows with dotted leaders
   const rows: TableRow[] = [headerRow];
-  let pageNum = 1; // Starting page number estimate
+  let pageNumber = 1;
   
-  for (const e of entries) {
+  for (const entry of entries) {
     rows.push(
       new TableRow({
         cantSplit: true,
@@ -129,11 +127,11 @@ export function buildTOC(reportData: any, skipPageBreak = false): Array<Paragrap
                   {
                     type: TabStopType.RIGHT,
                     position: TabStopPosition.MAX,
-                    leader: "dot", // Dotted leader
+                    leader: "dot",
                   },
                 ],
                 children: [
-                  new TextRun({ text: e.label, size: 22 }),
+                  new TextRun({ text: entry.label, size: 22 }),
                   new TextRun({ text: "\t", size: 22 }),
                 ],
               }),
@@ -143,19 +141,31 @@ export function buildTOC(reportData: any, skipPageBreak = false): Array<Paragrap
             children: [
               new Paragraph({
                 alignment: AlignmentType.RIGHT,
-                children: [new TextRun({ text: pageNum.toString(), size: 22 })],
+                children: [
+                  new TextRun({ 
+                    text: pageNumber.toString(), 
+                    size: 22 
+                  })
+                ],
               }),
             ],
           }),
         ],
       })
     );
-    pageNum++; // Increment for next section
+    pageNumber++;
   }
 
+  // Create table with proper styling
   const table = new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    columnWidths: [Math.round(9040 * 0.8), Math.round(9040 * 0.2)],
+    width: { 
+      size: 100, 
+      type: WidthType.PERCENTAGE 
+    },
+    columnWidths: [
+      Math.round(9040 * 0.8), // Section name column (80%)
+      Math.round(9040 * 0.2)  // Page number column (20%)
+    ],
     borders: {
       top: { style: BorderStyle.SINGLE, size: 0, color: "FFFFFF" },
       bottom: { style: BorderStyle.SINGLE, size: 0, color: "FFFFFF" },
@@ -167,6 +177,7 @@ export function buildTOC(reportData: any, skipPageBreak = false): Array<Paragrap
     rows,
   });
 
+  // Return TOC with heading, divider, and table
   return [
     new Paragraph({
       text: tr.tableOfContents,
