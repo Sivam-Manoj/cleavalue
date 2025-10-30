@@ -67,11 +67,13 @@ export async function processImageWithLogo(
   const composed = base.clone().composite(logo, left, top);
 
   // Quality ramp-down only (preserve exact 1200x900 dimensions)
+  // In modern Jimp, quality is set via encoder options
   let q = qualityStart;
-  let out = await composed.clone().quality(q).getBuffer("image/jpeg");
+  let out = await composed.getBuffer("image/jpeg", { quality: q });
+  
   while (out.length > maxBytes && q > qualityMin) {
     q = Math.max(qualityMin, q - 6);
-    out = await composed.clone().quality(q).getBuffer("image/jpeg");
+    out = await composed.getBuffer("image/jpeg", { quality: q });
   }
   return { buffer: out, format: "jpeg" };
 }

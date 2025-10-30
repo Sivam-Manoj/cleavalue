@@ -101,6 +101,24 @@ Expected console output:
 ```
 
 ### Test Logo Processing
+```bash
+npm run test:image
+```
+
+Expected console output:
+```
+🧪 Testing Image Processing with Logo...
+✅ Input image exists
+✅ Logo exists
+✅ Processing complete in 150ms
+💾 Output saved to: test-outputs/test-logo-2025-10-30T10-30-15.jpg
+✅ Test completed successfully!
+```
+
+**Visual Verification:**
+Open `test-outputs/test-logo-*.jpg` to verify logo appears in bottom-right corner.
+
+### Test in Production
 Upload images via the web form and check server logs:
 ```
 ✅ Logo added to image 1/5
