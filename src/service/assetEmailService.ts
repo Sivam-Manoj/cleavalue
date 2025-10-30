@@ -76,15 +76,15 @@ export async function sendPreviewSubmittedEmail(
         </p>
         
         <p style="font-size: 16px; color: #374151; line-height: 1.6;">
-          Your asset report has been successfully submitted for admin approval.
+          Your asset report has been successfully submitted for Manager approval.
         </p>
         
         <p style="font-size: 16px; color: #374151; line-height: 1.6;">
-          You will receive an email notification once the admin has reviewed and processed your report.
+          You will receive an email notification once the Manager has reviewed and processed your report.
         </p>
         
         <div style="background: #D1FAE5; border-left: 4px solid #10B981; padding: 15px; margin: 20px 0;">
-          <p style="margin: 0; color: #065F46;"><strong>Status:</strong> Pending Admin Approval</p>
+          <p style="margin: 0; color: #065F46;"><strong>Status:</strong> Pending Manager Approval</p>
           <p style="margin: 5px 0 0 0; color: #065F46; font-size: 14px;">Expected processing time: 1-2 business days</p>
         </div>
         
@@ -169,7 +169,7 @@ export async function sendReportApprovedEmail(
         </p>
         
         <p style="font-size: 16px; color: #374151; line-height: 1.6;">
-          Great news! Your asset report has been approved by the admin and is now ready for download.
+          Great news! Your asset report has been approved by the Manager and is now ready for download.
         </p>
         
         <div style="background: #D1FAE5; border-left: 4px solid #10B981; padding: 15px; margin: 20px 0;">
@@ -221,7 +221,7 @@ export async function sendReportDeclinedEmail(
         </p>
         
         <p style="font-size: 16px; color: #374151; line-height: 1.6;">
-          Your asset report has been reviewed and declined by the admin.
+          Your asset report has been reviewed and declined by the Manager.
         </p>
         
         <div style="background: #FEE2E2; border-left: 4px solid #EF4444; padding: 15px; margin: 20px 0;">
