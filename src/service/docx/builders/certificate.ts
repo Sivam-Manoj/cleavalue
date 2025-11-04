@@ -16,6 +16,40 @@ import { goldDivider, formatDateUS } from "./utils.js";
 import { getLang, t } from "./i18n.js";
 import { generateCertificateImage } from "../../htmlToImage.js";
 
+/**
+ * Format currency value with symbol and comma separators
+ */
+function formatCurrencyValue(value: string | number | undefined, currency: string = "CAD"): string | undefined {
+  if (!value) return undefined;
+  
+  // Parse numeric value
+  const numericValue = typeof value === 'string' ? parseFloat(value.replace(/[^0-9.-]/g, '')) : value;
+  
+  if (isNaN(numericValue)) return undefined;
+  
+  // Currency symbols mapping
+  const currencySymbols: Record<string, string> = {
+    'USD': '$',
+    'CAD': 'CA$',
+    'EUR': '€',
+    'GBP': '£',
+    'AUD': 'A$',
+    'JPY': '¥',
+    'CNY': '¥',
+    'INR': '₹',
+  };
+  
+  const symbol = currencySymbols[currency.toUpperCase()] || currency.toUpperCase() + ' ';
+  
+  // Format with comma separators
+  const formattedNumber = new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(numericValue);
+  
+  return `${symbol}${formattedNumber}`;
+}
+
 export async function buildCertificateOfAppraisal(
   reportData: any,
   contentWidthTw: number,
@@ -38,6 +72,9 @@ export async function buildCertificateOfAppraisal(
     (reportData?.valuation?.final_estimate_value as string) ||
     undefined;
 
+  const currency = reportData?.currency || "CAD";
+  const formattedTotalValue = formatCurrencyValue(totalVal, currency);
+
   const preparedBy = [reportData?.appraiser, reportData?.appraisal_company].filter(Boolean).join(", ");
   const certCellMarginTw = 120;
   const certInnerWidthTw = contentWidthTw - certCellMarginTw * 2;
@@ -52,7 +89,7 @@ export async function buildCertificateOfAppraisal(
       effectiveDate: formatDateUS(reportData?.effective_date) || reportDate || "",
       purpose: String(reportData?.appraisal_purpose || ""),
       preparedBy: preparedBy || "",
-      totalValue: totalVal ? String(totalVal) : undefined,
+      totalValue: formattedTotalValue,
       reportDate: reportDate || "",
     });
   } catch (error) {
@@ -269,7 +306,7 @@ export async function buildCertificateOfAppraisal(
                   alignment: AlignmentType.CENTER,
                   children: [
                     new TextRun({
-                      text: totalVal ? String(totalVal) : tr.valueSeeDetails,
+                      text: formattedTotalValue || tr.valueSeeDetails,
                       bold: true,
                       size: 48,
                       color: "059669",

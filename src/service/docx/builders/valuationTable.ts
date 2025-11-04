@@ -44,7 +44,10 @@ async function generateRecommendation(
 ): Promise<string> {
   try {
     const methodsSummary = valuationData.methods
-      .map(m => `${m.method}: ${new Intl.NumberFormat("en-US", { style: "currency", currency: reportData?.currency || "CAD", minimumFractionDigits: 0 }).format(m.value)}`)
+      .map(
+        (m) =>
+          `${m.method}: ${new Intl.NumberFormat("en-US", { style: "currency", currency: reportData?.currency || "CAD", minimumFractionDigits: 0 }).format(m.value)}`
+      )
       .join(", ");
 
     const prompt = `You are an expert appraiser. Based on the valuation methods below, recommend the most appropriate approach for this asset.
@@ -61,14 +64,16 @@ Provide a 2-3 sentence professional recommendation on which valuation method is 
 Return ONLY the recommendation text (no labels, no JSON).`;
 
     const response = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL_TEXT || "gpt-4o-mini",
+      model: process.env.OPENAI_MODEL_TEXT || "gpt-4.1",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.7,
       max_tokens: 200,
     });
 
-    return response.choices[0]?.message?.content?.trim() || 
-      `Based on the asset characteristics and market conditions, consider the valuation method that best aligns with your intended use case and timeline requirements.`;
+    return (
+      response.choices[0]?.message?.content?.trim() ||
+      `Based on the asset characteristics and market conditions, consider the valuation method that best aligns with your intended use case and timeline requirements.`
+    );
   } catch (error) {
     console.error("Recommendation generation failed:", error);
     return `Based on the asset characteristics and market conditions, consider the valuation method that best aligns with your intended use case and timeline requirements.`;
@@ -83,8 +88,12 @@ export async function buildValuationTable(
   lang: "en" | "fr" | "es" = "en"
 ): Promise<any[]> {
   const valuationData = reportData?.valuation_data as ValuationData | undefined;
-  
-  if (!valuationData || !valuationData.methods || valuationData.methods.length === 0) {
+
+  if (
+    !valuationData ||
+    !valuationData.methods ||
+    valuationData.methods.length === 0
+  ) {
     return [];
   }
 
@@ -209,13 +218,13 @@ export async function buildValuationTable(
                   text: t.method,
                   size: 22,
                   bold: true,
-                  color: "1F2937",
+                  color: "000000",
                 }),
               ],
               alignment: AlignmentType.CENTER,
             }),
           ],
-          shading: { fill: "E5E7EB", type: ShadingType.SOLID },
+          shading: { fill: "FFFFFF", type: ShadingType.SOLID },
           verticalAlign: VerticalAlign.CENTER,
           margins: { top: 120, bottom: 120, left: 100, right: 100 },
         }),
@@ -227,13 +236,13 @@ export async function buildValuationTable(
                   text: t.value,
                   size: 22,
                   bold: true,
-                  color: "1F2937",
+                  color: "000000",
                 }),
               ],
               alignment: AlignmentType.CENTER,
             }),
           ],
-          shading: { fill: "E5E7EB", type: ShadingType.SOLID },
+          shading: { fill: "FFFFFF", type: ShadingType.SOLID },
           verticalAlign: VerticalAlign.CENTER,
           margins: { top: 120, bottom: 120, left: 100, right: 100 },
         }),
@@ -245,13 +254,13 @@ export async function buildValuationTable(
                   text: t.timeline,
                   size: 22,
                   bold: true,
-                  color: "1F2937",
+                  color: "000000",
                 }),
               ],
               alignment: AlignmentType.CENTER,
             }),
           ],
-          shading: { fill: "E5E7EB", type: ShadingType.SOLID },
+          shading: { fill: "FFFFFF", type: ShadingType.SOLID },
           verticalAlign: VerticalAlign.CENTER,
           margins: { top: 120, bottom: 120, left: 100, right: 100 },
         }),
@@ -263,13 +272,13 @@ export async function buildValuationTable(
                   text: t.explanation,
                   size: 22,
                   bold: true,
-                  color: "1F2937",
+                  color: "000000",
                 }),
               ],
               alignment: AlignmentType.CENTER,
             }),
           ],
-          shading: { fill: "E5E7EB", type: ShadingType.SOLID },
+          shading: { fill: "FFFFFF", type: ShadingType.SOLID },
           verticalAlign: VerticalAlign.CENTER,
           margins: { top: 120, bottom: 120, left: 100, right: 100 },
         }),
@@ -277,12 +286,11 @@ export async function buildValuationTable(
     })
   );
 
-  // Data rows for each selected method with alternating shading
+  // Data rows for each selected method - all white background
   for (let i = 0; i < valuationData.methods.length; i++) {
     const method = valuationData.methods[i];
-    const isEven = i % 2 === 0;
-    const bgColor = isEven ? "FFFFFF" : "F9FAFB";
-    
+    const bgColor = "FFFFFF"; // Force white background for all rows
+
     summaryRows.push(
       new TableRow({
         children: [
@@ -294,16 +302,17 @@ export async function buildValuationTable(
                     text: method.method,
                     size: 22,
                     bold: true,
-                    color: "DC2626",
+                    color: "991B1B",
                   }),
                 ],
+                alignment: AlignmentType.CENTER,
               }),
               new Paragraph({
                 children: [
                   new TextRun({
                     text: method.fullName,
                     size: 22,
-                    color: "6B7280",
+                    color: "4B5563",
                   }),
                 ],
                 spacing: { after: 0 },
@@ -338,7 +347,7 @@ export async function buildValuationTable(
                   new TextRun({
                     text: method.timeline,
                     size: 22,
-                    color: "1F2937",
+                    color: "000000",
                   }),
                 ],
                 alignment: AlignmentType.CENTER,
@@ -355,7 +364,7 @@ export async function buildValuationTable(
                   new TextRun({
                     text: method.aiExplanation || method.description,
                     size: 22,
-                    color: "374151",
+                    color: "1F2937",
                   }),
                 ],
                 alignment: AlignmentType.LEFT,
@@ -371,24 +380,28 @@ export async function buildValuationTable(
   }
 
   const tableWidthTw = 9360; // 6.5 inches
-  
+
   children.push(
     new Table({
       rows: summaryRows,
       width: { size: tableWidthTw, type: WidthType.DXA },
       layout: TableLayoutType.FIXED,
       columnWidths: [
-        Math.round(tableWidthTw * 0.20),  // Method column
-        Math.round(tableWidthTw * 0.18),  // Value column
-        Math.round(tableWidthTw * 0.17),  // Timeline column
-        Math.round(tableWidthTw * 0.45),  // Explanation column (larger for detailed text)
+        Math.round(tableWidthTw * 0.2), // Method column
+        Math.round(tableWidthTw * 0.18), // Value column
+        Math.round(tableWidthTw * 0.17), // Timeline column
+        Math.round(tableWidthTw * 0.45), // Explanation column (larger for detailed text)
       ],
       borders: {
         top: { style: BorderStyle.SINGLE, size: 2, color: "D1D5DB" },
         bottom: { style: BorderStyle.SINGLE, size: 2, color: "D1D5DB" },
         left: { style: BorderStyle.SINGLE, size: 2, color: "D1D5DB" },
         right: { style: BorderStyle.SINGLE, size: 2, color: "D1D5DB" },
-        insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
+        insideHorizontal: {
+          style: BorderStyle.SINGLE,
+          size: 1,
+          color: "E5E7EB",
+        },
         insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "E5E7EB" },
       },
     })
@@ -397,8 +410,11 @@ export async function buildValuationTable(
   children.push(new Paragraph({ text: "", spacing: { after: 400 } }));
 
   // Recommendation section
-  const recommendationText = await generateRecommendation(valuationData, reportData);
-  
+  const recommendationText = await generateRecommendation(
+    valuationData,
+    reportData
+  );
+
   children.push(
     new Paragraph({
       children: [
