@@ -64,6 +64,11 @@ export function t(lang: Lang) {
       opinionSentence: 'After a thorough analysis of the assets and information made available to us, it is our opinion that as of the Effective Date, these assets have an Orderly Liquidation Value in Canadian Funds as shown on the certificate that we have prepared.',
       certifySentence: 'We certify that neither we nor any of our employees have any present or future interest in the appraised property. The fee charged for this appraisal was not contingent on the values reported. As such, the results stated in this letter of transmittal cannot be fully understood without the accompanying report and this letter should not be separated from the report.',
       contactSentence: 'If you require any additional information, please feel free to contact me at your convenience.',
+      // Valuation methods
+      valuationSinglePrefix: 'The valuation has been calculated as:',
+      valuationMultiplePrefix: 'The valuations have been calculated as:',
+      valuationAt: 'at',
+      valuationAnd: 'and',
       // Certificate
       client: 'Client',
       purpose: 'Purpose',
@@ -176,6 +181,11 @@ export function t(lang: Lang) {
       opinionSentence: "Après une analyse approfondie des actifs et des informations disponibles, nous estimons qu'à la date d'effet, ces actifs ont une valeur de liquidation ordonnée en dollars canadiens, comme indiqué sur le certificat joint.",
       certifySentence: "Nous certifions qu'aucun de nous ni aucun de nos employés n'a d'intérêt présent ou futur dans les biens évalués. Les honoraires de cette évaluation n'étaient pas conditionnels aux valeurs rapportées. Les résultats de cette lettre ne peuvent être pleinement compris sans le rapport joint, et cette lettre ne doit pas être séparée du rapport.",
       contactSentence: "Pour toute information supplémentaire, n'hésitez pas à me contacter.",
+      // Valuation methods
+      valuationSinglePrefix: 'L\'évaluation a été calculée comme suit :',
+      valuationMultiplePrefix: 'Les évaluations ont été calculées comme suit :',
+      valuationAt: 'à',
+      valuationAnd: 'et',
       client: 'Client',
       purpose: 'Objet',
       preparedBy: 'Préparé par',
@@ -287,6 +297,11 @@ export function t(lang: Lang) {
       opinionSentence: 'Tras un análisis exhaustivo de los activos y la información disponible, opinamos que a la fecha efectiva, estos activos tienen un Valor de Liquidación Ordenada en dólares canadienses como se muestra en el certificado preparado.',
       certifySentence: 'Certificamos que ni nosotros ni nuestros empleados tenemos ningún interés presente o futuro en los bienes tasados. Los honorarios no dependieron de los valores informados. Los resultados de esta carta no pueden entenderse completamente sin el informe adjunto y no debe separarse del mismo.',
       contactSentence: 'Si requiere información adicional, no dude en contactarme.',
+      // Valuation methods
+      valuationSinglePrefix: 'La valuación se ha calculado como:',
+      valuationMultiplePrefix: 'Las valuaciones se han calculado como:',
+      valuationAt: 'en',
+      valuationAnd: 'y',
       client: 'Cliente',
       purpose: 'Propósito',
       preparedBy: 'Preparado por',
