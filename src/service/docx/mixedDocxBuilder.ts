@@ -1384,11 +1384,25 @@ export async function generateMixedDocx(reportData: any): Promise<Buffer> {
   }
 
   // Valuation Comparison Table (if enabled)
-  if (reportData?.include_valuation_table && reportData?.valuation_data) {
-    const { buildValuationTable } = await import(
-      "./builders/valuationTable.js"
-    );
-    children.push(...(await buildValuationTable(reportData, lang)));
+  if (reportData?.include_valuation_table) {
+    console.log('[mixedDocxBuilder] Valuation table requested');
+    console.log('[mixedDocxBuilder] include_valuation_table:', reportData?.include_valuation_table);
+    console.log('[mixedDocxBuilder] valuation_data:', reportData?.valuation_data);
+    console.log('[mixedDocxBuilder] valuation_methods:', reportData?.valuation_methods);
+    
+    if (reportData?.valuation_data) {
+      try {
+        const { buildValuationTable } = await import(
+          "./builders/valuationTable.js"
+        );
+        children.push(...(await buildValuationTable(reportData, lang)));
+        console.log('[mixedDocxBuilder] Valuation table added successfully');
+      } catch (error) {
+        console.error('[mixedDocxBuilder] Failed to build valuation table:', error);
+      }
+    } else {
+      console.warn('[mixedDocxBuilder] Valuation table requested but valuation_data is missing or null');
+    }
   }
 
   // Certification (separate page)

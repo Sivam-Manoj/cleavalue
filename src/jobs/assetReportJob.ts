@@ -1178,6 +1178,9 @@ export async function runAssetReportJob({
       ? details.valuation_methods
       : [];
 
+    console.log('[AssetReportJob] includeValuationTable:', includeValuationTable);
+    console.log('[AssetReportJob] valuationMethods:', valuationMethods);
+    
     if (includeValuationTable && valuationMethods.length > 0) {
       try {
         await withStep(
@@ -1195,6 +1198,8 @@ export async function runAssetReportJob({
               return sum + (isNaN(num) ? 0 : num);
             }, 0);
 
+            console.log('[AssetReportJob] Total FMV calculated:', totalFMV);
+
             if (totalFMV > 0) {
               // Get asset information for AI analysis
               const firstLot = lots[0];
@@ -1202,6 +1207,13 @@ export async function runAssetReportJob({
               const assetDescription = firstLot?.description || "";
               const assetCondition = firstLot?.condition || "Unknown";
               const industry = details?.industry || "General";
+
+              console.log('[AssetReportJob] Generating valuation table with:', {
+                totalFMV,
+                methods: valuationMethods,
+                assetTitle,
+                industry
+              });
 
               // Generate comparison table with AI explanations for all selected methods
               valuationData = await generateComparisonTableWithAI(
@@ -1214,19 +1226,22 @@ export async function runAssetReportJob({
               );
 
               console.log(
-                `Generated valuation comparison table with AI explanations for ${valuationMethods.length} methods, total FMV: $${totalFMV}`
+                `[AssetReportJob] Generated valuation comparison table with AI explanations for ${valuationMethods.length} methods, total FMV: $${totalFMV}`
               );
+              console.log('[AssetReportJob] valuationData:', JSON.stringify(valuationData, null, 2));
             } else {
               console.warn(
-                "Total FMV is 0, skipping valuation table generation"
+                "[AssetReportJob] Total FMV is 0, skipping valuation table generation"
               );
             }
           }
         );
       } catch (error) {
-        console.error("Valuation calculation failed:", error);
+        console.error("[AssetReportJob] Valuation calculation failed:", error);
         // Continue without valuation data
       }
+    } else {
+      console.log('[AssetReportJob] Valuation table not requested or no methods selected');
     }
 
     const newReport = new AssetReport({
@@ -1257,9 +1272,19 @@ export async function runAssetReportJob({
 
     await withStep("save_report", "Persisting report to database", async () => {
       await newReport.save();
+      console.log('[AssetReportJob] Report saved with valuation data:', {
+        include_valuation_table: newReport.include_valuation_table,
+        valuation_methods: newReport.valuation_methods,
+        hasValuationData: !!newReport.valuation_data
+      });
     });
 
     const reportObject = newReport.toObject();
+    console.log('[AssetReportJob] Report object for generation:', {
+      include_valuation_table: reportObject.include_valuation_table,
+      valuation_methods: reportObject.valuation_methods,
+      hasValuationData: !!reportObject.valuation_data
+    });
     // Generate PDF, DOCX, and XLSX in parallel
     const [pdfBuffer, docxBuffer, xlsxBuffer] = await Promise.all([
       withStep("generate_pdf", "Generating PDF", async () => {
