@@ -101,21 +101,6 @@ export function buildTransmittalLetter(
   children.push(
     new Paragraph({
       style: "BodyLarge",
-      children: [
-        new TextRun({
-          text: isFMV
-            ? "The subject assets were appraised under the premise of Fair Market Value for internal consideration."
-            : tr.premiseSentence,
-        }),
-      ],
-      keepLines: true,
-      keepNext: true,
-      spacing: { after: 110 },
-    })
-  );
-  children.push(
-    new Paragraph({
-      style: "BodyLarge",
       children: [new TextRun({ text: tr.approachesSentence })],
       keepLines: true,
       keepNext: true,
@@ -140,7 +125,11 @@ export function buildTransmittalLetter(
 
   // Add valuation methods paragraph if available
   const valuationData = reportData?.valuation_data;
-  if (valuationData && Array.isArray(valuationData.methods) && valuationData.methods.length > 0) {
+  if (
+    valuationData &&
+    Array.isArray(valuationData.methods) &&
+    valuationData.methods.length > 0
+  ) {
     const currency = reportData?.currency || "CAD";
     const formatCurrency = (value: number) => {
       return new Intl.NumberFormat("en-US", {
